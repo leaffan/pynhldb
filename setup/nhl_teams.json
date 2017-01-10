@@ -1,0 +1,466 @@
+{
+  "1": {
+    "abbr": "NJD", 
+    "first_year_of_play": 1982, 
+    "last_year_of_play": null, 
+    "name": "New Jersey Devils", 
+    "orig_abbr": "N.J", 
+    "team_name": "Devils"
+  }, 
+  "2": {
+    "abbr": "NYI", 
+    "first_year_of_play": 1972, 
+    "last_year_of_play": null, 
+    "name": "New York Islanders", 
+    "orig_abbr": "NYI", 
+    "team_name": "Islanders"
+  }, 
+  "3": {
+    "abbr": "NYR", 
+    "first_year_of_play": 1926, 
+    "last_year_of_play": null, 
+    "name": "New York Rangers", 
+    "orig_abbr": "NYR", 
+    "team_name": "Rangers"
+  }, 
+  "4": {
+    "abbr": "PHI", 
+    "first_year_of_play": 1967, 
+    "last_year_of_play": null, 
+    "name": "Philadelphia Flyers", 
+    "orig_abbr": "PHI", 
+    "team_name": "Flyers"
+  }, 
+  "5": {
+    "abbr": "PIT", 
+    "first_year_of_play": 1967, 
+    "last_year_of_play": null, 
+    "name": "Pittsburgh Penguins", 
+    "orig_abbr": "PIT", 
+    "team_name": "Penguins"
+  }, 
+  "6": {
+    "abbr": "BOS", 
+    "first_year_of_play": 1924, 
+    "last_year_of_play": null, 
+    "name": "Boston Bruins", 
+    "orig_abbr": "BOS", 
+    "team_name": "Bruins"
+  }, 
+  "7": {
+    "abbr": "BUF", 
+    "first_year_of_play": 1970, 
+    "last_year_of_play": null, 
+    "name": "Buffalo Sabres", 
+    "orig_abbr": "BUF", 
+    "team_name": "Sabres"
+  }, 
+  "8": {
+    "abbr": "MTL", 
+    "first_year_of_play": 1917, 
+    "last_year_of_play": null, 
+    "name": "Montréal Canadiens", 
+    "orig_abbr": "MTL", 
+    "team_name": "Canadiens"
+  }, 
+  "9": {
+    "abbr": "OTW", 
+    "first_year_of_play": 1992, 
+    "last_year_of_play": null, 
+    "name": "Ottawa Senators", 
+    "orig_abbr": "OTT", 
+    "team_name": "Senators"
+  }, 
+  "10": {
+    "abbr": "TOR", 
+    "first_year_of_play": 1927, 
+    "last_year_of_play": null, 
+    "name": "Toronto Maple Leafs", 
+    "orig_abbr": "TOR", 
+    "team_name": "Maple Leafs"
+  }, 
+  "11": {
+    "abbr": "ATL", 
+    "first_year_of_play": 1999, 
+    "last_year_of_play": 2011, 
+    "name": "Atlanta Thrashers", 
+    "orig_abbr": "ATL", 
+    "team_name": "Thrashers"
+  }, 
+  "12": {
+    "abbr": "CAR", 
+    "first_year_of_play": 1997, 
+    "last_year_of_play": null, 
+    "name": "Carolina Hurricanes", 
+    "orig_abbr": "CAR", 
+    "team_name": "Hurricanes"
+  }, 
+  "13": {
+    "abbr": "FLA", 
+    "first_year_of_play": 1993, 
+    "last_year_of_play": null, 
+    "name": "Florida Panthers", 
+    "orig_abbr": "FLA", 
+    "team_name": "Panthers"
+  }, 
+  "14": {
+    "abbr": "TBL", 
+    "first_year_of_play": 1992, 
+    "last_year_of_play": null, 
+    "name": "Tampa Bay Lightning", 
+    "orig_abbr": "T.B", 
+    "team_name": "Lightning"
+  }, 
+  "15": {
+    "abbr": "WSH", 
+    "first_year_of_play": 1974, 
+    "last_year_of_play": null, 
+    "name": "Washington Capitals", 
+    "orig_abbr": "WSH", 
+    "team_name": "Capitals"
+  }, 
+  "16": {
+    "abbr": "CHI", 
+    "first_year_of_play": 1926, 
+    "last_year_of_play": null, 
+    "name": "Chicago Blackhawks", 
+    "orig_abbr": "CHI", 
+    "team_name": "Blackhawks"
+  }, 
+  "17": {
+    "abbr": "DET", 
+    "first_year_of_play": 1932, 
+    "last_year_of_play": null, 
+    "name": "Detroit Red Wings", 
+    "orig_abbr": "DET", 
+    "team_name": "Red Wings"
+  }, 
+  "18": {
+    "abbr": "NSH", 
+    "first_year_of_play": 1998, 
+    "last_year_of_play": null, 
+    "name": "Nashville Predators", 
+    "orig_abbr": "NSH", 
+    "team_name": "Predators"
+  }, 
+  "19": {
+    "abbr": "STL", 
+    "first_year_of_play": 1967, 
+    "last_year_of_play": null, 
+    "name": "St. Louis Blues", 
+    "orig_abbr": "STL", 
+    "team_name": "Blues"
+  }, 
+  "20": {
+    "abbr": "CGY", 
+    "first_year_of_play": 1980, 
+    "last_year_of_play": null, 
+    "name": "Calgary Flames", 
+    "orig_abbr": "CGY", 
+    "team_name": "Flames"
+  }, 
+  "21": {
+    "abbr": "COL", 
+    "first_year_of_play": 1995, 
+    "last_year_of_play": null, 
+    "name": "Colorado Avalanche", 
+    "orig_abbr": "COL", 
+    "team_name": "Avalanche"
+  }, 
+  "22": {
+    "abbr": "EDM", 
+    "first_year_of_play": 1979, 
+    "last_year_of_play": null, 
+    "name": "Edmonton Oilers", 
+    "orig_abbr": "EDM", 
+    "team_name": "Oilers"
+  }, 
+  "23": {
+    "abbr": "VAN", 
+    "first_year_of_play": 1970, 
+    "last_year_of_play": null, 
+    "name": "Vancouver Canucks", 
+    "orig_abbr": "VAN", 
+    "team_name": "Canucks"
+  }, 
+  "24": {
+    "abbr": "ANA", 
+    "first_year_of_play": 1993, 
+    "last_year_of_play": null, 
+    "name": "Anaheim Ducks", 
+    "orig_abbr": "ANA", 
+    "team_name": "Ducks"
+  }, 
+  "25": {
+    "abbr": "DAL", 
+    "first_year_of_play": 1993, 
+    "last_year_of_play": null, 
+    "name": "Dallas Stars", 
+    "orig_abbr": "DAL", 
+    "team_name": "Stars"
+  }, 
+  "26": {
+    "abbr": "LAK", 
+    "first_year_of_play": 1967, 
+    "last_year_of_play": null, 
+    "name": "Los Angeles Kings", 
+    "orig_abbr": "L.A", 
+    "team_name": "Kings"
+  }, 
+  "27": {
+    "abbr": "PHO", 
+    "first_year_of_play": 1996, 
+    "last_year_of_play": 2014, 
+    "name": "Phoenix Coyotes", 
+    "orig_abbr": "PHX", 
+    "team_name": "Coyotes"
+  }, 
+  "28": {
+    "abbr": "SJS", 
+    "first_year_of_play": 1991, 
+    "last_year_of_play": null, 
+    "name": "San Jose Sharks", 
+    "orig_abbr": "S.J", 
+    "team_name": "Sharks"
+  }, 
+  "29": {
+    "abbr": "CLB", 
+    "first_year_of_play": 2000, 
+    "last_year_of_play": null, 
+    "name": "Columbus Blue Jackets", 
+    "orig_abbr": "CBJ", 
+    "team_name": "Blue Jackets"
+  }, 
+  "30": {
+    "abbr": "MIN", 
+    "first_year_of_play": 2000, 
+    "last_year_of_play": null, 
+    "name": "Minnesota Wild", 
+    "orig_abbr": "MIN", 
+    "team_name": "Wild"
+  }, 
+  "31": {
+    "abbr": "MNS", 
+    "first_year_of_play": 1967, 
+    "last_year_of_play": 1993, 
+    "name": "Minnesota North Stars", 
+    "orig_abbr": "MNS", 
+    "team_name": "North Stars"
+  }, 
+  "32": {
+    "abbr": "QUE", 
+    "first_year_of_play": 1979, 
+    "last_year_of_play": 1995, 
+    "name": "Quebec Nordiques", 
+    "orig_abbr": "QUE", 
+    "team_name": "Nordiques"
+  }, 
+  "33": {
+    "abbr": "WIN", 
+    "first_year_of_play": 1979, 
+    "last_year_of_play": 1996, 
+    "name": "Winnipeg Jets (1979)", 
+    "orig_abbr": "WIN", 
+    "team_name": "Jets"
+  }, 
+  "34": {
+    "abbr": "HFD", 
+    "first_year_of_play": 1979, 
+    "last_year_of_play": 1997, 
+    "name": "Hartford Whalers", 
+    "orig_abbr": "HFD", 
+    "team_name": "Whalers"
+  }, 
+  "35": {
+    "abbr": "CLR", 
+    "first_year_of_play": 1976, 
+    "last_year_of_play": 1982, 
+    "name": "Colorado Rockies", 
+    "orig_abbr": "CLR", 
+    "team_name": "Rockies"
+  }, 
+  "36": {
+    "abbr": "SEN", 
+    "first_year_of_play": 1917, 
+    "last_year_of_play": 1934, 
+    "name": "Ottawa Senators (1917)", 
+    "orig_abbr": "SEN", 
+    "team_name": "Senators (1917)"
+  }, 
+  "37": {
+    "abbr": "HAM", 
+    "first_year_of_play": 1920, 
+    "last_year_of_play": 1925, 
+    "name": "Hamilton Tigers", 
+    "orig_abbr": "HAM", 
+    "team_name": "Tigers"
+  }, 
+  "38": {
+    "abbr": "PIR", 
+    "first_year_of_play": 1925, 
+    "last_year_of_play": 1930, 
+    "name": "Pittsburgh Pirates", 
+    "orig_abbr": "PIR", 
+    "team_name": "Pirates"
+  }, 
+  "39": {
+    "abbr": "QUA", 
+    "first_year_of_play": 1930, 
+    "last_year_of_play": 1931, 
+    "name": "Philadelphia Quakers", 
+    "orig_abbr": "QUA", 
+    "team_name": "Quakers"
+  }, 
+  "40": {
+    "abbr": "DCG", 
+    "first_year_of_play": 1926, 
+    "last_year_of_play": 1930, 
+    "name": "Detroit Cougars", 
+    "orig_abbr": "DCG", 
+    "team_name": "Cougars"
+  }, 
+  "41": {
+    "abbr": "MWN", 
+    "first_year_of_play": 1917, 
+    "last_year_of_play": 1918, 
+    "name": "Montreal Wanderers", 
+    "orig_abbr": "MWN", 
+    "team_name": "Wanderers"
+  }, 
+  "42": {
+    "abbr": "QBD", 
+    "first_year_of_play": 1919, 
+    "last_year_of_play": 1920, 
+    "name": "Quebec Bulldogs", 
+    "orig_abbr": "QBD", 
+    "team_name": "Bulldogs"
+  }, 
+  "43": {
+    "abbr": "MMR", 
+    "first_year_of_play": 1924, 
+    "last_year_of_play": 1938, 
+    "name": "Montreal Maroons", 
+    "orig_abbr": "MMR", 
+    "team_name": "Maroons"
+  }, 
+  "44": {
+    "abbr": "NYA", 
+    "first_year_of_play": 1925, 
+    "last_year_of_play": 1941, 
+    "name": "New York Americans", 
+    "orig_abbr": "NYA", 
+    "team_name": "Americans"
+  }, 
+  "45": {
+    "abbr": "SLE", 
+    "first_year_of_play": 1934, 
+    "last_year_of_play": 1935, 
+    "name": "St. Louis Eagles", 
+    "orig_abbr": "SLE", 
+    "team_name": "Eagles"
+  }, 
+  "46": {
+    "abbr": "CGS", 
+    "first_year_of_play": 1970, 
+    "last_year_of_play": 1976, 
+    "name": "California Golden Seals", 
+    "orig_abbr": "CGS", 
+    "team_name": "Golden Seals"
+  }, 
+  "47": {
+    "abbr": "ATF", 
+    "first_year_of_play": 1972, 
+    "last_year_of_play": 1980, 
+    "name": "Atlanta Flames", 
+    "orig_abbr": "AFM", 
+    "team_name": "Flames"
+  }, 
+  "48": {
+    "abbr": "KCS", 
+    "first_year_of_play": 1974, 
+    "last_year_of_play": 1976, 
+    "name": "Kansas City Scouts", 
+    "orig_abbr": "KCS", 
+    "team_name": "Scouts"
+  }, 
+  "49": {
+    "abbr": "CBN", 
+    "first_year_of_play": 1976, 
+    "last_year_of_play": 1978, 
+    "name": "Cleveland Barons", 
+    "orig_abbr": "CBN", 
+    "team_name": "Barons"
+  }, 
+  "50": {
+    "abbr": "DFL", 
+    "first_year_of_play": 1930, 
+    "last_year_of_play": 1932, 
+    "name": "Detroit Falcons", 
+    "orig_abbr": "DFL", 
+    "team_name": "Falcons"
+  }, 
+  "51": {
+    "abbr": "BRK", 
+    "first_year_of_play": 1941, 
+    "last_year_of_play": 1942, 
+    "name": "Brooklyn Americans", 
+    "orig_abbr": "BRK", 
+    "team_name": "Americans"
+  }, 
+  "52": {
+    "abbr": "WPG", 
+    "first_year_of_play": 2011, 
+    "last_year_of_play": null, 
+    "name": "Winnipeg Jets", 
+    "orig_abbr": "WPG", 
+    "team_name": "Jets"
+  }, 
+  "53": {
+    "abbr": "ARI", 
+    "first_year_of_play": 2014, 
+    "last_year_of_play": null, 
+    "name": "Arizona Coyotes", 
+    "orig_abbr": "ARI", 
+    "team_name": "Coyotes"
+  }, 
+  "54": {
+    "abbr": "VGK", 
+    "first_year_of_play": 2017, 
+    "last_year_of_play": null, 
+    "name": "Vegas Golden Knights", 
+    "orig_abbr": "VGK", 
+    "team_name": "Golden Knights"
+  }, 
+  "55": {
+    "abbr": "OAK", 
+    "first_year_of_play": 1967, 
+    "last_year_of_play": 1970, 
+    "name": "Oakland Seals", 
+    "orig_abbr": "OAK", 
+    "team_name": "Seals"
+  }, 
+  "56": {
+    "abbr": "CSE",
+    "first_year_of_play": 1970, 
+    "last_year_of_play": 1976, 
+    "name": "California Golden Seals", 
+    "orig_abbr": "CSE", 
+    "team_name": "Golden Seals"
+  }, 
+  "57": {
+    "abbr": "TAN", 
+    "first_year_of_play": 1917, 
+    "last_year_of_play": 1919, 
+    "name": "Toronto Arenas", 
+    "orig_abbr": "TAN", 
+    "team_name": "Arenas"
+  }, 
+  "58": {
+    "abbr": "TSP", 
+    "first_year_of_play": 1919, 
+    "last_year_of_play": 1927, 
+    "name": "Toronto St. Patricks", 
+    "orig_abbr": "TSP", 
+    "team_name": "St. Patricks"
+  }
+}
