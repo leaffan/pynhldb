@@ -90,3 +90,6 @@ ENV/
 
 # IDE-related stuff
 .vscode
+
+# project-related stuff
+_config.ini
