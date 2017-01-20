@@ -8,6 +8,7 @@ import requests
 from db.common import session_scope
 from db.team import Team
 from db.player_season import PlayerSeason
+from db.goalie_season import GoalieSeason
 
 
 class PlayerDataRetriever():
@@ -88,29 +89,23 @@ class PlayerDataRetriever():
     def create_or_update_player_season(self, plr_season, plr_season_db):
         with session_scope() as session:
             if not plr_season_db or plr_season_db is None:
-                # logger.debug("Adding %s season to database: %s"
-                #  % (NHLPlayer.find_by_id(plr_season.player_id), plr_season))
                 session.add(plr_season)
                 session.commit()
                 if self.lock:
                     self.lock.acquire()
-                # print("+ Added season statistics for %s" % player)
-                # print("\t%s" % plr_season)
                 if self.lock:
                     self.lock.release()
             else:
                 if plr_season_db != plr_season:
                     plr_season_db.update(plr_season)
-                    # logger.debug("Updating %s season
-                    #  in database: %s" % (NHLPlayer.find_by_id(
-                    # plr_season_db.player_id), plr_season_db))
                     session.merge(plr_season_db)
                     session.commit()
-                    # locked_print(["+ Updated season
-                    # statistics for %s" % player,
-                    #  "\t%s" % plr_season_db], lock)
 
-    def retrieve_player_seasons(self, player_id, lock=''):
+    def retrieve_player_seasons(self, player_id, simulation=False):
+
+        print(player_id)
+
+        plr_seasons = list()
 
         plr_season_dict = self.retrieve_raw_season_data(player_id)
 
@@ -118,21 +113,25 @@ class PlayerDataRetriever():
 
         for key in sorted(plr_season_dict.keys()):
             # keys are a tuple of season, season type, team count and team
-            (season, season_type, team_season_cnt, team) = key
+            (season, season_type, season_team_sequence, team) = key
             season_data = plr_season_dict[key]
 
             if plr_position == 'G':
-                pass
-                # plr_season = NHLGoalieSeason(
-                # player.player_id, season,
-                #  season_type, team, team_season_cnt, season_data)
-                # plr_season_db = NHLGoalieSeason.find(
-                # player.player_id, team, season, season_type, team_season_cnt)
+                plr_season = GoalieSeason(
+                    player_id, season, season_type, team,
+                    season_team_sequence, season_data)
+                plr_season_db = GoalieSeason.find(
+                    player_id, team, season, season_type, season_team_sequence)
             else:
                 plr_season = PlayerSeason(
                     player_id, season, season_type, team,
-                    team_season_cnt, season_data)
+                    season_team_sequence, season_data)
                 plr_season_db = PlayerSeason.find(
-                    player_id, team, season, season_type, team_season_cnt)
+                    player_id, team, season, season_type, season_team_sequence)
 
-            self.create_or_update_player_season(plr_season, plr_season_db)
+            plr_seasons.append(plr_season)
+
+            if not simulation:
+                self.create_or_update_player_season(plr_season, plr_season_db)
+
+        return plr_seasons
