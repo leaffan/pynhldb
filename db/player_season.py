@@ -6,16 +6,14 @@ from datetime import timedelta
 from sqlalchemy import and_
 
 from .common import Base, session_scope
+from .team import Team
 
 
 class PlayerSeason(Base):
     __tablename__ = 'player_seasons'
     __autoload__ = True
 
-    STD_STATS = [
-        'games_played', 'goals', 'assists', 'points',
-        'plus_minus', 'pim', 'ppg', 'shg', 'gwg', 'shots']
-
+    # statistics items mapped from original json struct to database attributes
     JSON_DB_MAPPING = {
         "timeOnIce": "toi",
         "assists": "assists",
@@ -41,6 +39,7 @@ class PlayerSeason(Base):
         "shifts": "shifts",
         }
 
+    # attributes that are to be treated as time intervals
     INTERVAL_ATTRS = ["toi", "ev_toi", "pp_toi", "sh_toi"]
 
     def __init__(self, player_id, season, season_type, team, season_team_sequence, season_data):
@@ -92,7 +91,8 @@ class PlayerSeason(Base):
                         PlayerSeason.season == season,
                         PlayerSeason.team_id == team.team_id,
                         PlayerSeason.season_type == season_type,
-                        PlayerSeason.season_team_sequence == season_team_sequence
+                        PlayerSeason.season_team_sequence ==
+                        season_team_sequence
                     )
                 ).one()
             except:
@@ -105,3 +105,19 @@ class PlayerSeason(Base):
                 setattr(self, attr, getattr(other, attr))
         else:
             self.calculate_pctg()
+
+    def __str__(self):
+        if self.shots is None:
+            shots = "-"
+        else:
+            shots = str(self.shots)
+
+        if self.pctg is None:
+            pctg = "-"
+        else:
+            pctg = str(round(self.pctg, 1))
+
+        return "%d %-25s %2d %2d %2d %3d %3d %2d %2d %2d %3s %5s" % (
+            self.season, Team.find_by_id(self.team_id),
+            self.games_played, self.goals, self.assists, self.points,
+            self.pim, self.ppg, self.shg, self.gwg, shots, pctg)
