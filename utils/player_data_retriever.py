@@ -41,8 +41,8 @@ class PlayerDataRetriever():
     DB_KEY_DATE_OF_BIRTH = "date_of_birth"
     DB_KEY_PLACE_OF_BIRTH = "place_of_birth"
 
-    def __init__():
-        self.lock = threading.lock()
+    def __init__(self):
+        self.lock = threading.Lock()
 
     def retrieve_raw_season_data(self, player_id):
 
@@ -76,11 +76,11 @@ class PlayerDataRetriever():
                     # retrieving sequence number of current statline,
                     # important in case of a player playing for multiple teams
                     # in one season
-                    team_season_cnt = split['sequenceNumber']
+                    season_team_sequence = split['sequenceNumber']
 
                     # adding current stat line to dictionary container
                     plr_season_dict[
-                        (season, season_type, team_season_cnt, team)
+                        (season, season_type, season_team_sequence, team)
                     ] = split['stat']
 
         return plr_season_dict

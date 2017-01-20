@@ -43,12 +43,12 @@ class PlayerSeason(Base):
 
     INTERVAL_ATTRS = ["toi", "ev_toi", "pp_toi", "sh_toi"]
 
-    def __init__(self, player_id, season, season_type, team, team_season_cnt, season_data):
+    def __init__(self, player_id, season, season_type, team, season_team_sequence, season_data):
 
         self.player_id = player_id
         self.season = season
         self.season_type = season_type
-        self.team_season_cnt = team_season_cnt
+        self.season_team_sequence = season_team_sequence
         self.team_id = team.team_id
 
         for json_key in self.JSON_DB_MAPPING:
@@ -83,7 +83,7 @@ class PlayerSeason(Base):
             self.pctg = round(0., 2)
 
     @classmethod
-    def find(self, player_id, team, season, season_type, team_season_cnt):
+    def find(self, player_id, team, season, season_type, season_team_sequence):
         with session_scope() as session:
             try:
                 player_season = session.query(PlayerSeason).filter(
@@ -92,7 +92,7 @@ class PlayerSeason(Base):
                         PlayerSeason.season == season,
                         PlayerSeason.team_id == team.team_id,
                         PlayerSeason.season_type == season_type,
-                        PlayerSeason.team_season_cnt == team_season_cnt
+                        PlayerSeason.season_team_sequence == season_team_sequence
                     )
                 ).one()
             except:
