@@ -14,7 +14,7 @@ def create_player_seasons(simulation=False):
 
     with session_scope() as session:
 
-        players = session.query(Player).all()[:25]
+        players = session.query(Player).all()[:]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
             future_tasks = {
@@ -26,7 +26,6 @@ def create_player_seasons(simulation=False):
             for future in concurrent.futures.as_completed(future_tasks):
                 try:
                     plr_seasons = future.result()
-                    print(len(plr_seasons))
                 except Exception as e:
                     print("Concurrent task generated an exception: %s" % e)
 
