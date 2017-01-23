@@ -106,6 +106,25 @@ class PlayerSeason(Base):
         else:
             self.calculate_pctg()
 
+    def __eq__(self, other):
+        return (
+            (self.games_played, self.goals, self.assists, self.points,
+             self.plus_minus, self.pim, self.ppg, self.shg, self.gwg,
+             self.shots, self.pp_pts, self.sh_pts, self.otg, str(self.pctg),
+             self.hits, self.blocks, self.shifts, str(self.faceoff_pctg),
+             self.toi, self.ev_toi, self.pp_toi, self.sh_toi
+             ) ==
+            (other.games_played, other.goals, other.assists, other.points,
+             other.plus_minus, other.pim, other.ppg, other.shg, other.gwg,
+             other.shots, other.pp_pts, other.sh_pts, other.otg,
+             str(other.pctg), other.hits, other.blocks, other.shifts,
+             str(other.faceoff_pctg), other.toi, other.ev_toi, other.pp_toi,
+             other.sh_toi
+             ))
+
+    def __ne__(self, other):
+        return not self == other
+
     def __str__(self):
         if self.shots is None:
             shots = "-"
