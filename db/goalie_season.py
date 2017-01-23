@@ -10,7 +10,7 @@ from .team import Team
 
 
 class GoalieSeason(Base):
-    __tablename__ = 'player_seasons'
+    __tablename__ = 'goalie_seasons'
     __autoload__ = True
 
     # statistics items mapped from original json struct to database attributes
@@ -102,7 +102,7 @@ class GoalieSeason(Base):
             return goalie_season
 
     def update(self, other):
-        for attr in self.JSON_DB_KEY_MAPPING.values():
+        for attr in self.JSON_DB_MAPPING.values():
             if hasattr(other, attr):
                 setattr(self, attr, getattr(other, attr))
         else:
