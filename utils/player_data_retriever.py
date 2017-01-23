@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 import threading
 
 import requests
 
 from db.common import session_scope
 from db.team import Team
+from db.player import Player
 from db.player_season import PlayerSeason
 from db.goalie_season import GoalieSeason
+
+logger = logging.getLogger(__name__)
 
 
 class PlayerDataRetriever():
@@ -46,8 +50,13 @@ class PlayerDataRetriever():
         self.lock = threading.Lock()
 
     def retrieve_raw_season_data(self, player_id):
-
+        """
+        Retrieves raw season statistics for specified player id from nhl.com.
+        """
         url = "".join((self.NHL_SITE_PREFIX, str(player_id)))
+        logger.debug(
+            "+ Retrieving raw season statistics for player_id " +
+            "%d from %s" % (player_id, url))
         r = requests.get(url, params={
             'expand': 'person.stats',
             'stats': 'yearByYear,yearByYearPlayoffs'})
@@ -56,6 +65,7 @@ class PlayerDataRetriever():
         plr_season_dict = dict()
 
         for person in plr_json['people']:
+            # retrieving players' primary position
             plr_season_dict['position'] = person['primaryPosition']['code']
             for stats_type in person['stats']:
                 for split in stats_type['splits']:
@@ -87,28 +97,33 @@ class PlayerDataRetriever():
         return plr_season_dict
 
     def create_or_update_player_season(self, plr_season, plr_season_db):
+        """
+        Creates or updates a player season database object.
+        """
         with session_scope() as session:
             if not plr_season_db or plr_season_db is None:
+                logger.debug("Adding season statistics: %s" % plr_season)
                 session.add(plr_season)
-                session.commit()
-                if self.lock:
-                    self.lock.acquire()
-                if self.lock:
-                    self.lock.release()
             else:
                 if plr_season_db != plr_season:
+                    logger.info("Updating season statistics: %s" % plr_season)
                     plr_season_db.update(plr_season)
                     session.merge(plr_season_db)
-                    session.commit()
+            session.commit()
 
     def retrieve_player_seasons(self, player_id, simulation=False):
+        """
+        Retrieves player season statistics for player with specified id.
+        """
 
-        print(player_id)
+        plr = Player.find_by_id(player_id)
+        logger.info("+ Retrieving player season statistics for %s" % plr.name)
 
         plr_seasons = list()
 
+        # retrieving raw season data for player_id
         plr_season_dict = self.retrieve_raw_season_data(player_id)
-
+        # extracting players' position
         plr_position = plr_season_dict.pop('position')
 
         for key in sorted(plr_season_dict.keys()):
@@ -133,5 +148,9 @@ class PlayerDataRetriever():
 
             if not simulation:
                 self.create_or_update_player_season(plr_season, plr_season_db)
+
+        logger.info(
+            "+ %d season statistics items retrieved for %s" % (
+                len(plr_seasons), plr.name))
 
         return plr_seasons
