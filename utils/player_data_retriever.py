@@ -64,6 +64,12 @@ class PlayerDataRetriever():
 
         plr_season_dict = dict()
 
+        if 'people' not in plr_json:
+            logger.warn(
+                "+ Unable to retrieve raw season data for %s"
+                % Player.find_by_id(player_id))
+            return plr_season_dict
+
         for person in plr_json['people']:
             # retrieving players' primary position
             plr_season_dict['position'] = person['primaryPosition']['code']
@@ -123,6 +129,10 @@ class PlayerDataRetriever():
 
         # retrieving raw season data for player_id
         plr_season_dict = self.retrieve_raw_season_data(player_id)
+
+        if not plr_season_dict:
+            return plr_seasons
+
         # extracting players' position
         plr_position = plr_season_dict.pop('position')
 
