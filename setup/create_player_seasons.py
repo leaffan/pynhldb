@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 import concurrent.futures
 
 from db.common import session_scope
 from db.player import Player
 from utils.player_data_retriever import PlayerDataRetriever
 
+logger = logging.getLogger(__name__)
+
 
 def create_player_seasons(simulation=False):
 
     data_retriever = PlayerDataRetriever()
+
+    plr_season_count = 0
 
     with session_scope() as session:
 
@@ -25,7 +30,8 @@ def create_player_seasons(simulation=False):
             }
             for future in concurrent.futures.as_completed(future_tasks):
                 try:
-                    plr_seasons = future.result()
+                    plr_season_count += len(future.result())
                 except Exception as e:
                     print("Concurrent task generated an exception: %s" % e)
 
+    logger.info("+ %d statistics items retrieved overall" % plr_season_count)
