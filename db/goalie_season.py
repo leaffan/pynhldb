@@ -101,6 +101,17 @@ class GoalieSeason(Base):
                 goalie_season = None
             return goalie_season
 
+    @classmethod
+    def find_all(self, player_id):
+        with session_scope() as session:
+            try:
+                goalie_seasons = session.query(GoalieSeason).filter(
+                    GoalieSeason.player_id == player_id,
+                ).all()
+            except:
+                goalie_seasons = None
+            return goalie_seasons
+
     def update(self, other):
         for attr in self.JSON_DB_MAPPING.values():
             if hasattr(other, attr):
@@ -123,6 +134,21 @@ class GoalieSeason(Base):
 
     def __ne__(self, other):
         return not self == other
+
+    def __lt__(self, other):
+        if self.season_type == other.season_type:
+            if self.season <= other.season:
+                return True
+            else:
+                return False
+        else:
+            if self.season_type > other.season_type:
+                return True
+            else:
+                return False
+
+    def __gt__(self, other):
+        return not self.__lt__(other)
 
     def __str__(self):
         if self.save_pctg is None:
