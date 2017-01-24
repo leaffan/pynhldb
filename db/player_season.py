@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 from datetime import timedelta
 
 from sqlalchemy import and_
@@ -8,6 +9,7 @@ from sqlalchemy import and_
 from .common import Base, session_scope
 from .team import Team
 
+logger = logging.getLogger(__name__)
 
 class PlayerSeason(Base):
     __tablename__ = 'player_seasons'
@@ -64,12 +66,9 @@ class PlayerSeason(Base):
                         value = season_data[json_key]
                     setattr(self, self.JSON_DB_MAPPING[json_key], value)
                 except:
-                    print(
+                    logger.warn(
                         "Unable to retrieve %s from season data" %
                         self.JSON_DB_MAPPING[json_key])
-                    # logger.warn(
-                    # "Unable to retrieve %s from season data" %
-                    # self.PLAYER_STATS_MAP[key])
         else:
             self.calculate_pctg()
 
@@ -99,6 +98,17 @@ class PlayerSeason(Base):
                 player_season = None
             return player_season
 
+    @classmethod
+    def find_all(self, player_id):
+        with session_scope() as session:
+            try:
+                player_seasons = session.query(PlayerSeason).filter(
+                    PlayerSeason.player_id == player_id,
+                ).all()
+            except:
+                player_seasons = None
+            return player_seasons
+
     def update(self, other):
         for attr in self.JSON_DB_MAPPING.values():
             if hasattr(other, attr):
@@ -124,6 +134,21 @@ class PlayerSeason(Base):
 
     def __ne__(self, other):
         return not self == other
+
+    def __lt__(self, other):
+        if self.season_type == other.season_type:
+            if self.season <= other.season:
+                return True
+            else:
+                return False
+        else:
+            if self.season_type > other.season_type:
+                return True
+            else:
+                return False
+
+    def __gt__(self, other):
+        return not self.__lt__(other)
 
     def __str__(self):
         if self.shots is None:
