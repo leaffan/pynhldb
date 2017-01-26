@@ -11,6 +11,7 @@ from db.team import Team
 from db.player import Player
 from db.player_season import PlayerSeason
 from db.goalie_season import GoalieSeason
+from utils import feet_to_cm
 
 logger = logging.getLogger(__name__)
 
@@ -164,3 +165,75 @@ class PlayerDataRetriever():
                 len(plr_seasons), plr.name))
 
         return plr_seasons
+
+    def retrieve_player_data(self, player_id):
+        """
+        Retrieves personal data for player with specified id.
+        """
+        plr = Player.find_by_id(player_id)
+
+        if plr is None:
+            logger.warn("+ No player found for id: %d" % player_id)
+            return
+
+        logger.info("+ Retrieving player season statistics for %s" % plr.name)
+
+        # retrieving player json page
+        url = "".join((self.NHL_SITE_PREFIX, str(player_id)))
+        r = requests.get(url)
+        plr_json = r.json()
+
+        plr_data_dict = dict()
+
+        for person in plr_json['people']:
+            # retrieving basic data (should be known already)
+            plr_data_dict[
+                self.DB_KEY_FIRST_NAME] = person[self.JSON_KEY_FIRST_NAME]
+            plr_data_dict[
+                self.DB_KEY_LAST_NAME] = person[self.JSON_KEY_LAST_NAME]
+            plr_data_dict[
+                self.DB_KEY_FULL_NAME] = person[self.JSON_KEY_FULL_NAME]
+            plr_data_dict[
+                self.DB_KEY_POSITION] = person[
+                    self.JSON_KEY_POSITION][self.JSON_KEY_POSITION_CODE]
+
+            # retrieving jersey number,...
+            if self.JSON_KEY_NUMBER in person:
+                plr_data_dict[
+                    self.DB_KEY_NUMBER] = person[self.JSON_KEY_NUMBER]
+            # height,...
+            if self.JSON_KEY_HEIGHT in person:
+                height = person[self.JSON_KEY_HEIGHT]
+                if len(height.split()) > 1:
+                    (feet, inches) = height.split()
+                    height = feet_to_cm(feet, inches)
+                else:
+                    height = None
+                plr_data_dict[self.DB_KEY_HEIGHT] = height
+            # weight,...
+            if self.JSON_KEY_WEIGHT in person:
+                plr_data_dict[self.DB_KEY_WEIGHT] = person[
+                    self.JSON_KEY_WEIGHT]
+            # handedness,...
+            if self.JSON_KEY_HAND in person:
+                plr_data_dict[self.DB_KEY_HAND] = person[self.JSON_KEY_HAND]
+            # date of birth,...
+            if self.JSON_KEY_DATE_OF_BIRTH in person:
+                plr_data_dict[self.DB_KEY_DATE_OF_BIRTH] = person[
+                    self.JSON_KEY_DATE_OF_BIRTH]
+            # place of birth
+            if self.JSON_KEY_PLACE_OF_BIRTH_CITY in person and self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY in person:
+                if self.JSON_KEY_PLACE_OF_BIRTH_STATE_PROVINCE in person:
+                    place_of_birth = ", ".join((
+                        person[self.JSON_KEY_PLACE_OF_BIRTH_CITY],
+                        person[self.JSON_KEY_PLACE_OF_BIRTH_STATE_PROVINCE],
+                        person[self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY]))
+                else:
+                    place_of_birth = ", ".join((
+                        person[self.JSON_KEY_PLACE_OF_BIRTH_CITY],
+                        person[self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY]))
+                plr_data_dict[self.DB_KEY_PLACE_OF_BIRTH] = place_of_birth
+
+            plr_data_dict['current_team'] = person['currentTeam']['name']
+
+            print(plr_data_dict)
