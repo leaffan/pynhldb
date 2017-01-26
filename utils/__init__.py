@@ -42,6 +42,17 @@ def get_connection_string_from_config_file(cfg_src, section):
     return conn_string
 
 
+def feet_to_cm(feet, inches):
+    u"""
+    Converts feet and inches to centimeters.
+    """
+    if type(feet) is not int:
+        feet = int(feet.replace("'", ""))
+    if type(inches) is not int:
+        inches = int(inches.replace('"', ''))
+    return feet * 30.48 + inches * 2.54
+
+
 class WhitespaceRemovingFormatter(logging.Formatter):
 
     REGEX = re.compile("^\+?\s")
