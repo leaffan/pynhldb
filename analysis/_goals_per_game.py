@@ -39,8 +39,9 @@ for year in range(1918, 2017)[:10]:
             continue
         if sub.xpath("//table/caption/text()")[0] == "Team Statistics Table":
                 team_stats = sub
-        if sub.xpath("//table/caption/text()")[0] == "Goals":
-            leaders = sub
+
+    # TODO: determine number of shootout wins to subtract that number
+    # from team goal totals
 
     # retrieving games played by each team as list
     season_games_played = [
@@ -70,13 +71,6 @@ for year in range(1918, 2017)[:10]:
     print("%s: %d games played, %d goals scored, %0.2f goals per game" % (
         season, season_games_played, season_goals_scored,
         round(season_goals_scored / season_games_played, 2)))
-
-    # retrieving five best goalscorers in current season as list
-    five_goal_leaders = leaders.xpath(
-        "//div[@id='leaders_goals']/table/tr/td[@class='who']/a")
-    # adding name and link to player page to goalscorer dictionary
-    for leader in five_goal_leaders:
-        goal_leaders.add((leader.xpath("@href")[0], leader.xpath("text()")[0]))
 
 # calculating overall goals per game ratio
 overall_goals_per_game = round(
