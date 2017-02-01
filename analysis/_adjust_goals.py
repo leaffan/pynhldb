@@ -22,7 +22,7 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
 
     adjusted_data = defaultdict(dict)
 
-    for plr_link, plr_name in sorted(players_data)[:13]:
+    for plr_link, plr_name in sorted(players_data)[:]:
         # retrieving regular goal data from player stats page
         regular_goal_data = retrieve_regular_goal_totals(plr_name, plr_link)
         # adjusting goal scoring totals per season
