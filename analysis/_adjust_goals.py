@@ -1,25 +1,84 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 import json
 from collections import defaultdict
 
 import requests
 from lxml import html
 
+logger = logging.getLogger(__name__)
 BASE_HREF = "http://www.hockey-reference.com"
 
 
-players_src = r"nhl_goals_leaders.json"
-goals_per_season_src = r"nhl_games_per_season.json"
+def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
+    """
+    Retrieves and adjusts season goal scoring totals for specified players.
+    """
+    # loading data
+    players_data = json.load(open(players_src))
+    goals_per_season_data = json.load(open(goals_per_season_src))
 
-players = json.load(open(players_src))
-goals_per_season = json.load(open(goals_per_season_src))
+    adjusted_data = defaultdict(dict)
 
-adjusted_goals_per_player = defaultdict(dict)
+    for plr_link, plr_name in sorted(players_data)[:13]:
+        # retrieving regular goal data from player stats page
+        regular_goal_data = retrieve_regular_goal_totals(plr_name, plr_link)
+        # adjusting goal scoring totals per season
+        adjusted_goal_data = calculate_adjusted_goals(
+            regular_goal_data, goals_per_season_data)
 
-for plr_link, plr_name in sorted(players)[:1]:
-    print("+ Adjusting goal totals for %s " % plr_name)
+        adjusted_data[plr_name] = adjusted_goal_data
+
+    return adjusted_data
+
+
+def calculate_adjusted_goals(goal_data, goals_per_season_data):
+    """
+    Calculates adjusted goals using per-season adjustment factors.
+    """
+    goal_data['adjusted_goals'] = list()
+    sum_adjusted_goals = 0
+
+    # logger.info(
+    #     "+ Adjusting goal-scoring totals according to goals per season")
+
+    # adjusting goals scored by adjustment factor for each season
+    for season, goals in zip(goal_data['seasons'], goal_data['goals']):
+
+        # skippings season for which no adjustment factor is available
+        if season not in goals_per_season_data:
+            continue
+
+        # calculating season-adjusted goal total
+        adjusted_goals = round(
+            goals_per_season_data[season]['adjustment_factor'] * goals, 4)
+        goal_data['adjusted_goals'].append(adjusted_goals)
+        # adding adjusted goal total for season to sum of adjusted goals
+        sum_adjusted_goals += adjusted_goals
+
+    goal_data['sum_adjusted_goals'] = round(sum_adjusted_goals, 4)
+    goal_data['adjusted_goals_per_game'] = round(
+            sum_adjusted_goals / sum(goal_data['games']), 4)
+    goal_data['adjusted_goals_per_season'] = round(
+            sum_adjusted_goals / sum(goal_data['games']) * 82, 4)
+
+    logger.info("\t+ %d adjusted goals, %.4f adjusted goals per game" % (
+        goal_data['sum_adjusted_goals'], goal_data['adjusted_goals_per_game']))
+
+    return goal_data
+
+
+def retrieve_regular_goal_totals(plr_name, plr_link):
+    """
+    Retrieves regular season goal totals for specified player from player's
+    stats page.
+    """
+    logger.info("+ Retrieving goal totals for %s " % plr_name)
+
+    single_player_data = dict()
+
     url = "".join((BASE_HREF, plr_link))
     r = requests.get(url)
     doc = html.fromstring(r.text)
@@ -43,44 +102,28 @@ for plr_link, plr_name in sorted(players)[:1]:
     assert len(seasons_played) == len(goals_scored)
     assert len(seasons_played) == len(games_played)
 
-    adjusted_goals_per_player[plr_name]['goals'] = goals_scored
-    adjusted_goals_per_player[plr_name]['sum_goals'] = sum(goals_scored)
-    adjusted_goals_per_player[plr_name]['games'] = games_played
-    adjusted_goals_per_player[plr_name]['sum_games'] = sum(games_played)
-    adjusted_goals_per_player[plr_name]['goals_per_game'] = round(
-        sum(goals_scored) / sum(games_played), 4)
-    adjusted_goals_per_player[plr_name]['goals_per_season'] = round(
-        sum(goals_scored) / sum(games_played) * 82, 4)
-    adjusted_goals_per_player[plr_name]['seasons'] = seasons_played
-    adjusted_goals_per_player[plr_name]['sum_seasons'] = len(seasons_played)
+    single_player_data['goals'] = goals_scored
+    single_player_data['sum_goals'] = sum(goals_scored)
+    single_player_data['games'] = games_played
+    single_player_data['sum_games'] = sum(games_played)
+    single_player_data['goals_per_game'] = round(
+        float(sum(goals_scored)) / sum(games_played), 4)
+    single_player_data['goals_per_season'] = round(
+        float(sum(goals_scored)) / sum(games_played) * 82, 4)
+    single_player_data['seasons'] = seasons_played
+    single_player_data['sum_seasons'] = len(seasons_played)
 
-    adjusted_goals_per_player[plr_name]['adjusted_goals'] = list()
-    sum_adjusted_goals = 0
+    logger.info("\t+ %d games played, %d goals scored, %.4f goals per game" % (
+        sum(games_played), sum(goals_scored),
+        single_player_data['goals_per_game']))
 
-    # adjusting goals scored by adjustment factor for each season
-    for season, goals in zip(seasons_played, goals_scored):
+    return single_player_data
 
-        if season not in goals_per_season:
-            continue
 
-        # calculating season-adjusted goal total
-        adjusted_goals = round(
-            goals_per_season[season]['adjustment_factor'] * goals, 4)
-        adjusted_goals_per_player[plr_name]['adjusted_goals'].append(
-            adjusted_goals)
-        # adding adjusted goal total for season to sum of adjusted goals
-        sum_adjusted_goals += adjusted_goals
+if __name__ == '__main__':
 
-        print(season, goals, adjusted_goals)
+    players_src = r"nhl_goals_leaders.json"
+    goals_per_season_src = r"nhl_games_per_season.json"
 
-    adjusted_goals_per_player[plr_name][
-        'sum_adjusted_goals'] = sum_adjusted_goals
-    adjusted_goals_per_player[plr_name][
-        'adjusted_goals_per_game'] = round(
-            sum_adjusted_goals / sum(games_played), 4)
-    adjusted_goals_per_player[plr_name][
-        'adjusted_goals_per_season'] = round(
-            sum_adjusted_goals / sum(games_played) * 82, 4)
-
-# open(r"nhl_goals_adjusted.json", 'w').write(
-#     json.dumps(adjusted_goals_per_player, sort_keys=True, indent=2))
+    adjusted_goal_data = retrieve_and_adjust_goal_totals(
+        players_src, goals_per_season_src)
