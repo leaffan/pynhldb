@@ -1,32 +1,36 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
 import json
 from collections import defaultdict
 
 import requests
 from lxml import html
 
-
+logger = logging.getLogger(__name__)
 URL_TEMPLATE = "http://www.hockey-reference.com/leagues/NHL_%d.html"
 
 
-def retrieve_goals_per_season():
+def retrieve_goals_per_season(start_season=1917, end_season=2016):
     """
     Retrieves goals scored for each NHL season.
     """
+    logger.info(
+        "+ Calculating goals per game for NHL seasons between %d and %d" % (
+            start_season, end_season))
     season_data = defaultdict(dict)
 
-    for year in range(1918, 2017)[:]:
+    for year in range(start_season, end_season)[:]:
         # skipping season completely lost to a lockout
-        if year == 2005:
+        if year == 2004:
             continue
 
         # setting up season identifier
-        season = "%d-%s" % (year - 1, str(year)[-2:])
+        season = "%d-%s" % (year, str(year + 1)[-2:])
 
         # retrieving raw html data and parsing it
-        url = URL_TEMPLATE % year
+        url = URL_TEMPLATE % (year + 1)
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
@@ -63,8 +67,8 @@ def retrieve_goals_per_season():
         # summing up shootout wins in current season
         season_shootout_wins = sum(season_shootout_wins)
         # summing up goals scored in current season
-        # subtracting number of shootout wins as winning goals in thos
-        # aren't officially goals
+        # subtracting number of shootout wins as winning goals in those
+        # aren't official goals
         season_goals_scored = sum(season_goals_scored) - season_shootout_wins
 
         # adding per year data to result dictionary
@@ -74,16 +78,17 @@ def retrieve_goals_per_season():
         season_data[season]['goals_per_game'] = round(
             float(season_goals_scored) / season_games_played, 2)
 
-        print("%s: %d games played, %d goals scored, %0.2f goals per game" % (
-            season, season_games_played, season_goals_scored,
-            season_data[season]['goals_per_game']))
+        logger.info(
+            "\t+ %s: %d games played, %d goals scored, %0.2f goals per game" % (
+                season, season_games_played, season_goals_scored,
+                season_data[season]['goals_per_game']))
 
     return season_data
 
 
 def calculate_adjustment_factors(season_data):
     """
-    Calculates adjustment factor for each season.
+    Calculates goal scoring adjustment factor for each season.
     """
     # retrieving number of goals scored in all seasons
     sum_goals_scored = sum(
@@ -96,14 +101,19 @@ def calculate_adjustment_factors(season_data):
     goals_per_game = round(
         float(sum_goals_scored) / sum_games_played, 2)
 
-    print("overall: %d games played, %d goals scored, %0.2f goals per game" % (
-        sum_games_played, sum_goals_scored, goals_per_game))
+    logger.info(
+        "\t+ Overall: %d games played, %d goals scored, %0.2f goals per game" % (
+            sum_games_played, sum_goals_scored, goals_per_game))
+    logger.info("+ Calculating adjustment factors for each NHL season")
 
     # calculating adjustment factor for each registered season
     for season in sorted(season_data.keys()):
         season_data[season]['adjustment_factor'] = round(
             (goals_per_game / (season_data[season]['goals_per_game'])), 4)
+        logger.info("\t+ %s: adjustment factor: %.4f" % (
+            season, season_data[season]['adjustment_factor']))
 
+    # adding overall values to result dictionary
     season_data['overall']['games'] = sum_games_played
     season_data['overall']['goals'] = sum_goals_scored
     season_data['overall']['goals_per_game'] = goals_per_game
@@ -114,6 +124,5 @@ if __name__ == '__main__':
     season_data = retrieve_goals_per_season()
     calculate_adjustment_factors(season_data)
 
-    # open(r"nhl_games_per_season.json", 'w').write(
-    open(r"test.json", 'w').write(
+    open(r"goals_per_season.json", 'w').write(
         json.dumps(season_data, sort_keys=True, indent=2))
