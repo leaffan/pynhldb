@@ -3,15 +3,18 @@
 
 import logging
 import threading
+import re
 
 import requests
+from dateutil import parser
 
 from db.common import session_scope
 from db.team import Team
 from db.player import Player
 from db.player_season import PlayerSeason
 from db.goalie_season import GoalieSeason
-from utils import feet_to_cm
+from db.player_data_item import PlayerDataItem
+from utils import feet_to_m, lbs_to_kg
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +44,15 @@ class PlayerDataRetriever():
     DB_KEY_FULL_NAME = "full_name"
     DB_KEY_POSITION = "position"
     DB_KEY_NUMBER = "number"
-    DB_KEY_HEIGHT = "height"
-    DB_KEY_WEIGHT = "weight"
+    DB_KEY_HEIGHT_METRIC = "height_metric"
+    DB_KEY_HEIGHT_IMPERIAL = "height_imperial"
+    DB_KEY_WEIGHT_METRIC = "weight_metric"
+    DB_KEY_WEIGHT_IMPERIAL = "weight_imperial"
     DB_KEY_HAND = "hand"
     DB_KEY_DATE_OF_BIRTH = "date_of_birth"
     DB_KEY_PLACE_OF_BIRTH = "place_of_birth"
+
+    FT_IN_REGEX = re.compile("(\d+).+(\d+)")
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -118,6 +125,15 @@ class PlayerDataRetriever():
                     session.merge(plr_season_db)
             session.commit()
 
+    # TODO: finish function
+    def create_or_update_player_data(self, plr_data, plr_data_db):
+
+        with session_scope() as session:
+            if not plr_data_db or plr_data_db is None:
+                logger.debug("Adding player data for")
+                session.add(plr_data)
+            session.commit()
+
     def retrieve_player_seasons(self, player_id, simulation=False):
         """
         Retrieves player season statistics for player with specified id.
@@ -166,7 +182,7 @@ class PlayerDataRetriever():
 
         return plr_seasons
 
-    def retrieve_player_data(self, player_id):
+    def retrieve_player_data(self, player_id, simulation=False):
         """
         Retrieves personal data for player with specified id.
         """
@@ -176,7 +192,7 @@ class PlayerDataRetriever():
             logger.warn("+ No player found for id: %d" % player_id)
             return
 
-        logger.info("+ Retrieving player season statistics for %s" % plr.name)
+        logger.info("+ Retrieving player data for %s" % plr.name)
 
         # retrieving player json page
         url = "".join((self.NHL_SITE_PREFIX, str(player_id)))
@@ -203,24 +219,32 @@ class PlayerDataRetriever():
                     self.DB_KEY_NUMBER] = person[self.JSON_KEY_NUMBER]
             # height,...
             if self.JSON_KEY_HEIGHT in person:
-                height = person[self.JSON_KEY_HEIGHT]
-                if len(height.split()) > 1:
-                    (feet, inches) = height.split()
-                    height = feet_to_cm(feet, inches)
+                orig_height = person[self.JSON_KEY_HEIGHT]
+                ft_in_regex_match = re.search(self.FT_IN_REGEX, orig_height)
+                if ft_in_regex_match is not None:
+                    feet = ft_in_regex_match.group(1)
+                    inches = ft_in_regex_match.group(2)
+                    height_metric = feet_to_m(feet, inches)
+                    height_imperial = float(
+                        "%d.%02d" % (int(feet), int(inches)))
                 else:
-                    height = None
-                plr_data_dict[self.DB_KEY_HEIGHT] = height
+                    height_metric = None
+                    height_imperial = None
+                plr_data_dict[self.DB_KEY_HEIGHT_METRIC] = height_metric
+                plr_data_dict[self.DB_KEY_HEIGHT_IMPERIAL] = height_imperial
             # weight,...
             if self.JSON_KEY_WEIGHT in person:
-                plr_data_dict[self.DB_KEY_WEIGHT] = person[
+                plr_data_dict[self.DB_KEY_WEIGHT_IMPERIAL] = person[
                     self.JSON_KEY_WEIGHT]
+                plr_data_dict[self.DB_KEY_WEIGHT_METRIC] = lbs_to_kg(
+                    person[self.JSON_KEY_WEIGHT])
             # handedness,...
             if self.JSON_KEY_HAND in person:
                 plr_data_dict[self.DB_KEY_HAND] = person[self.JSON_KEY_HAND]
             # date of birth,...
             if self.JSON_KEY_DATE_OF_BIRTH in person:
-                plr_data_dict[self.DB_KEY_DATE_OF_BIRTH] = person[
-                    self.JSON_KEY_DATE_OF_BIRTH]
+                plr_data_dict[self.DB_KEY_DATE_OF_BIRTH] = parser.parse(person[
+                    self.JSON_KEY_DATE_OF_BIRTH])
             # place of birth
             if self.JSON_KEY_PLACE_OF_BIRTH_CITY in person and self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY in person:
                 if self.JSON_KEY_PLACE_OF_BIRTH_STATE_PROVINCE in person:
@@ -234,6 +258,16 @@ class PlayerDataRetriever():
                         person[self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY]))
                 plr_data_dict[self.DB_KEY_PLACE_OF_BIRTH] = place_of_birth
 
-            plr_data_dict['current_team'] = person['currentTeam']['name']
+            # TODO: image retrieval
 
-            print(plr_data_dict)
+            if 'currentTeam' in person:
+                plr_data_dict['current_team'] = person['currentTeam']['name']
+
+            plr_data_item = PlayerDataItem(player_id, plr_data_dict)
+
+            print(plr_data_item)
+
+            if not simulation:
+                with session_scope() as session:
+                    session.add(plr_data_item)
+                    session.commit()
