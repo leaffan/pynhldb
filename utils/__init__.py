@@ -43,7 +43,7 @@ def get_connection_string_from_config_file(cfg_src, section):
 
 
 def feet_to_cm(feet, inches):
-    u"""
+    """
     Converts feet and inches to centimeters.
     """
     if type(feet) is not int:
@@ -51,6 +51,18 @@ def feet_to_cm(feet, inches):
     if type(inches) is not int:
         inches = int(inches.replace('"', ''))
     return feet * 30.48 + inches * 2.54
+
+
+def feet_to_m(feet, inches):
+    cm = feet_to_cm(feet, inches)
+    return cm / 100.
+
+
+def lbs_to_kg(lbs):
+    """
+    Converts pounds to kilograms.
+    """
+    return lbs * 0.453592
 
 
 class WhitespaceRemovingFormatter(logging.Formatter):
