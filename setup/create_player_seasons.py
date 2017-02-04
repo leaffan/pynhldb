@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 def create_player_seasons(simulation=False):
-
+    """
+    Creates player season database objects.
+    """
     data_retriever = PlayerDataRetriever()
-
     plr_season_count = 0
 
     with session_scope() as session:
-
         players = session.query(Player).all()[:]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
@@ -38,11 +38,12 @@ def create_player_seasons(simulation=False):
 
 
 def create_player_data(simulation=False):
-
+    """
+    Creates player data items in database.
+    """
     data_retriever = PlayerDataRetriever()
 
     with session_scope() as session:
-
         players = session.query(Player).all()[:]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:

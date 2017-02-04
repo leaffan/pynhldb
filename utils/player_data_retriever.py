@@ -52,7 +52,7 @@ class PlayerDataRetriever():
     DB_KEY_DATE_OF_BIRTH = "date_of_birth"
     DB_KEY_PLACE_OF_BIRTH = "place_of_birth"
 
-    FT_IN_REGEX = re.compile("(\d+).+(\d+)")
+    FT_IN_REGEX = re.compile("(\d+)'\s(\d+)")
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -116,22 +116,28 @@ class PlayerDataRetriever():
         """
         with session_scope() as session:
             if not plr_season_db or plr_season_db is None:
-                logger.debug("Adding season statistics: %s" % plr_season)
+                logger.debug("+ Adding season statistics: %s" % plr_season)
                 session.add(plr_season)
             else:
                 if plr_season_db != plr_season:
-                    logger.info("Updating season statistics: %s" % plr_season)
+                    logger.info("+ Updating season statistics: %s" % plr_season)
                     plr_season_db.update(plr_season)
                     session.merge(plr_season_db)
             session.commit()
 
-    # TODO: finish function
     def create_or_update_player_data(self, plr_data, plr_data_db):
+
+        plr = Player.find_by_id(plr_data.player_id)
 
         with session_scope() as session:
             if not plr_data_db or plr_data_db is None:
-                logger.debug("Adding player data for")
+                logger.debug("+ Adding player data for %s" % plr.name)
                 session.add(plr_data)
+            else:
+                if plr_data_db != plr_data:
+                    logger.info("+ Updating player data for %s" % plr.name)
+                    plr_data_db.update(plr_data)
+                    session.merge(plr_data_db)
             session.commit()
 
     def retrieve_player_seasons(self, player_id, simulation=False):
@@ -236,15 +242,16 @@ class PlayerDataRetriever():
             if self.JSON_KEY_WEIGHT in person:
                 plr_data_dict[self.DB_KEY_WEIGHT_IMPERIAL] = person[
                     self.JSON_KEY_WEIGHT]
-                plr_data_dict[self.DB_KEY_WEIGHT_METRIC] = lbs_to_kg(
-                    person[self.JSON_KEY_WEIGHT])
+                # integer of rounded float value with zero decimals
+                plr_data_dict[self.DB_KEY_WEIGHT_METRIC] = int(
+                    round(lbs_to_kg(person[self.JSON_KEY_WEIGHT]), 0))
             # handedness,...
             if self.JSON_KEY_HAND in person:
                 plr_data_dict[self.DB_KEY_HAND] = person[self.JSON_KEY_HAND]
             # date of birth,...
             if self.JSON_KEY_DATE_OF_BIRTH in person:
                 plr_data_dict[self.DB_KEY_DATE_OF_BIRTH] = parser.parse(person[
-                    self.JSON_KEY_DATE_OF_BIRTH])
+                    self.JSON_KEY_DATE_OF_BIRTH]).date()  # just date component
             # place of birth
             if self.JSON_KEY_PLACE_OF_BIRTH_CITY in person and self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY in person:
                 if self.JSON_KEY_PLACE_OF_BIRTH_STATE_PROVINCE in person:
@@ -264,10 +271,7 @@ class PlayerDataRetriever():
                 plr_data_dict['current_team'] = person['currentTeam']['name']
 
             plr_data_item = PlayerDataItem(player_id, plr_data_dict)
-
-            print(plr_data_item)
+            plr_data_item_db = PlayerDataItem.find_by_player_id(player_id)
 
             if not simulation:
-                with session_scope() as session:
-                    session.add(plr_data_item)
-                    session.commit()
+                self.create_or_update_player_data(plr_data_item, plr_data_item_db)
