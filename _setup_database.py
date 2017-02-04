@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
+
 from setup.create_teams import migrate_teams
 from setup.create_divisions import create_divisions
 from setup.create_players import migrate_players
@@ -13,13 +15,27 @@ prepare_logging(log_types=['file', 'screen'])
 
 if __name__ == '__main__':
 
+    parser = argparse.ArgumentParser(
+        description='Setup script for NHL database creation.')
+    parser.add_argument(
+        'steps', metavar='setup_steps', help='Setup steps to execute.',
+        choices=['a', 't', 'd', 'p', 'ps', 'pd'])
+
+    args = parser.parse_args()
+    setup_steps = args.steps
+
     # migrating teams from json file to database
-    migrate_teams(simulation=True)
+    if setup_steps in ['t', 'a']:
+        migrate_teams(simulation=True)
     # creating divisions from division configuration file
-    create_divisions(simulation=True)
+    if setup_steps in ['d', 'a']:
+        create_divisions(simulation=True)
     # migrating players from json file to database
-    migrate_players(simulation=True)
+    if setup_steps in ['p', 'a']:
+        migrate_players(simulation=True)
     # retrieving player season statistics for all players in database
-    create_player_seasons(simulation=False)
+    if setup_steps in ['ps', 'a']:
+        create_player_seasons(simulation=False)
     # retrieving individual player data for all players in database
-    create_player_data(simulation=False)
+    if setup_steps in ['pd', 'a']:
+        create_player_data(simulation=False)
