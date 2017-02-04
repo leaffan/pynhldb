@@ -58,6 +58,31 @@ class PlayerDataItem(Base):
                 plr_infos = None
             return plr_infos
 
+    def update(self, other):
+        for attr in [
+            'player_id', 'height_metric', 'height_imperial', 'height_imperial',
+            'weight_metric', 'weight_imperial', 'hand', 'date_of_birth',
+            'country', 'location'
+        ]:
+            if hasattr(other, attr):
+                setattr(self, attr, getattr(other, attr))
+
+    def __eq__(self, other):
+        return (
+            self.player_id,
+            "%.2f" % round(self.height_metric, 2),
+            "%.2f" % round(self.height_imperial, 2),
+            self.weight_metric, self.weight_imperial, self.hand,
+            self.date_of_birth, self.country, self.location) == (
+            other.player_id,
+            "%.2f" % round(other.height_metric, 2),
+            "%.2f" % round(other.height_imperial, 2),
+            other.weight_metric, other.weight_imperial, other.hand,
+            other.date_of_birth, other.country, other.location)
+
+    def __ne__(self, other):
+        return not self == other
+
     def __str__(self):
         out = list()
         plr = Player.find_by_id(self.player_id)
