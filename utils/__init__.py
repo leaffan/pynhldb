@@ -96,7 +96,7 @@ def prepare_logging(log_types=['file', 'screen'], logdir=''):
 
     if 'file' in log_types:
 
-        file_formatter = logging.Formatter(
+        file_formatter = WhitespaceRemovingFormatter(
             "%(asctime)s.%(msecs)03d %(thread)5d " +
             "%(name)-35s %(levelname)-8s %(message)s",
             datefmt="%y-%m-%d %H:%M:%S")
