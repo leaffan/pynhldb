@@ -57,94 +57,10 @@ class PlayerDataRetriever():
     def __init__(self):
         self.lock = threading.Lock()
 
-    def retrieve_raw_season_data(self, player_id):
-        """
-        Retrieves raw season statistics for specified player id from nhl.com.
-        """
-        url = "".join((self.NHL_SITE_PREFIX, str(player_id)))
-        logger.debug(
-            "+ Retrieving raw season statistics for player_id " +
-            "%d from %s" % (player_id, url))
-        r = requests.get(url, params={
-            'expand': 'person.stats',
-            'stats': 'yearByYear,yearByYearPlayoffs'})
-        plr_json = r.json()
-
-        plr_season_dict = dict()
-
-        if 'people' not in plr_json:
-            logger.warn(
-                "+ Unable to retrieve raw season data for %s"
-                % Player.find_by_id(player_id))
-            return plr_season_dict
-
-        for person in plr_json['people']:
-            # retrieving players' primary position
-            plr_season_dict['position'] = person['primaryPosition']['code']
-            for stats_type in person['stats']:
-                for split in stats_type['splits']:
-
-                    # skipping any stat line that does not refer to the NHL
-                    if split['league']['name'] != "National Hockey League":
-                        continue
-
-                    # retrieving season type for current stat line, i.e.
-                    # regular season or playoffs
-                    if stats_type['type']['displayName'] == "yearByYear":
-                        season_type = 'RS'
-                    elif stats_type['type']['displayName'] == "yearByYearPlayoffs":
-                        season_type = 'PO'
-
-                    # retrieving season and team of current statline
-                    season = int(split['season'][:4])
-                    team = Team.find_by_id(split['team']['id'])
-                    # retrieving sequence number of current statline,
-                    # important in case of a player playing for multiple teams
-                    # in one season
-                    season_team_sequence = split['sequenceNumber']
-
-                    # adding current stat line to dictionary container
-                    plr_season_dict[
-                        (season, season_type, season_team_sequence, team)
-                    ] = split['stat']
-
-        return plr_season_dict
-
-    def create_or_update_player_season(self, plr_season, plr_season_db):
-        """
-        Creates or updates a player season database object.
-        """
-        with session_scope() as session:
-            if not plr_season_db or plr_season_db is None:
-                logger.debug("+ Adding season statistics: %s" % plr_season)
-                session.add(plr_season)
-            else:
-                if plr_season_db != plr_season:
-                    logger.info("+ Updating season statistics: %s" % plr_season)
-                    plr_season_db.update(plr_season)
-                    session.merge(plr_season_db)
-            session.commit()
-
-    def create_or_update_player_data(self, plr_data, plr_data_db):
-
-        plr = Player.find_by_id(plr_data.player_id)
-
-        with session_scope() as session:
-            if not plr_data_db or plr_data_db is None:
-                logger.debug("+ Adding player data for %s" % plr.name)
-                session.add(plr_data)
-            else:
-                if plr_data_db != plr_data:
-                    logger.info("+ Updating player data for %s" % plr.name)
-                    plr_data_db.update(plr_data)
-                    session.merge(plr_data_db)
-            session.commit()
-
     def retrieve_player_seasons(self, player_id, simulation=False):
         """
         Retrieves player season statistics for player with specified id.
         """
-
         plr = Player.find_by_id(player_id)
         logger.info("+ Retrieving player season statistics for %s" % plr.name)
 
@@ -200,6 +116,104 @@ class PlayerDataRetriever():
 
         logger.info("+ Retrieving player data for %s" % plr.name)
 
+        plr_data_dict = self.retrieve_raw_season_data(player_id)
+
+        plr_data_item = PlayerDataItem(player_id, plr_data_dict)
+        plr_data_item_db = PlayerDataItem.find_by_player_id(player_id)
+
+        if not simulation:
+            self.create_or_update_player_data(plr_data_item, plr_data_item_db)
+
+    def create_or_update_player_season(self, plr_season, plr_season_db):
+        """
+        Creates or updates a player season database object.
+        """
+        with session_scope() as session:
+            if not plr_season_db or plr_season_db is None:
+                logger.debug("+ Adding season statistics: %s" % plr_season)
+                session.add(plr_season)
+            else:
+                if plr_season_db != plr_season:
+                    logger.info(
+                        "+ Updating season statistics: %s" % plr_season)
+                    plr_season_db.update(plr_season)
+                    session.merge(plr_season_db)
+            session.commit()
+
+    def create_or_update_player_data(self, plr_data, plr_data_db):
+        """
+        Creates or updates a player data item database object.
+        """
+        plr = Player.find_by_id(plr_data.player_id)
+
+        with session_scope() as session:
+            if not plr_data_db or plr_data_db is None:
+                logger.debug("+ Adding player data for %s" % plr.name)
+                session.add(plr_data)
+            else:
+                if plr_data_db != plr_data:
+                    logger.info("+ Updating player data for %s" % plr.name)
+                    plr_data_db.update(plr_data)
+                    session.merge(plr_data_db)
+            session.commit()
+
+    def retrieve_raw_season_data(self, player_id):
+        """
+        Retrieves raw season statistics for specified player id from nhl.com.
+        """
+        url = "".join((self.NHL_SITE_PREFIX, str(player_id)))
+        logger.debug(
+            "+ Retrieving raw season statistics for player_id " +
+            "%d from %s" % (player_id, url))
+        r = requests.get(url, params={
+            'expand': 'person.stats',
+            'stats': 'yearByYear,yearByYearPlayoffs'})
+        plr_json = r.json()
+
+        plr_season_dict = dict()
+
+        if 'people' not in plr_json:
+            logger.warn(
+                "+ Unable to retrieve raw season data for %s"
+                % Player.find_by_id(player_id))
+            return plr_season_dict
+
+        for person in plr_json['people']:
+            # retrieving players' primary position
+            plr_season_dict['position'] = person['primaryPosition']['code']
+            for stats_type in person['stats']:
+                for split in stats_type['splits']:
+
+                    # skipping any stat line that does not refer to the NHL
+                    if split['league']['name'] != "National Hockey League":
+                        continue
+
+                    # retrieving season type for current stat line, i.e.
+                    # regular season or playoffs
+                    if stats_type['type']['displayName'] == "yearByYear":
+                        season_type = 'RS'
+                    elif stats_type['type']['displayName'] == "yearByYearPlayoffs":
+                            season_type = 'PO'
+
+                    # retrieving season and team of current statline
+                    season = int(split['season'][:4])
+                    team = Team.find_by_id(split['team']['id'])
+                    # retrieving sequence number of current statline,
+                    # important in case of a player playing for multiple teams
+                    # in one season
+                    season_team_sequence = split['sequenceNumber']
+
+                    # adding current stat line to dictionary container
+                    plr_season_dict[
+                        (season, season_type, season_team_sequence, team)
+                    ] = split['stat']
+
+        return plr_season_dict
+
+    def retrieve_raw_player_data(self, player_id):
+        """
+        Retrieves raw personal data for specified player id from nhl.com.
+        """
         # retrieving player json page
         url = "".join((self.NHL_SITE_PREFIX, str(player_id)))
         r = requests.get(url)
@@ -270,8 +284,5 @@ class PlayerDataRetriever():
             if 'currentTeam' in person:
                 plr_data_dict['current_team'] = person['currentTeam']['name']
 
-            plr_data_item = PlayerDataItem(player_id, plr_data_dict)
-            plr_data_item_db = PlayerDataItem.find_by_player_id(player_id)
+        return plr_data_dict
 
-            if not simulation:
-                self.create_or_update_player_data(plr_data_item, plr_data_item_db)
