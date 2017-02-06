@@ -8,6 +8,7 @@ from setup.create_divisions import create_divisions
 from setup.create_players import migrate_players
 from setup.create_player_seasons import create_player_seasons
 from setup.create_player_seasons import create_player_data
+from setup.create_player_seasons import create_player_contracts
 
 from utils import prepare_logging
 prepare_logging(log_types=['file', 'screen'])
@@ -19,7 +20,7 @@ if __name__ == '__main__':
         description='Setup script for NHL database creation.')
     parser.add_argument(
         'steps', metavar='setup_steps', help='Setup steps to execute.',
-        choices=['a', 't', 'd', 'p', 'ps', 'pd'])
+        choices=['a', 'c', 't', 'd', 'p', 'ps', 'pd'])
 
     args = parser.parse_args()
     setup_steps = args.steps
@@ -39,3 +40,6 @@ if __name__ == '__main__':
     # retrieving individual player data for all players in database
     if setup_steps in ['pd', 'a']:
         create_player_data(simulation=False)
+
+    if setup_steps in ['c']:
+        create_player_contracts(simulation=False)
