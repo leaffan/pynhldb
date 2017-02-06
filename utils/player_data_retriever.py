@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class PlayerDataRetriever():
 
     NHL_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
+    CAPFRIENDLY_SITE_PREFIX = "http://www.capfriendly.com/players/"
 
     # input player data json keys
     JSON_KEY_FIRST_NAME = "firstName"
@@ -286,3 +287,24 @@ class PlayerDataRetriever():
 
         return plr_data_dict
 
+    def retrieve_raw_contract_data(self, player_id):
+
+        from lxml import html
+
+        plr = Player.find_by_id(player_id)
+        print(plr.name)
+
+        url = "".join(
+            (self.CAPFRIENDLY_SITE_PREFIX, plr.name.replace(" ", "-").lower()))
+
+        r = requests.get(url)
+        doc = html.fromstring(r.text)
+
+        ct_data = doc.xpath("//div[@class='column_head3 rel cntrct']")
+
+        for ct in ct_data:
+            print(ct.xpath("div/div[@class='l cont_t mt4 mb2']/text()"))
+            print(ct.xpath("div/div[@class='l cont_t mb5']/text()"))
+            print(ct.xpath("following-sibling::table/tbody/tr[@class='even' or @class='odd']/td/text()"))
+
+        print()
