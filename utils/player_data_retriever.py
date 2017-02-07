@@ -303,8 +303,57 @@ class PlayerDataRetriever():
         ct_data = doc.xpath("//div[@class='column_head3 rel cntrct']")
 
         for ct in ct_data:
-            print(ct.xpath("div/div[@class='l cont_t mt4 mb2']/text()"))
-            print(ct.xpath("div/div[@class='l cont_t mb5']/text()"))
-            print(ct.xpath("following-sibling::table/tbody/tr[@class='even' or @class='odd']/td/text()"))
+            ct_length, exp_status, sign_team = ct.xpath(
+                "div/div[@class='l cont_t mt4 mb2']/text()")
+            ct_value, dummy, cap_hit_pct, sign_date, ct_source = ct.xpath(
+                "div/div[@class='l cont_t mb5']/text()")
+            raw_ct_years_trs = ct.xpath(
+                "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
+
+            ct_lenth_regex = re.compile("LENGTH\:\s(\d+)\sYEARS?")
+            ct_length = int(re.search(ct_lenth_regex, ct_length).group(1))
+
+            exp_status = exp_status.split()[-1]
+
+            sign_team = Team.find_by_name(sign_team.split(":")[-1].strip())
+
+            ct_value = int(ct_value.split(":")[-1].strip()[1:].replace(",", ""))
+
+            cap_hit_pct = float(cap_hit_pct.split()[-1])
+
+            try:
+                sign_date = parser.parse(sign_date.split(":")[-1]).date()
+            except ValueError:
+                sign_date = None
+
+            ct_source = ct_source.split()[-1]
+
+            for tr in raw_ct_years_trs:
+                self.retrieve_contract_year(tr)
+                # print(tr.xpath("td"))
+                # print(len(tr), "...", tr.xpath("td/text()"))
+                # print("...")
+
+            # print(raw_ct_years)
 
         print()
+
+    def retrieve_contract_year(self, raw_contract_year_data):
+
+        tds = raw_contract_year_data.xpath("td")
+
+        if len(tds) == 8:
+            season = int(tds[0].xpath("text()")[0].split("-")[0])
+            if tds[1].xpath("text()"):
+                clause = tds[1].xpath("text()").pop(0)
+            else:
+                clause = None
+            cap_hit = int(tds[2].xpath("text()").pop(0)[1:].replace(",", ""))
+            aav = int(tds[3].xpath("text()").pop(0)[1:].replace(",", ""))
+            sign_bonus = int(tds[4].xpath("text()").pop(0)[1:].replace(",", ""))
+            perf_bonus = int(tds[5].xpath("text()").pop(0)[1:].replace(",", ""))
+            nhl_salary = int(tds[6].xpath("text()").pop(0)[1:].replace(",", ""))
+            minors_salary = int(tds[7].xpath("text()").pop(0)[1:].replace(",", ""))
+
+
+            print(season, clause, cap_hit, aav, sign_bonus, perf_bonus, nhl_salary, minors_salary)
