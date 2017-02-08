@@ -7,6 +7,7 @@ import re
 
 import requests
 from dateutil import parser
+from lxml import html
 
 from db.common import session_scope
 from db.team import Team
@@ -14,6 +15,8 @@ from db.player import Player
 from db.player_season import PlayerSeason
 from db.goalie_season import GoalieSeason
 from db.player_data_item import PlayerDataItem
+from db.contract import Contract
+from db.contract_year import ContractYear
 from utils import feet_to_m, lbs_to_kg
 
 logger = logging.getLogger(__name__)
@@ -54,6 +57,7 @@ class PlayerDataRetriever():
     DB_KEY_PLACE_OF_BIRTH = "place_of_birth"
 
     FT_IN_REGEX = re.compile("(\d+)'\s(\d+)")
+    CT_LENGTH_REGEX = re.compile("LENGTH\:\s(\d+)\sYEARS?")
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -289,71 +293,115 @@ class PlayerDataRetriever():
 
     def retrieve_raw_contract_data(self, player_id):
 
-        from lxml import html
-
         plr = Player.find_by_id(player_id)
         print(plr.name)
 
         url = "".join(
             (self.CAPFRIENDLY_SITE_PREFIX, plr.name.replace(" ", "-").lower()))
-
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
-        ct_data = doc.xpath("//div[@class='column_head3 rel cntrct']")
+        contract_elements = doc.xpath("//div[@class='column_head3 rel cntrct']")
 
-        for ct in ct_data:
-            ct_length, exp_status, sign_team = ct.xpath(
+        contract_dict = dict()
+
+        for element in contract_elements:
+            ct_length, exp_status, sign_team = element.xpath(
                 "div/div[@class='l cont_t mt4 mb2']/text()")
-            ct_value, dummy, cap_hit_pct, sign_date, ct_source = ct.xpath(
+            ct_value, _, cap_hit_pct, sign_date, ct_source = element.xpath(
                 "div/div[@class='l cont_t mb5']/text()")
-            raw_ct_years_trs = ct.xpath(
+            raw_ct_years_trs = element.xpath(
                 "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
 
-            ct_lenth_regex = re.compile("LENGTH\:\s(\d+)\sYEARS?")
-            ct_length = int(re.search(ct_lenth_regex, ct_length).group(1))
-
-            exp_status = exp_status.split()[-1]
-
+            contract_dict['type'] = element.xpath("div/h6/text()").pop(0)
+            contract_dict['length'] = int(
+                re.search(self.CT_LENGTH_REGEX, ct_length).group(1))
+            contract_dict['expiry_status'] = exp_status.split()[-1]
             sign_team = Team.find_by_name(sign_team.split(":")[-1].strip())
-
-            ct_value = int(ct_value.split(":")[-1].strip()[1:].replace(",", ""))
-
-            cap_hit_pct = float(cap_hit_pct.split()[-1])
+            if sign_team:
+                sign_team_id = sign_team.team_id
+            else:
+                sign_team_id = None
+            contract_dict['signing_team_id'] = sign_team_id
+            contract_dict['value'] = int(
+                ct_value.split(":")[-1].strip()[1:].replace(",", ""))
+            contract_dict['cap_hit_percentage'] = float(
+                cap_hit_pct.split()[-1])
+            contract_dict['source'] = ct_source.split(":")[-1].strip()
 
             try:
                 sign_date = parser.parse(sign_date.split(":")[-1]).date()
             except ValueError:
                 sign_date = None
+            contract_dict['signing_date'] = sign_date
 
-            ct_source = ct_source.split()[-1]
+            seasons = list()
+            contract_years = list()
 
             for tr in raw_ct_years_trs:
-                self.retrieve_contract_year(tr)
-                # print(tr.xpath("td"))
-                # print(len(tr), "...", tr.xpath("td/text()"))
+                ct_year_dict = self.retrieve_contract_year(tr)
+                seasons.append(ct_year_dict['season'])
+                contract_years.append(ct_year_dict)
+                contract_year = ContractYear(player_id, ct_year_dict)
+                # with session_scope() as session:
+                #     session.add(contract_year)
+                #     session.commit()
+
+                # for key in sorted(ct_year_dict.keys()):
+                #     print(key, ":", ct_year_dict[key])
                 # print("...")
 
-            # print(raw_ct_years)
+            contract_dict['start_season'] = min(seasons)
+            contract_dict['end_season'] = max(seasons)
+
+            contract = Contract(player_id, contract_dict)
+
+            contract_db = Contract.find(
+                player_id,
+                contract_dict['start_season'],
+                contract_dict['end_season'])
+
+            print(contract_db.contract_id)
+
+            with session_scope() as session:
+                session.add(contract)
+                session.commit()
+
+
+            # for key in sorted(contract_dict.keys()):
+            #     print(key, ":", contract_dict[key])
+            # print("---")
 
         print()
 
     def retrieve_contract_year(self, raw_contract_year_data):
 
+        ct_year_dict = dict()
         tds = raw_contract_year_data.xpath("td")
 
-        if len(tds) == 8:
-            season = int(tds[0].xpath("text()")[0].split("-")[0])
-            if tds[1].xpath("text()"):
-                clause = tds[1].xpath("text()").pop(0)
-            else:
-                clause = None
-            cap_hit = int(tds[2].xpath("text()").pop(0)[1:].replace(",", ""))
-            aav = int(tds[3].xpath("text()").pop(0)[1:].replace(",", ""))
-            sign_bonus = int(tds[4].xpath("text()").pop(0)[1:].replace(",", ""))
-            perf_bonus = int(tds[5].xpath("text()").pop(0)[1:].replace(",", ""))
-            nhl_salary = int(tds[6].xpath("text()").pop(0)[1:].replace(",", ""))
-            minors_salary = int(tds[7].xpath("text()").pop(0)[1:].replace(",", ""))
+        ct_year_dict['season'] = int(tds[0].xpath("text()")[0].split("-")[0])
 
+        if len(tds) == 3:
+            ct_year_dict['note'] = tds[-1].xpath("text()").pop(0)
+            return ct_year_dict
 
-            print(season, clause, cap_hit, aav, sign_bonus, perf_bonus, nhl_salary, minors_salary)
+        if tds[1].xpath("text()"):
+            ct_year_dict['clause'] = tds[1].xpath("text()").pop(0)
+
+        idx = 2
+        for item in ['cap_hit', 'aav', 'sign_bonus']:
+            ct_year_dict[item] = int(
+                tds[idx].xpath("text()").pop(0)[1:].replace(",", ""))
+            idx += 1
+
+        if len(tds) == 6:
+            ct_year_dict['note'] = tds[-1].xpath("text()").pop(0)
+            return ct_year_dict
+
+        idx = 5
+        for item in ['perf_bonus', 'nhl_salary', 'minors_salary']:
+            ct_year_dict[item] = int(
+                tds[idx].xpath("text()").pop(0)[1:].replace(",", ""))
+            idx += 1
+
+        return ct_year_dict
