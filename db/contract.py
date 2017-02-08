@@ -37,3 +37,23 @@ class Contract(Base):
             except:
                 contract = None
             return contract
+
+    def update(self, other):
+        for attr in self.STANDARD_ATTRS:
+            if hasattr(other, attr):
+                setattr(self, attr, getattr(other, attr))
+
+    def __eq__(self, other):
+        return ((
+            self.player_id, self.signing_team_id, self.signing_date,
+            self.length, self.value, self.type, self.expiry_status,
+            self.source, self.start_season, self.end_season,
+            "%.2f" % round(self.cap_hit_percentage, 2), self.bought_out
+            ) == (
+            other.player_id, other.signing_team_id, other.signing_date,
+            other.length, other.value, other.type, other.expiry_status,
+            other.source, other.start_season, other.end_season,
+            "%.2f" % round(other.cap_hit_percentage, 2), other.bought_out))
+
+    def __ne__(self, other):
+        return not self == other
