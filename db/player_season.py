@@ -11,6 +11,7 @@ from .team import Team
 
 logger = logging.getLogger(__name__)
 
+
 class PlayerSeason(Base):
     __tablename__ = 'player_seasons'
     __autoload__ = True
