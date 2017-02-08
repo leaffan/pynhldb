@@ -301,7 +301,8 @@ class PlayerDataRetriever():
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
-        contract_elements = doc.xpath("//div[@class='column_head3 rel cntrct']")
+        contract_elements = doc.xpath(
+            "//div[@class='column_head3 rel cntrct']")
 
         contract_dict = dict()
 
@@ -342,7 +343,7 @@ class PlayerDataRetriever():
                 ct_year_dict = self.retrieve_contract_year(tr)
                 seasons.append(ct_year_dict['season'])
                 contract_years.append(ct_year_dict)
-                contract_year = ContractYear(player_id, ct_year_dict)
+                # contract_year = ContractYear(player_id, ct_year_dict)
                 # with session_scope() as session:
                 #     session.add(contract_year)
                 #     session.commit()
@@ -355,49 +356,57 @@ class PlayerDataRetriever():
             contract_dict['end_season'] = max(seasons)
 
             contract = Contract(player_id, contract_dict)
-
             contract_db = Contract.find(
                 player_id,
                 contract_dict['start_season'],
                 contract_dict['end_season'])
 
-            print(contract_db.contract_id)
+            self.create_or_update_database_item(contract, contract_db)
 
-            with session_scope() as session:
-                session.add(contract)
-                session.commit()
+            # print(contract_db.contract_id)
 
-
-            # for key in sorted(contract_dict.keys()):
-            #     print(key, ":", contract_dict[key])
-            # print("---")
+            # with session_scope() as session:
+            #     session.add(contract)
+            #     session.commit()
 
         print()
 
     def retrieve_contract_year(self, raw_contract_year_data):
 
         ct_year_dict = dict()
+        # retrieving table cells from current html table row
         tds = raw_contract_year_data.xpath("td")
 
+        # retrieving first year in season identifier
         ct_year_dict['season'] = int(tds[0].xpath("text()")[0].split("-")[0])
 
+        # if there are just three table cells, we're usually dealing with
+        # a contract year nixed by the 2004/05 lockout
         if len(tds) == 3:
             ct_year_dict['note'] = tds[-1].xpath("text()").pop(0)
             return ct_year_dict
 
+        # retrieving (no trade, no movement) clause for contract year
+        # (if available)
         if tds[1].xpath("text()"):
             ct_year_dict['clause'] = tds[1].xpath("text()").pop(0)
 
+        # items 2 to 4 are cap hit, annual average value (aav) and signing
+        # bonus
         idx = 2
         for item in ['cap_hit', 'aav', 'sign_bonus']:
             ct_year_dict[item] = int(
                 tds[idx].xpath("text()").pop(0)[1:].replace(",", ""))
             idx += 1
 
+        # if there are just six table cells, we're usually dealing with
+        # an entry-level contract slide
         if len(tds) == 6:
             ct_year_dict['note'] = tds[-1].xpath("text()").pop(0)
             return ct_year_dict
 
+        # items 5 to 7 are performance bonus, nhl salary and minor
+        # league salary
         idx = 5
         for item in ['perf_bonus', 'nhl_salary', 'minors_salary']:
             ct_year_dict[item] = int(
@@ -405,3 +414,29 @@ class PlayerDataRetriever():
             idx += 1
 
         return ct_year_dict
+
+    def create_or_update_database_item(self, new_item, db_item):
+        """
+        Creates or updates database item.
+        """
+        plr = Player.find_by_id(new_item.player_id)
+
+        if type(new_item) is Contract:
+            ss = 'contract'
+        elif type(new_item) is PlayerSeason:
+            ss = 'player season'
+        elif type(new_item) is PlayerDataItem:
+            ss = 'player data'
+        else:
+            ss = ''
+
+        with session_scope() as session:
+            if not db_item or db_item is None:
+                logger.debug("+ Adding %s item for %s" % (ss, plr.name))
+                session.add(new_item)
+            else:
+                if db_item != new_item:
+                    logger.info("+ Updating %s item for %s" % (ss, plr.name))
+                    db_item.update(new_item)
+                    session.merge(db_item)
+            session.commit()
