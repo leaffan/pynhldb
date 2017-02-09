@@ -12,22 +12,24 @@ class ContractYear(Base):
 
     STANDARD_ATTRS = [
         'season', 'cap_hit', 'aav', 'sign_bonus', 'perf_bonus',
-        'nhl_salary', 'minors_salary', 'claus', 'bought_out',
+        'nhl_salary', 'minors_salary', 'clause', 'bought_out',
         ]
 
-    def __init__(self, player_id, contract_year_data_dict):
+    def __init__(self, player_id, contract_id, contract_year_data_dict):
         self.player_id = player_id
+        self.contract_id = contract_id
         for attr in self.STANDARD_ATTRS:
             if attr in contract_year_data_dict:
                 setattr(self, attr, contract_year_data_dict[attr])
 
     @classmethod
-    def find(self, player_id, season):
+    def find(self, player_id, contract_id, season):
         with session_scope() as session:
             try:
                 contract_year = session.query(ContractYear).filter(
                     and_(
                         ContractYear.player_id == player_id,
+                        ContractYear.contract_id == contract_id,
                         ContractYear.season == season,
                     )
                 ).one()
