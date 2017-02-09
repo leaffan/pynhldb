@@ -153,9 +153,18 @@ class PlayerDataRetriever():
                 self.create_or_update_database_item(contract, contract_db)
 
             if not contract_db:
+                print("xxx")
                 continue
 
-            print(plr_contract_dict['contract_years'])
+            for contract_year_dict in plr_contract_dict['contract_years']:
+                contract_year = ContractYear(player_id, contract_year_dict)
+                contract_year_db = ContractYear.find(
+                    player_id, contract_year_dict['season'])
+                if not simulation:
+                    self.create_or_update_database_item(
+                        contract_year, contract_year_db)
+        # TODO: bought out contracts
+        # TODO: historical data
 
 
     def create_or_update_database_item(self, new_item, db_item):
