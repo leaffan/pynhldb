@@ -13,7 +13,7 @@ class Contract(Base):
     STANDARD_ATTRS = [
         'signing_team_id', 'signing_date', 'length', 'value', 'type',
         'expiry_status', 'source', 'start_season', 'end_season',
-        'cap_hit_percentage', 'bought_out'
+        'cap_hit_percentage', 'bought_out', 'notes'
         ]
 
     def __init__(self, player_id, contract_data_dict):
@@ -47,12 +47,12 @@ class Contract(Base):
         return ((
             self.player_id, self.signing_team_id, self.signing_date,
             self.length, self.value, self.type, self.expiry_status,
-            self.source, self.start_season, self.end_season,
+            self.source, self.start_season, self.end_season, self.notes,
             "%.2f" % round(self.cap_hit_percentage, 2), self.bought_out
             ) == (
             other.player_id, other.signing_team_id, other.signing_date,
             other.length, other.value, other.type, other.expiry_status,
-            other.source, other.start_season, other.end_season,
+            other.source, other.start_season, other.end_season, other.notes,
             "%.2f" % round(other.cap_hit_percentage, 2), other.bought_out))
 
     def __ne__(self, other):
