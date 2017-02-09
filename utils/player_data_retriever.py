@@ -101,7 +101,7 @@ class PlayerDataRetriever():
             plr_seasons.append(plr_season)
 
             if not simulation:
-                self.create_or_update_player_season(plr_season, plr_season_db)
+                self.create_or_update_database_item(plr_season, plr_season_db)
 
         logger.info(
             "+ %d season statistics items retrieved for %s" % (
@@ -127,39 +127,63 @@ class PlayerDataRetriever():
         plr_data_item_db = PlayerDataItem.find_by_player_id(player_id)
 
         if not simulation:
-            self.create_or_update_player_data(plr_data_item, plr_data_item_db)
+            self.create_or_update_database_item(
+                plr_data_item, plr_data_item_db)
 
-    def create_or_update_player_season(self, plr_season, plr_season_db):
+    def retrieve_player_contracts(self, player_id, simulation=False):
+        plr = Player.find_by_id(player_id)
+
+        if plr is None:
+            logger.warn("+ No player found for id: %d" % player_id)
+            return
+
+        logger.info("+ Retrieving player contracts for %s" % plr.name)
+
+        plr_contract_list = self.retrieve_raw_contract_data(player_id)
+
+        for plr_contract_dict in plr_contract_list:
+            print(plr_contract_dict.keys())
+            contract = Contract(player_id, plr_contract_dict)
+            contract_db = Contract.find(
+                player_id,
+                plr_contract_dict['start_season'],
+                plr_contract_dict['end_season'])
+
+            if not simulation:
+                self.create_or_update_database_item(contract, contract_db)
+
+            if not contract_db:
+                continue
+
+            print(plr_contract_dict['contract_years'])
+
+
+    def create_or_update_database_item(self, new_item, db_item):
         """
-        Creates or updates a player season database object.
+        Creates or updates database item.
         """
+        plr = Player.find_by_id(new_item.player_id)
+
+        if type(new_item) is Contract:
+            ss = 'contract'
+        elif type(new_item) is ContractYear:
+            ss = 'contract year'
+        elif type(new_item) is PlayerSeason:
+            ss = 'player season'
+        elif type(new_item) is PlayerDataItem:
+            ss = 'player data'
+        else:
+            ss = ''
+
         with session_scope() as session:
-            if not plr_season_db or plr_season_db is None:
-                logger.debug("+ Adding season statistics: %s" % plr_season)
-                session.add(plr_season)
+            if not db_item or db_item is None:
+                logger.debug("+ Adding %s item for %s" % (ss, plr.name))
+                session.add(new_item)
             else:
-                if plr_season_db != plr_season:
-                    logger.info(
-                        "+ Updating season statistics: %s" % plr_season)
-                    plr_season_db.update(plr_season)
-                    session.merge(plr_season_db)
-            session.commit()
-
-    def create_or_update_player_data(self, plr_data, plr_data_db):
-        """
-        Creates or updates a player data item database object.
-        """
-        plr = Player.find_by_id(plr_data.player_id)
-
-        with session_scope() as session:
-            if not plr_data_db or plr_data_db is None:
-                logger.debug("+ Adding player data for %s" % plr.name)
-                session.add(plr_data)
-            else:
-                if plr_data_db != plr_data:
-                    logger.info("+ Updating player data for %s" % plr.name)
-                    plr_data_db.update(plr_data)
-                    session.merge(plr_data_db)
+                if db_item != new_item:
+                    logger.info("+ Updating %s item for %s" % (ss, plr.name))
+                    db_item.update(new_item)
+                    session.merge(db_item)
             session.commit()
 
     def retrieve_raw_season_data(self, player_id):
@@ -294,7 +318,6 @@ class PlayerDataRetriever():
     def retrieve_raw_contract_data(self, player_id):
 
         plr = Player.find_by_id(player_id)
-        print(plr.name)
 
         url = "".join(
             (self.CAPFRIENDLY_SITE_PREFIX, plr.name.replace(" ", "-").lower()))
@@ -303,73 +326,76 @@ class PlayerDataRetriever():
 
         contract_elements = doc.xpath(
             "//div[@class='column_head3 rel cntrct']")
+        historical_data = doc.xpath(
+            "//div[@class='rel navc column_head3 cntrct']")
 
-        contract_dict = dict()
+        contract_list = list()
 
         for element in contract_elements:
+            contract_dict = dict()
+
+            # retrieving raw contract length, expiry status and signing team
             ct_length, exp_status, sign_team = element.xpath(
                 "div/div[@class='l cont_t mt4 mb2']/text()")
+            # retrieving raw contract value, cap hit percentatge, signing date
+            # and source
             ct_value, _, cap_hit_pct, sign_date, ct_source = element.xpath(
                 "div/div[@class='l cont_t mb5']/text()")
+            # retrieving raw contract years
             raw_ct_years_trs = element.xpath(
                 "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
 
+            # retrieving contract type, i.e. standard, entry level or 35+
             contract_dict['type'] = element.xpath("div/h6/text()").pop(0)
+            # retrieving contract length
             contract_dict['length'] = int(
                 re.search(self.CT_LENGTH_REGEX, ct_length).group(1))
+            # retrieving player status after contract expires
             contract_dict['expiry_status'] = exp_status.split()[-1]
+            # retrieving id of signing team
             sign_team = Team.find_by_name(sign_team.split(":")[-1].strip())
             if sign_team:
                 sign_team_id = sign_team.team_id
             else:
                 sign_team_id = None
             contract_dict['signing_team_id'] = sign_team_id
+            # retrieving overall contract value
             contract_dict['value'] = int(
                 ct_value.split(":")[-1].strip()[1:].replace(",", ""))
+            # retrieving cap hit percentage
             contract_dict['cap_hit_percentage'] = float(
                 cap_hit_pct.split()[-1])
+            # retrieving source for contract data
             contract_dict['source'] = ct_source.split(":")[-1].strip()
-
+            # retrieving contract signing date
             try:
                 sign_date = parser.parse(sign_date.split(":")[-1]).date()
             except ValueError:
                 sign_date = None
             contract_dict['signing_date'] = sign_date
 
+            seasons, contract_years = self.retrieve_raw_contract_years_for_contract(raw_ct_years_trs)
+
+            # retrieving first and last season of the contract from
+            contract_dict['start_season'] = min(seasons)
+            contract_dict['end_season'] = max(seasons)
+            # adding raw contract years to resulting dictionary
+            contract_dict['contract_years'] = contract_years
+
+            contract_list.append(contract_dict)
+
+        return contract_list
+
+    def retrieve_raw_contract_years_for_contract(self, raw_contract_years_trs):
             seasons = list()
             contract_years = list()
 
-            for tr in raw_ct_years_trs:
+            for tr in raw_contract_years_trs:
                 ct_year_dict = self.retrieve_contract_year(tr)
                 seasons.append(ct_year_dict['season'])
                 contract_years.append(ct_year_dict)
-                # contract_year = ContractYear(player_id, ct_year_dict)
-                # with session_scope() as session:
-                #     session.add(contract_year)
-                #     session.commit()
 
-                # for key in sorted(ct_year_dict.keys()):
-                #     print(key, ":", ct_year_dict[key])
-                # print("...")
-
-            contract_dict['start_season'] = min(seasons)
-            contract_dict['end_season'] = max(seasons)
-
-            contract = Contract(player_id, contract_dict)
-            contract_db = Contract.find(
-                player_id,
-                contract_dict['start_season'],
-                contract_dict['end_season'])
-
-            self.create_or_update_database_item(contract, contract_db)
-
-            # print(contract_db.contract_id)
-
-            # with session_scope() as session:
-            #     session.add(contract)
-            #     session.commit()
-
-        print()
+            return seasons, contract_years
 
     def retrieve_contract_year(self, raw_contract_year_data):
 
@@ -380,8 +406,15 @@ class PlayerDataRetriever():
         # retrieving first year in season identifier
         ct_year_dict['season'] = int(tds[0].xpath("text()")[0].split("-")[0])
 
+        # if there are just two table cells, this is historical salary data
+        # from before the 2004-05 lockout
+        if len(tds) == 2:
+            ct_year_dict['nhl_salary'] = int(
+                tds[-1].xpath("text()").pop(0)[1:].replace(",", ""))
+            return ct_year_dict
+
         # if there are just three table cells, we're usually dealing with
-        # a contract year nixed by the 2004/05 lockout
+        # a contract year nixed by the 2004-05 lockout
         if len(tds) == 3:
             ct_year_dict['note'] = tds[-1].xpath("text()").pop(0)
             return ct_year_dict
@@ -414,29 +447,3 @@ class PlayerDataRetriever():
             idx += 1
 
         return ct_year_dict
-
-    def create_or_update_database_item(self, new_item, db_item):
-        """
-        Creates or updates database item.
-        """
-        plr = Player.find_by_id(new_item.player_id)
-
-        if type(new_item) is Contract:
-            ss = 'contract'
-        elif type(new_item) is PlayerSeason:
-            ss = 'player season'
-        elif type(new_item) is PlayerDataItem:
-            ss = 'player data'
-        else:
-            ss = ''
-
-        with session_scope() as session:
-            if not db_item or db_item is None:
-                logger.debug("+ Adding %s item for %s" % (ss, plr.name))
-                session.add(new_item)
-            else:
-                if db_item != new_item:
-                    logger.info("+ Updating %s item for %s" % (ss, plr.name))
-                    db_item.update(new_item)
-                    session.merge(db_item)
-            session.commit()
