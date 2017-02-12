@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import itertools
 import threading
 import re
 
@@ -26,6 +27,7 @@ class PlayerDataRetriever():
 
     NHL_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
     CAPFRIENDLY_SITE_PREFIX = "http://www.capfriendly.com/players/"
+    CONTRACT_CLAUSE_REGEX = "^\:\s"
 
     # input player data json keys
     JSON_KEY_FIRST_NAME = "firstName"
@@ -142,7 +144,7 @@ class PlayerDataRetriever():
         plr_contract_list = self.retrieve_raw_contract_data(player_id)
 
         for plr_contract_dict in plr_contract_list:
-            print(plr_contract_dict.keys())
+            # print(plr_contract_dict.keys())
             contract = Contract(player_id, plr_contract_dict)
             contract_db = Contract.find(
                 player_id,
@@ -153,19 +155,19 @@ class PlayerDataRetriever():
                 self.create_or_update_database_item(contract, contract_db)
 
             if not contract_db:
-                print("xxx")
                 continue
 
+            contract_id = contract_db.contract_id
+
             for contract_year_dict in plr_contract_dict['contract_years']:
-                contract_year = ContractYear(player_id, contract_year_dict)
+                contract_year = ContractYear(player_id, contract_id, contract_year_dict)
                 contract_year_db = ContractYear.find(
-                    player_id, contract_year_dict['season'])
+                    player_id, contract_id, contract_year_dict['season'])
                 if not simulation:
                     self.create_or_update_database_item(
                         contract_year, contract_year_db)
         # TODO: bought out contracts
         # TODO: historical data
-
 
     def create_or_update_database_item(self, new_item, db_item):
         """
@@ -324,25 +326,121 @@ class PlayerDataRetriever():
 
         return plr_data_dict
 
-    def retrieve_raw_contract_data(self, player_id):
+    def collect_potential_capfriendly_ids(self, plr):
+        """
+        Compiles all potential combinations of player first and last names
+        to find a potential capfriendly id.
+        """
+        # listing all of players' potential first names
+        first_names = [plr.first_name]
+        if plr.alternate_first_names:
+            first_names += plr.alternate_first_names
+        first_names = list(map(str.lower, first_names))
 
+        # listing all of players' potential last names
+        last_names = [plr.last_name]
+        if plr.alternate_last_names:
+            last_names += plr.alternate_last_names
+        last_names = list(map(str.lower, last_names))
+
+        return list(map(" ".join, itertools.product(first_names, last_names)))
+
+    def retrieve_capfriendly_id(self, player_id):
+        """
+        Retrieves an id from capfriendly.com for the player with the
+        specified id.
+        """
         plr = Player.find_by_id(player_id)
 
-        url = "".join(
-            (self.CAPFRIENDLY_SITE_PREFIX, plr.name.replace(" ", "-").lower()))
+        if plr.capfriendly_id is not None:
+            return plr.capfriendly_id
+
+        # compiling all potential capfriendly ids from the player's name(s)
+        potential_capfriendly_ids = self.collect_potential_capfriendly_ids(plr)
+
+        capfriendly_id_found = False
+
+        while potential_capfriendly_ids and not capfriendly_id_found:
+            potential_capfriendly_id = potential_capfriendly_ids.pop(0)
+            query_id = potential_capfriendly_id.replace(" ", "-")
+            url = "".join((self.CAPFRIENDLY_SITE_PREFIX, query_id))
+            r = requests.get(url)
+            doc = html.fromstring(r.text)
+            page_header = doc.xpath("//h1/text()").pop(0).strip()
+            if page_header == potential_capfriendly_id.upper():
+                capfriendly_id_found = True
+                logger.debug("Found capfriendly id for %s: %s" % (plr.name, query_id))
+                plr.capfriendly_id = query_id
+                with session_scope() as session:
+                    session.merge(plr)
+                    session.commit()
+
+        if not capfriendly_id_found:
+            logger.warn("No capfriendly id found for %s" % plr.name)
+
+        return plr.capfriendly_id
+
+    def get_contract_notes(self, raw_contract_notes):
+        contract_notes = list()
+        for note in raw_contract_notes:
+            if note == "CLAUSE DETAILS":
+                continue
+            if note == "CLAUSE SOURCE":
+                break
+            contract_notes.append(re.sub(self.CONTRACT_CLAUSE_REGEX, "", note))
+        return ", ".join(contract_notes)
+
+    def get_contract_buyout_status(self, contract_dict):
+        # by default contracts are not bought out
+        buyout_status = False
+        # but some are, it's then marked in the contract notes
+        if 'notes' in contract_dict:
+            if "Contract was bought out." in contract_dict['notes']:
+                buyout_status = True
+        return buyout_status
+
+    def get_contract_signing_team(self, sign_team_info):
+        sign_team = Team.find_by_name(sign_team_info.split(":")[-1].strip())
+        if sign_team:
+            return sign_team.team_id
+        else:
+            return None
+
+    def get_contract_signing_date(self, sign_date_info):
+        try:
+            return parser.parse(sign_date_info.split(":")[-1]).date()
+        except ValueError:
+            logger.warn("+ Unable to parse date from '%s'" % sign_date_info)
+            return None
+
+    def retrieve_raw_contract_data(self, player_id):
+
+        contract_list = list()
+
+        # plr = Player.find_by_id(player_id)
+        capfriendly_id = self.retrieve_capfriendly_id(player_id)
+
+        if capfriendly_id is None:
+            print("None")
+            return contract_list
+
+        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
         contract_elements = doc.xpath(
             "//div[@class='column_head3 rel cntrct']")
-        historical_data = doc.xpath(
-            "//div[@class='rel navc column_head3 cntrct']")
+        # TODO: historical salary in separate method
+        # historical_elements = doc.xpath(
+        #     "//div[@class='rel navc column_head3 cntrct']")
+        # TODO: buyouts in separate method
+        # buyout_elements = doc.xpath("//div[@class='l cont_t mt4 mb2 mr30']/ancestor::div/following-sibling::table/tbody/tr[@class='even' or @class='odd']")
 
-        contract_list = list()
+        # setting up list of contracts for current player
 
         for element in contract_elements:
+            # setting up dictionary for current contract
             contract_dict = dict()
-
             # retrieving raw contract length, expiry status and signing team
             ct_length, exp_status, sign_team = element.xpath(
                 "div/div[@class='l cont_t mt4 mb2']/text()")
@@ -350,10 +448,18 @@ class PlayerDataRetriever():
             # and source
             ct_value, _, cap_hit_pct, sign_date, ct_source = element.xpath(
                 "div/div[@class='l cont_t mb5']/text()")
+            # retrieving raw contract notes
+            ct_notes = element.xpath(
+                "following-sibling::div[@class='clause cntrct']/descendant-or-self::*/text()")
             # retrieving raw contract years
             raw_ct_years_trs = element.xpath(
                 "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
-
+            # retrieving contract notes, i.e. buyout notifications or clause
+            # details
+            contract_dict['notes'] = self.get_contract_notes(ct_notes)
+            # setting buyout flag
+            contract_dict['bought_out'] = self.get_contract_buyout_status(
+                contract_dict)
             # retrieving contract type, i.e. standard, entry level or 35+
             contract_dict['type'] = element.xpath("div/h6/text()").pop(0)
             # retrieving contract length
@@ -362,12 +468,8 @@ class PlayerDataRetriever():
             # retrieving player status after contract expires
             contract_dict['expiry_status'] = exp_status.split()[-1]
             # retrieving id of signing team
-            sign_team = Team.find_by_name(sign_team.split(":")[-1].strip())
-            if sign_team:
-                sign_team_id = sign_team.team_id
-            else:
-                sign_team_id = None
-            contract_dict['signing_team_id'] = sign_team_id
+            contract_dict['signing_team_id'] = self.get_contract_signing_team(
+                sign_team)
             # retrieving overall contract value
             contract_dict['value'] = int(
                 ct_value.split(":")[-1].strip()[1:].replace(",", ""))
@@ -377,12 +479,10 @@ class PlayerDataRetriever():
             # retrieving source for contract data
             contract_dict['source'] = ct_source.split(":")[-1].strip()
             # retrieving contract signing date
-            try:
-                sign_date = parser.parse(sign_date.split(":")[-1]).date()
-            except ValueError:
-                sign_date = None
-            contract_dict['signing_date'] = sign_date
+            contract_dict['signing_date'] = self.get_contract_signing_date(
+                sign_date)
 
+            # retrieving seasons and contract years
             seasons, contract_years = self.retrieve_raw_contract_years_for_contract(raw_ct_years_trs)
 
             # retrieving first and last season of the contract from
@@ -391,9 +491,16 @@ class PlayerDataRetriever():
             # adding raw contract years to resulting dictionary
             contract_dict['contract_years'] = contract_years
 
+            # adding current contract to list of all current players' contracts
             contract_list.append(contract_dict)
 
         return contract_list
+
+    def retrieve_raw_buyot_data(self):
+        pass
+
+    def retrieve_raw_historical_salary_data(self):
+        pass
 
     def retrieve_raw_contract_years_for_contract(self, raw_contract_years_trs):
             seasons = list()
