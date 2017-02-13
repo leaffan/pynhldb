@@ -158,6 +158,9 @@ class PlayerDataRetriever():
             if not contract_db:
                 continue
 
+            if contract.bought_out:
+                buyout_dict = self.retrieve_raw_buyot_data(player_id)
+
             contract_id = contract_db.contract_id
 
             for contract_year_dict in plr_contract_dict['contract_years']:
@@ -177,9 +180,6 @@ class PlayerDataRetriever():
             if not simulation:
                 self.create_or_update_database_item(
                     contract_year, contract_year_db)
-
-        # TODO: bought out contracts
-        # TODO: historical data
 
     def create_or_update_database_item(self, new_item, db_item):
         """
@@ -427,6 +427,7 @@ class PlayerDataRetriever():
 
     def retrieve_raw_contract_data(self, player_id):
 
+        # setting up list of contracts for current player
         contract_list = list()
 
         plr = Player.find_by_id(player_id)
@@ -442,13 +443,6 @@ class PlayerDataRetriever():
 
         contract_elements = doc.xpath(
             "//div[@class='column_head3 rel cntrct']")
-        # TODO: historical salary in separate method
-        # historical_elements = doc.xpath(
-        #     "//div[@class='rel navc column_head3 cntrct']")
-        # TODO: buyouts in separate method
-        # buyout_elements = doc.xpath("//div[@class='l cont_t mt4 mb2 mr30']/ancestor::div/following-sibling::table/tbody/tr[@class='even' or @class='odd']")
-
-        # setting up list of contracts for current player
 
         for element in contract_elements:
             # setting up dictionary for current contract
@@ -508,8 +502,55 @@ class PlayerDataRetriever():
 
         return contract_list
 
-    def retrieve_raw_buyot_data(self):
-        pass
+    def retrieve_raw_buyot_data(self, player_id):
+
+        buyout_dict = dict()
+
+        plr = Player.find_by_id(player_id)
+        capfriendly_id = self.retrieve_capfriendly_id(player_id)
+
+        if capfriendly_id is None:
+            logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
+            return buyout_data
+
+        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
+        r = requests.get(url)
+        doc = html.fromstring(r.text)
+
+        buyout_length, buyout_value, buyout_team = doc.xpath(
+            "//div[@class='l cont_t mt4 mb2 mr30']/text()")
+
+        # retrieving buyout length
+        buyout_dict['length'] = int(
+            re.search(self.CT_LENGTH_REGEX, buyout_length).group(1))
+        # retrieving buyout value
+        buyout_dict['value'] = int(
+            buyout_value.split(":")[-1].strip()[1:].replace(",", ""))
+        # retrieving id of signing team
+        buyout_dict['buyout_team_id'] = self.get_contract_signing_team(
+            buyout_team)
+
+        raw_buyout_years = doc.xpath(
+            "//div[@class='l cont_t mt4 mb2 mr30']/ancestor::div/" +
+            "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
+
+        buyout_years = list()
+
+        for raw_buyout_year in raw_buyout_years:
+            buyout_year_dict = dict()
+            season, cost, cap_hit = raw_buyout_year.xpath("td/text()")
+            # retrieving first year in season identifier
+            buyout_year_dict['season'] = int(season.split("-")[0])
+            # retrieving buyout cost
+            buyout_year_dict['cost'] = int(cost.strip()[1:].replace(",", ""))
+            # retrieving buyout cap hit
+            buyout_year_dict['cap_hit'] = int(
+                cap_hit.strip()[1:].replace(",", ""))
+            buyout_years.append(buyout_year_dict)
+
+        buyout_dict['buyout_years'] = buyout_years
+
+        return buyout_dict
 
     def retrieve_raw_historical_salary_data(self, player_id):
 
