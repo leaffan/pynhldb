@@ -142,6 +142,7 @@ class PlayerDataRetriever():
         logger.info("+ Retrieving player contracts for %s" % plr.name)
 
         plr_contract_list = self.retrieve_raw_contract_data(player_id)
+        historical_salaries = self.retrieve_raw_historical_salary_data(player_id)
 
         for plr_contract_dict in plr_contract_list:
             # print(plr_contract_dict.keys())
@@ -160,12 +161,23 @@ class PlayerDataRetriever():
             contract_id = contract_db.contract_id
 
             for contract_year_dict in plr_contract_dict['contract_years']:
-                contract_year = ContractYear(player_id, contract_id, contract_year_dict)
+                contract_year = ContractYear(
+                    player_id, contract_id, contract_year_dict)
                 contract_year_db = ContractYear.find(
                     player_id, contract_id, contract_year_dict['season'])
                 if not simulation:
                     self.create_or_update_database_item(
                         contract_year, contract_year_db)
+
+        for hist_salary in historical_salaries:
+            print(hist_salary)
+            contract_year = ContractYear(player_id, None, hist_salary)
+            contract_year_db = ContractYear.find(
+                player_id, None, hist_salary['season'])
+            if not simulation:
+                self.create_or_update_database_item(
+                    contract_year, contract_year_db)
+
         # TODO: bought out contracts
         # TODO: historical data
 
@@ -376,7 +388,7 @@ class PlayerDataRetriever():
                     session.commit()
 
         if not capfriendly_id_found:
-            logger.warn("No capfriendly id found for %s" % plr.name)
+            logger.warn("+ No capfriendly id found for %s" % plr.name)
 
         return plr.capfriendly_id
 
@@ -417,11 +429,11 @@ class PlayerDataRetriever():
 
         contract_list = list()
 
-        # plr = Player.find_by_id(player_id)
+        plr = Player.find_by_id(player_id)
         capfriendly_id = self.retrieve_capfriendly_id(player_id)
 
         if capfriendly_id is None:
-            print("None")
+            logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
             return contract_list
 
         url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
@@ -499,19 +511,57 @@ class PlayerDataRetriever():
     def retrieve_raw_buyot_data(self):
         pass
 
-    def retrieve_raw_historical_salary_data(self):
-        pass
+    def retrieve_raw_historical_salary_data(self, player_id):
+
+        historical_salaries = list()
+
+        plr = Player.find_by_id(player_id)
+        capfriendly_id = self.retrieve_capfriendly_id(player_id)
+
+        if capfriendly_id is None:
+            logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
+            return historical_salaries
+
+        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
+        r = requests.get(url)
+        doc = html.fromstring(r.text)
+
+        hist_elements = doc.xpath(
+            "//div[@class='rel navc column_head3 cntrct']")
+
+        for element in hist_elements:
+            raw_hist_salary_years = element.xpath(
+                "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
+
+            for tr in raw_hist_salary_years:
+                historical_salary = dict()
+                try:
+                    season, salary = tr.xpath("td/text()")
+                except ValueError:
+                    logger.warn("+ Unable to retrieve historical salary of %s for season %s" % (plr.name, tr.xpath("td/text()")[0]))
+                    continue
+                season = int(season.split("-")[0])
+                try:
+                    salary = int(salary[1:].replace(",", ""))
+                except ValueError:
+                    logger.warn("+ Unable to retrieve numeric value from '%s'" % salary)
+                    continue
+                historical_salary[season] = salary
+
+                historical_salaries.append(historical_salary)
+
+        return historical_salaries
 
     def retrieve_raw_contract_years_for_contract(self, raw_contract_years_trs):
-            seasons = list()
-            contract_years = list()
+        seasons = list()
+        contract_years = list()
 
-            for tr in raw_contract_years_trs:
-                ct_year_dict = self.retrieve_contract_year(tr)
-                seasons.append(ct_year_dict['season'])
-                contract_years.append(ct_year_dict)
+        for tr in raw_contract_years_trs:
+            ct_year_dict = self.retrieve_contract_year(tr)
+            seasons.append(ct_year_dict['season'])
+            contract_years.append(ct_year_dict)
 
-            return seasons, contract_years
+        return seasons, contract_years
 
     def retrieve_contract_year(self, raw_contract_year_data):
 
