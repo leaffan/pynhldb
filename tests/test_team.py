@@ -51,3 +51,13 @@ def test_constructor():
     assert t.abbr == 'TOR'
     assert t.first_year_of_play == '1917'
 
+
+def test_comparison_operators():
+    team_1 = Team.find_by_id(10)
+    team_2 = Team.find_by_name("Toronto Maple Leafs")
+    team_3 = Team.find_by_id(1)
+
+    assert team_1 == team_2
+    assert team_1 != team_3
+    assert team_1 > team_3
+    assert team_3 < team_1
