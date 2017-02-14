@@ -144,7 +144,8 @@ class PlayerDataRetriever():
         logger.info("+ Retrieving player contracts for %s" % plr.name)
 
         plr_contract_list = self.retrieve_raw_contract_data(player_id)
-        historical_salaries = self.retrieve_raw_historical_salary_data(player_id)
+        historical_salaries = self.retrieve_raw_historical_salary_data(
+            player_id)
 
         for plr_contract_dict in plr_contract_list:
             contract = Contract(player_id, plr_contract_dict)
@@ -159,6 +160,15 @@ class PlayerDataRetriever():
 
             if not contract_db:
                 continue
+
+            for contract_year_dict in plr_contract_dict['contract_years']:
+                contract_year = ContractYear(
+                    player_id, contract_db.contract_id, contract_year_dict)
+                contract_year_db = ContractYear.find(
+                    player_id, contract_db.contract_id, contract_year_dict['season'])
+                if not simulation:
+                    self.create_or_update_database_item(
+                        contract_year, contract_year_db)
 
             if contract_db.bought_out:
                 buyout_dict = self.retrieve_raw_buyot_data(player_id)
@@ -176,22 +186,16 @@ class PlayerDataRetriever():
                     if not simulation:
                         buyout_year_db = self.create_or_update_database_item(
                             buyout_year, buyout_year_db)
-
-            contract_id = contract_db.contract_id
-
-            for contract_year_dict in plr_contract_dict['contract_years']:
-                contract_year = ContractYear(
-                    player_id, contract_id, contract_year_dict)
-                contract_year_db = ContractYear.find(
-                    player_id, contract_id, contract_year_dict['season'])
-                if not simulation:
-                    self.create_or_update_database_item(
-                        contract_year, contract_year_db)
+                    contract_year = ContractYear.find(player_id, contract_db.contract_id, buyout_year_data_dict['season'])
+                    contract_year.bought_out = True
+                    with session_scope() as session:
+                        session.merge(contract_year)
+                        session.commit()
 
         for hist_salary_year in historical_salaries:
             contract_year = ContractYear(player_id, None, hist_salary_year)
             contract_year_db = ContractYear.find(
-                player_id, None, hist_salary_year)
+                player_id, None, hist_salary_year['season'])
             if not simulation:
                 self.create_or_update_database_item(
                     contract_year, contract_year_db)
@@ -389,6 +393,9 @@ class PlayerDataRetriever():
         plr = Player.find_by_id(player_id)
 
         if plr.capfriendly_id is not None:
+            logger.info(
+                "+ Existing capfriendly id for %s: %s" % (
+                    plr.name, plr.capfriendly_id))
             return plr.capfriendly_id
 
         # compiling all potential capfriendly ids from the player's name(s)
@@ -405,7 +412,8 @@ class PlayerDataRetriever():
             page_header = doc.xpath("//h1/text()").pop(0).strip()
             if page_header == potential_capfriendly_id.upper():
                 capfriendly_id_found = True
-                logger.debug("Found capfriendly id for %s: %s" % (plr.name, query_id))
+                logger.info(
+                    "+ Found capfriendly id for %s: %s" % (plr.name, query_id))
                 plr.capfriendly_id = query_id
                 with session_scope() as session:
                     session.merge(plr)
@@ -455,13 +463,11 @@ class PlayerDataRetriever():
         contract_list = list()
 
         plr = Player.find_by_id(player_id)
-        capfriendly_id = self.retrieve_capfriendly_id(player_id)
-
-        if capfriendly_id is None:
+        if plr.capfriendly_id is None:
             logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
             return contract_list
 
-        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
+        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, plr.capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
@@ -480,10 +486,12 @@ class PlayerDataRetriever():
                 "div/div[@class='l cont_t mb5']/text()")
             # retrieving raw contract notes
             ct_notes = element.xpath(
-                "following-sibling::div[@class='clause cntrct']/descendant-or-self::*/text()")
+                "following-sibling::div[@class='clause cntrct']/" +
+                "descendant-or-self::*/text()")
             # retrieving raw contract years
             raw_ct_years_trs = element.xpath(
-                "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
+                "following-sibling::table/tbody/" +
+                "tr[@class='even' or @class='odd']")
             # retrieving contract notes, i.e. buyout notifications or clause
             # details
             contract_dict['notes'] = self.get_contract_notes(ct_notes)
@@ -531,13 +539,11 @@ class PlayerDataRetriever():
         buyout_dict = dict()
 
         plr = Player.find_by_id(player_id)
-        capfriendly_id = self.retrieve_capfriendly_id(player_id)
-
-        if capfriendly_id is None:
+        if plr.capfriendly_id is None:
             logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
             return buyout_dict
 
-        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
+        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, plr.capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
@@ -585,13 +591,11 @@ class PlayerDataRetriever():
         historical_salaries = list()
 
         plr = Player.find_by_id(player_id)
-        capfriendly_id = self.retrieve_capfriendly_id(player_id)
-
-        if capfriendly_id is None:
-            logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
+        if plr.capfriendly_id is None:
+            logger.warn("+ Unable to historical salary data for %s" % plr.name)
             return historical_salaries
 
-        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
+        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, plr.capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
@@ -600,7 +604,8 @@ class PlayerDataRetriever():
 
         for element in hist_elements:
             raw_hist_salary_years = element.xpath(
-                "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
+                "following-sibling::table/tbody/tr" +
+                "[@class='even' or @class='odd']")
 
             for tr in raw_hist_salary_years:
                 historical_salary = dict()
@@ -613,9 +618,11 @@ class PlayerDataRetriever():
                 try:
                     salary = int(salary[1:].replace(",", ""))
                 except ValueError:
-                    logger.warn("+ Unable to retrieve numeric value from '%s'" % salary)
+                    logger.warn(
+                        "+ Unable to retrieve numeric value from '%s'" % salary)
                     continue
-                historical_salary[season] = salary
+                historical_salary['season'] = season
+                historical_salary['nhl_salary'] = salary
 
                 historical_salaries.append(historical_salary)
 
