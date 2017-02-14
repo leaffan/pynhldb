@@ -18,6 +18,8 @@ from db.goalie_season import GoalieSeason
 from db.player_data_item import PlayerDataItem
 from db.contract import Contract
 from db.contract_year import ContractYear
+from db.buyout import Buyout
+from db.buyout_year import BuyoutYear
 from utils import feet_to_m, lbs_to_kg
 
 logger = logging.getLogger(__name__)
@@ -145,7 +147,6 @@ class PlayerDataRetriever():
         historical_salaries = self.retrieve_raw_historical_salary_data(player_id)
 
         for plr_contract_dict in plr_contract_list:
-            # print(plr_contract_dict.keys())
             contract = Contract(player_id, plr_contract_dict)
             contract_db = Contract.find(
                 player_id,
@@ -153,13 +154,28 @@ class PlayerDataRetriever():
                 plr_contract_dict['end_season'])
 
             if not simulation:
-                self.create_or_update_database_item(contract, contract_db)
+                contract_db = self.create_or_update_database_item(
+                    contract, contract_db)
 
             if not contract_db:
                 continue
 
-            if contract.bought_out:
+            if contract_db.bought_out:
                 buyout_dict = self.retrieve_raw_buyot_data(player_id)
+                buyout = Buyout(
+                    player_id, contract_db.contract_id, buyout_dict)
+                buyout_db = Buyout.find(contract_db.contract_id)
+                if not simulation:
+                    buyout_db = self.create_or_update_database_item(
+                        buyout, buyout_db)
+                for buyout_year_data_dict in buyout_dict['buyout_years']:
+                    buyout_year = BuyoutYear(
+                        player_id, buyout_db.buyout_id, buyout_year_data_dict)
+                    buyout_year_db = BuyoutYear.find(
+                        buyout_db.buyout_id, buyout_year_data_dict['season'])
+                    if not simulation:
+                        buyout_year_db = self.create_or_update_database_item(
+                            buyout_year, buyout_year_db)
 
             contract_id = contract_db.contract_id
 
@@ -172,11 +188,10 @@ class PlayerDataRetriever():
                     self.create_or_update_database_item(
                         contract_year, contract_year_db)
 
-        for hist_salary in historical_salaries:
-            print(hist_salary)
-            contract_year = ContractYear(player_id, None, hist_salary)
+        for hist_salary_year in historical_salaries:
+            contract_year = ContractYear(player_id, None, hist_salary_year)
             contract_year_db = ContractYear.find(
-                player_id, None, hist_salary['season'])
+                player_id, None, hist_salary_year)
             if not simulation:
                 self.create_or_update_database_item(
                     contract_year, contract_year_db)
@@ -195,6 +210,10 @@ class PlayerDataRetriever():
             ss = 'player season'
         elif type(new_item) is PlayerDataItem:
             ss = 'player data'
+        elif type(new_item) is Buyout:
+            ss = 'buyout'
+        elif type(new_item) is BuyoutYear:
+            ss = 'buyout year'
         else:
             ss = ''
 
@@ -202,12 +221,17 @@ class PlayerDataRetriever():
             if not db_item or db_item is None:
                 logger.debug("+ Adding %s item for %s" % (ss, plr.name))
                 session.add(new_item)
+                return_item = new_item
             else:
                 if db_item != new_item:
                     logger.info("+ Updating %s item for %s" % (ss, plr.name))
                     db_item.update(new_item)
-                    session.merge(db_item)
+                    return_item = session.merge(db_item)
+                else:
+                    return_item = db_item
             session.commit()
+
+        return return_item
 
     def retrieve_raw_season_data(self, player_id):
         """
@@ -511,7 +535,7 @@ class PlayerDataRetriever():
 
         if capfriendly_id is None:
             logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
-            return buyout_data
+            return buyout_dict
 
         url = "".join((self.CAPFRIENDLY_SITE_PREFIX, capfriendly_id))
         r = requests.get(url)
@@ -549,6 +573,10 @@ class PlayerDataRetriever():
             buyout_years.append(buyout_year_dict)
 
         buyout_dict['buyout_years'] = buyout_years
+        buyout_dict['start_season'] = min(
+            [buyout_year['season'] for buyout_year in buyout_years])
+        buyout_dict['end_season'] = max(
+            [buyout_year['season'] for buyout_year in buyout_years])
 
         return buyout_dict
 
