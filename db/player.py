@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from sqlalchemy import and_
+
 from .common import Base, session_scope
 
 
@@ -44,6 +46,34 @@ class Player(Base):
                 player = None
             return player
 
+    @classmethod
+    def find_by_name(self, first_name, last_name):
+        with session_scope() as session:
+            try:
+                player = session.query(Player).filter(
+                    and_(
+                        Player.first_name == first_name,
+                        Player.last_name == last_name
+                    )
+                ).one()
+            except:
+                player = None
+            return player
+
+    @classmethod
+    def find_by_name_extended(self, first_name, last_name):
+        with session_scope() as session:
+            try:
+                player = session.query(Player).filter(
+                    and_(
+                        Player.first_name.in_(all_first_names),
+                        Player.last_name.in_(all_last_names)
+                    )
+                ).one()
+            except:
+                player = None
+            return player
+
     def __str__(self):
         return "[%d] %s" % (self.player_id, self.name)
 
@@ -52,4 +82,3 @@ class Player(Base):
 
     def __ne__(self, other):
         return not self == other
-
