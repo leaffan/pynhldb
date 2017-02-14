@@ -66,20 +66,41 @@ def create_player_contracts(simulation=False):
     """
     data_retriever = PlayerDataRetriever()
 
-    player_ids = [8467329, 8470595, 8477939, 8467950, 8462042, 8467496]
+    with session_scope() as session:
+        players = session.query(Player).all()[:]
 
-    for player_id in player_ids:
-        data_retriever.retrieve_raw_contract_data(player_id)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+            future_tasks = {
+                threads.submit(
+                    data_retriever.retrieve_player_contracts,
+                    player.player_id, simulation
+                ): player for player in players
+            }
+            for future in concurrent.futures.as_completed(future_tasks):
+                try:
+                    pass
+                except Exception as e:
+                    print("Concurrent task generated an exception: %s" % e)
 
-    #     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
-    #         future_tasks = {
-    #             threads.submit(
-    #                 data_retriever.retrieve_player_data,
-    #                 player.player_id, simulation
-    #             ): player for player in players
-    #         }
-    #         for future in concurrent.futures.as_completed(future_tasks):
-    #             try:
-    #                 pass
-    #             except Exception as e:
-    #                 print("Concurrent task generated an exception: %s" % e)
+
+def create_capfriendly_ids():
+    """
+    Creates capfriendly id attributes for players in database.
+    """
+    data_retriever = PlayerDataRetriever()
+
+    with session_scope() as session:
+        players = session.query(Player).all()[:]
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+            future_tasks = {
+                threads.submit(
+                    data_retriever.retrieve_capfriendly_id,
+                    player.player_id
+                ): player for player in players
+            }
+            for future in concurrent.futures.as_completed(future_tasks):
+                try:
+                    pass
+                except Exception as e:
+                    print("Concurrent task generated an exception: %s" % e)
