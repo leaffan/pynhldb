@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .common import Base, session_scope
-
 from sqlalchemy import and_
+
+from .common import Base, session_scope
 
 
 class Contract(Base):
@@ -17,7 +17,6 @@ class Contract(Base):
         ]
 
     def __init__(self, player_id, contract_data_dict):
-
         self.player_id = player_id
         for attr in self.STANDARD_ATTRS:
             if attr in contract_data_dict:
