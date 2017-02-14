@@ -12,7 +12,7 @@ class ContractYear(Base):
 
     STANDARD_ATTRS = [
         'season', 'cap_hit', 'aav', 'sign_bonus', 'perf_bonus',
-        'nhl_salary', 'minors_salary', 'clause', 'bought_out',
+        'nhl_salary', 'minors_salary', 'clause', 'bought_out', 'note'
         ]
 
     def __init__(self, player_id, contract_id, contract_year_data_dict):
