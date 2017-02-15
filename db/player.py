@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 from .common import Base, session_scope
 
@@ -61,13 +61,34 @@ class Player(Base):
             return player
 
     @classmethod
+    def find_by_name_position(self, first_name, last_name, position):
+        with session_scope() as session:
+            try:
+                player = session.query(Player).filter(
+                    and_(
+                        Player.first_name == first_name,
+                        Player.last_name == last_name,
+                        Player.position == position
+                    )
+                ).one()
+            except:
+                player = None
+            return player
+
+    @classmethod
     def find_by_name_extended(self, first_name, last_name):
         with session_scope() as session:
             try:
                 player = session.query(Player).filter(
                     and_(
-                        Player.first_name.in_(all_first_names),
-                        Player.last_name.in_(all_last_names)
+                        or_(
+                            Player.first_name == first_name,
+                            Player.alternate_first_names.any(first_name)
+                        ),
+                        or_(
+                            Player.last_name == last_name,
+                            Player.alternate_last_names.any(last_name)
+                        )
                     )
                 ).one()
             except:
