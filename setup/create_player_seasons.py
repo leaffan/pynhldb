@@ -6,6 +6,7 @@ import concurrent.futures
 
 from db.common import session_scope
 from db.player import Player
+from db.team import Team
 from utils.player_data_retriever import PlayerDataRetriever
 
 logger = logging.getLogger(__name__)
@@ -104,3 +105,22 @@ def create_capfriendly_ids():
                     pass
                 except Exception as e:
                     print("Concurrent task generated an exception: %s" % e)
+
+
+def create_capfriendly_ids_by_team():
+
+    data_retriever = PlayerDataRetriever()
+
+    from sqlalchemy import and_
+
+    with session_scope() as session:
+        teams = session.query(Team).filter(
+            and_(
+                Team.last_year_of_play.is_(None),
+                Team.first_year_of_play < 2017
+            )
+        ).all()
+
+    for team in sorted(teams)[:]:
+        print(team)
+        data_retriever.retrieve_capfriendly_ids(team.team_id)
