@@ -10,6 +10,7 @@ import requests
 from dateutil import parser
 from lxml import html
 
+from db import commit_db_item
 from db.common import session_scope
 from db.team import Team
 from db.player import Player
@@ -29,6 +30,7 @@ class PlayerDataRetriever():
 
     NHL_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
     CAPFRIENDLY_SITE_PREFIX = "http://www.capfriendly.com/players/"
+    CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
     CONTRACT_CLAUSE_REGEX = "^\:\s"
 
     # input player data json keys
@@ -134,6 +136,36 @@ class PlayerDataRetriever():
             self.create_or_update_database_item(
                 plr_data_item, plr_data_item_db)
 
+    def retrieve_buyout(self, player_id, contract):
+        """
+        Retrieves buyout information for specified player and contract.
+        """
+        # retrieving raw buyout data
+        buyout_dict = self.retrieve_raw_buyot_data(player_id)
+        # setting up buyout item
+        buyout = Buyout(player_id, contract.contract_id, buyout_dict)
+        # finding suitable buyout in database
+        buyout_db = Buyout.find(contract.contract_id)
+        # creating (or updating) buyout in database
+        buyout_db = self.create_or_update_database_item(buyout, buyout_db)
+        # adding buyout years to buyout
+        for buyout_year_data_dict in buyout_dict['buyout_years']:
+            # setting up buyout year item
+            buyout_year = BuyoutYear(
+                player_id, buyout_db.buyout_id, buyout_year_data_dict)
+            # finding suitable buyout year in database
+            buyout_year_db = BuyoutYear.find(
+                buyout_db.buyout_id, buyout_year_data_dict['season'])
+            # creating or updating buyout year
+            buyout_year_db = self.create_or_update_database_item(
+                buyout_year, buyout_year_db)
+            # finally adding buyout flag to corresponding contract year
+            contract_year = ContractYear.find(
+                player_id, contract.contract_id, buyout_year_data_dict[
+                    'season'])
+            contract_year.bought_out = True
+            commit_db_item(contract_year)
+
     def retrieve_player_contracts(self, player_id, simulation=False):
         plr = Player.find_by_id(player_id)
 
@@ -171,26 +203,7 @@ class PlayerDataRetriever():
                         contract_year, contract_year_db)
 
             if contract_db.bought_out:
-                buyout_dict = self.retrieve_raw_buyot_data(player_id)
-                buyout = Buyout(
-                    player_id, contract_db.contract_id, buyout_dict)
-                buyout_db = Buyout.find(contract_db.contract_id)
-                if not simulation:
-                    buyout_db = self.create_or_update_database_item(
-                        buyout, buyout_db)
-                for buyout_year_data_dict in buyout_dict['buyout_years']:
-                    buyout_year = BuyoutYear(
-                        player_id, buyout_db.buyout_id, buyout_year_data_dict)
-                    buyout_year_db = BuyoutYear.find(
-                        buyout_db.buyout_id, buyout_year_data_dict['season'])
-                    if not simulation:
-                        buyout_year_db = self.create_or_update_database_item(
-                            buyout_year, buyout_year_db)
-                    contract_year = ContractYear.find(player_id, contract_db.contract_id, buyout_year_data_dict['season'])
-                    contract_year.bought_out = True
-                    with session_scope() as session:
-                        session.merge(contract_year)
-                        session.commit()
+                self.retrieve_buyout(player_id, contract_db)
 
         for hist_salary_year in historical_salaries:
             contract_year = ContractYear(player_id, None, hist_salary_year)
@@ -384,6 +397,40 @@ class PlayerDataRetriever():
         last_names = list(map(str.lower, last_names))
 
         return list(map(" ".join, itertools.product(first_names, last_names)))
+
+    def retrieve_capfriendly_ids(self, team_id):
+
+        team = Team.find_by_id(team_id)
+
+        url = "".join((
+            self.CAPFRIENDLY_TEAM_PREFIX,
+            team.team_name.replace(" ", "").lower()))
+
+        r = requests.get(url)
+        doc = html.fromstring(r.text)
+
+        player_name_trs = doc.xpath("//tr[@class='even c' or @class='odd c']")
+
+        for tr in player_name_trs:
+            player_name = tr.xpath("td/a/text()").pop(0)
+            player_link = tr.xpath("td/a/@href").pop(0)
+            player_position = tr.xpath("td[3]/span/text()")
+            if player_position:
+                player_position = player_position.pop(0)
+            else:
+                player_position = ''
+            # print(player_name, player_link, player_position)
+
+            last_name, first_name = player_name.split(", ")
+            plr = Player.find_by_name_extended(first_name, last_name)
+            if plr is None and player_position:
+                primary_position = player_position.split(", ")[0][0]
+                plr = Player.find_by_name_position(
+                    first_name, last_name, primary_position)
+            if plr and plr.capfriendly_id is None:
+                print(first_name, last_name, plr, player_link.split("/")[-1])
+            if plr is None:
+                print("\t", first_name, last_name, player_link.split("/")[-1])
 
     def retrieve_capfriendly_id(self, player_id):
         """
