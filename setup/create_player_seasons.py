@@ -12,7 +12,7 @@ from utils.player_data_retriever import PlayerDataRetriever
 logger = logging.getLogger(__name__)
 
 
-def create_player_seasons(simulation=False):
+def create_player_seasons():
     """
     Creates player season database objects.
     """
@@ -22,23 +22,23 @@ def create_player_seasons(simulation=False):
     with session_scope() as session:
         players = session.query(Player).all()[:]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
-            future_tasks = {
-                threads.submit(
-                    data_retriever.retrieve_player_seasons,
-                    player.player_id, simulation
-                ): player for player in players
-            }
-            for future in concurrent.futures.as_completed(future_tasks):
-                try:
-                    plr_season_count += len(future.result())
-                except Exception as e:
-                    print("Concurrent task generated an exception: %s" % e)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+        future_tasks = {
+            threads.submit(
+                data_retriever.retrieve_player_seasons,
+                player.player_id
+            ): player for player in players
+        }
+        for future in concurrent.futures.as_completed(future_tasks):
+            try:
+                plr_season_count += len(future.result())
+            except Exception as e:
+                print("Concurrent task generated an exception: %s" % e)
 
     logger.info("+ %d statistics items retrieved overall" % plr_season_count)
 
 
-def create_player_data(simulation=False):
+def create_player_data():
     """
     Creates player data items in database.
     """
@@ -47,21 +47,21 @@ def create_player_data(simulation=False):
     with session_scope() as session:
         players = session.query(Player).all()[:]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
-            future_tasks = {
-                threads.submit(
-                    data_retriever.retrieve_player_data,
-                    player.player_id, simulation
-                ): player for player in players
-            }
-            for future in concurrent.futures.as_completed(future_tasks):
-                try:
-                    pass
-                except Exception as e:
-                    print("Concurrent task generated an exception: %s" % e)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+        future_tasks = {
+            threads.submit(
+                data_retriever.retrieve_player_data,
+                player.player_id
+            ): player for player in players
+        }
+        for future in concurrent.futures.as_completed(future_tasks):
+            try:
+                pass
+            except Exception as e:
+                print("Concurrent task generated an exception: %s" % e)
 
 
-def create_player_contracts(simulation=False):
+def create_player_contracts():
     """
     Creates player contract items in database.
     """
@@ -70,18 +70,18 @@ def create_player_contracts(simulation=False):
     with session_scope() as session:
         players = session.query(Player).all()[:]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
-            future_tasks = {
-                threads.submit(
-                    data_retriever.retrieve_player_contracts,
-                    player.player_id, simulation
-                ): player for player in players
-            }
-            for future in concurrent.futures.as_completed(future_tasks):
-                try:
-                    pass
-                except Exception as e:
-                    print("Concurrent task generated an exception: %s" % e)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+        future_tasks = {
+            threads.submit(
+                data_retriever.retrieve_player_contracts,
+                player.player_id
+            ): player for player in players
+        }
+        for future in concurrent.futures.as_completed(future_tasks):
+            try:
+                pass
+            except Exception as e:
+                print("Concurrent task generated an exception: %s" % e)
 
 
 def create_capfriendly_ids():
@@ -93,18 +93,18 @@ def create_capfriendly_ids():
     with session_scope() as session:
         players = session.query(Player).all()[:]
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
-            future_tasks = {
-                threads.submit(
-                    data_retriever.retrieve_capfriendly_id,
-                    player.player_id
-                ): player for player in players
-            }
-            for future in concurrent.futures.as_completed(future_tasks):
-                try:
-                    pass
-                except Exception as e:
-                    print("Concurrent task generated an exception: %s" % e)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+        future_tasks = {
+            threads.submit(
+                data_retriever.retrieve_capfriendly_id,
+                player.player_id
+            ): player for player in players
+        }
+        for future in concurrent.futures.as_completed(future_tasks):
+            try:
+                pass
+            except Exception as e:
+                print("Concurrent task generated an exception: %s" % e)
 
 
 def create_capfriendly_ids_by_team():

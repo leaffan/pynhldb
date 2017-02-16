@@ -4,7 +4,7 @@
 from .common import session_scope
 
 
-def commit_db_item(self, db_item):
+def commit_db_item(db_item):
     with session_scope() as session:
         session.merge(db_item)
         session.commit()

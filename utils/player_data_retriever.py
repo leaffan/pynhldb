@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 class PlayerDataRetriever():
 
     NHL_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
-    CAPFRIENDLY_SITE_PREFIX = "http://www.capfriendly.com/players/"
+    CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
     CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
-    CONTRACT_CLAUSE_REGEX = "^\:\s"
+    CAPFRIENDLY_CLAUSE_REGEX = re.compile("^\:\s")
 
     # input player data json keys
     JSON_KEY_FIRST_NAME = "firstName"
@@ -68,7 +68,7 @@ class PlayerDataRetriever():
     def __init__(self):
         self.lock = threading.Lock()
 
-    def retrieve_player_seasons(self, player_id, simulation=False):
+    def retrieve_player_seasons(self, player_id):
         """
         Retrieves player season statistics for player with specified id.
         """
@@ -106,8 +106,7 @@ class PlayerDataRetriever():
 
             plr_seasons.append(plr_season)
 
-            if not simulation:
-                self.create_or_update_database_item(plr_season, plr_season_db)
+            self.create_or_update_database_item(plr_season, plr_season_db)
 
         logger.info(
             "+ %d season statistics items retrieved for %s" % (
@@ -115,7 +114,7 @@ class PlayerDataRetriever():
 
         return plr_seasons
 
-    def retrieve_player_data(self, player_id, simulation=False):
+    def retrieve_player_data(self, player_id):
         """
         Retrieves personal data for player with specified id.
         """
@@ -132,9 +131,7 @@ class PlayerDataRetriever():
         plr_data_item = PlayerDataItem(player_id, plr_data_dict)
         plr_data_item_db = PlayerDataItem.find_by_player_id(player_id)
 
-        if not simulation:
-            self.create_or_update_database_item(
-                plr_data_item, plr_data_item_db)
+        self.create_or_update_database_item(plr_data_item, plr_data_item_db)
 
     def retrieve_buyout(self, player_id, contract):
         """
@@ -166,7 +163,7 @@ class PlayerDataRetriever():
             contract_year.bought_out = True
             commit_db_item(contract_year)
 
-    def retrieve_player_contracts(self, player_id, simulation=False):
+    def retrieve_player_contracts(self, player_id):
         plr = Player.find_by_id(player_id)
 
         if plr is None:
@@ -186,9 +183,8 @@ class PlayerDataRetriever():
                 plr_contract_dict['start_season'],
                 plr_contract_dict['end_season'])
 
-            if not simulation:
-                contract_db = self.create_or_update_database_item(
-                    contract, contract_db)
+            contract_db = self.create_or_update_database_item(
+                contract, contract_db)
 
             if not contract_db:
                 continue
@@ -197,10 +193,10 @@ class PlayerDataRetriever():
                 contract_year = ContractYear(
                     player_id, contract_db.contract_id, contract_year_dict)
                 contract_year_db = ContractYear.find(
-                    player_id, contract_db.contract_id, contract_year_dict['season'])
-                if not simulation:
-                    self.create_or_update_database_item(
-                        contract_year, contract_year_db)
+                    player_id, contract_db.contract_id,
+                    contract_year_dict['season'])
+                self.create_or_update_database_item(
+                    contract_year, contract_year_db)
 
             if contract_db.bought_out:
                 self.retrieve_buyout(player_id, contract_db)
@@ -209,39 +205,25 @@ class PlayerDataRetriever():
             contract_year = ContractYear(player_id, None, hist_salary_year)
             contract_year_db = ContractYear.find(
                 player_id, None, hist_salary_year['season'])
-            if not simulation:
-                self.create_or_update_database_item(
-                    contract_year, contract_year_db)
+            self.create_or_update_database_item(
+                contract_year, contract_year_db)
 
     def create_or_update_database_item(self, new_item, db_item):
         """
         Creates or updates database item.
         """
         plr = Player.find_by_id(new_item.player_id)
-
-        if type(new_item) is Contract:
-            ss = 'contract'
-        elif type(new_item) is ContractYear:
-            ss = 'contract year'
-        elif type(new_item) is PlayerSeason:
-            ss = 'player season'
-        elif type(new_item) is PlayerDataItem:
-            ss = 'player data'
-        elif type(new_item) is Buyout:
-            ss = 'buyout'
-        elif type(new_item) is BuyoutYear:
-            ss = 'buyout year'
-        else:
-            ss = ''
+        cls_name = new_item.__class__.__name__.lower()
 
         with session_scope() as session:
             if not db_item or db_item is None:
-                logger.debug("+ Adding %s item for %s" % (ss, plr.name))
+                logger.debug("+ Adding %s item for %s" % (cls_name, plr.name))
                 session.add(new_item)
                 return_item = new_item
             else:
                 if db_item != new_item:
-                    logger.info("+ Updating %s item for %s" % (ss, plr.name))
+                    logger.info(
+                        "+ Updating %s item for %s" % (cls_name, plr.name))
                     db_item.update(new_item)
                     return_item = session.merge(db_item)
                 else:
@@ -360,7 +342,10 @@ class PlayerDataRetriever():
                 plr_data_dict[self.DB_KEY_DATE_OF_BIRTH] = parser.parse(person[
                     self.JSON_KEY_DATE_OF_BIRTH]).date()  # just date component
             # place of birth
-            if self.JSON_KEY_PLACE_OF_BIRTH_CITY in person and self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY in person:
+            if (
+                self.JSON_KEY_PLACE_OF_BIRTH_CITY in person and
+                self.JSON_KEY_PLACE_OF_BIRTH_COUNTRY in person
+            ):
                 if self.JSON_KEY_PLACE_OF_BIRTH_STATE_PROVINCE in person:
                     place_of_birth = ", ".join((
                         person[self.JSON_KEY_PLACE_OF_BIRTH_CITY],
@@ -453,7 +438,7 @@ class PlayerDataRetriever():
         while potential_capfriendly_ids and not capfriendly_id_found:
             potential_capfriendly_id = potential_capfriendly_ids.pop(0)
             query_id = potential_capfriendly_id.replace(" ", "-")
-            url = "".join((self.CAPFRIENDLY_SITE_PREFIX, query_id))
+            url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, query_id))
             r = requests.get(url)
             doc = html.fromstring(r.text)
             page_header = doc.xpath("//h1/text()").pop(0).strip()
@@ -478,7 +463,7 @@ class PlayerDataRetriever():
                 continue
             if note == "CLAUSE SOURCE":
                 break
-            contract_notes.append(re.sub(self.CONTRACT_CLAUSE_REGEX, "", note))
+            contract_notes.append(re.sub(self.CAPFRIENDLY_CLAUSE_REGEX, "", note))
         return ", ".join(contract_notes)
 
     def get_contract_buyout_status(self, contract_dict):
@@ -505,7 +490,10 @@ class PlayerDataRetriever():
             return None
 
     def retrieve_raw_contract_data(self, player_id):
-
+        """
+        Retrieves contract information for player with specified id as a
+        list of dictionary object.
+        """
         # setting up list of contracts for current player
         contract_list = list()
 
@@ -514,7 +502,7 @@ class PlayerDataRetriever():
             logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
             return contract_list
 
-        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, plr.capfriendly_id))
+        url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, plr.capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
@@ -590,7 +578,7 @@ class PlayerDataRetriever():
             logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
             return buyout_dict
 
-        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, plr.capfriendly_id))
+        url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, plr.capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
@@ -642,7 +630,7 @@ class PlayerDataRetriever():
             logger.warn("+ Unable to historical salary data for %s" % plr.name)
             return historical_salaries
 
-        url = "".join((self.CAPFRIENDLY_SITE_PREFIX, plr.capfriendly_id))
+        url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, plr.capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 

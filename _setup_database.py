@@ -29,25 +29,25 @@ if __name__ == '__main__':
 
     # migrating teams from json file to database
     if setup_steps in ['t', 'a']:
-        migrate_teams(simulation=True)
+        migrate_teams()
     # creating divisions from division configuration file
     if setup_steps in ['d', 'a']:
-        create_divisions(simulation=True)
+        create_divisions()
     # migrating players from json file to database
     if setup_steps in ['p', 'a']:
-        migrate_players(simulation=True)
+        migrate_players()
     # retrieving player season statistics for all players in database
     if setup_steps in ['ps', 'a']:
-        create_player_seasons(simulation=False)
+        create_player_seasons()
     # retrieving individual player data for all players in database
     if setup_steps in ['pd', 'a']:
-        create_player_data(simulation=False)
-
+        create_player_data()
+    # retrieving contract data for all players in database
     if setup_steps in ['c']:
-        create_player_contracts(simulation=False)
-
+        create_player_contracts()
+    # retrieving capfriendly ids for all players in database
     if setup_steps in ['cf']:
         create_capfriendly_ids()
-
+    # retrieving capfriendly ids for players of all teams in database
     if setup_steps in ['cft']:
         create_capfriendly_ids_by_team()

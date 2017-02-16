@@ -9,7 +9,7 @@ from db.team import Team
 from db.division import Division
 
 
-def create_divisions(div_src_file=None, simulation=False):
+def create_divisions(div_src_file=None):
 
     if not div_src_file:
         div_src_file = os.path.join(
@@ -40,8 +40,7 @@ def create_divisions(div_src_file=None, simulation=False):
 
                     print(division)
 
-            if not simulation:
-                session.commit()
+            session.commit()
 
         except:
             session.rollback()
