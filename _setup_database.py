@@ -6,11 +6,11 @@ import argparse
 from setup.create_teams import migrate_teams
 from setup.create_divisions import create_divisions
 from setup.create_players import migrate_players
-from setup.create_player_seasons import create_player_seasons
-from setup.create_player_seasons import create_player_data
-from setup.create_player_seasons import create_player_contracts
-from setup.create_player_seasons import create_capfriendly_ids
-from setup.create_player_seasons import create_capfriendly_ids_by_team
+from setup.create_player_data import create_player_seasons
+from setup.create_player_data import create_player_data
+from setup.create_player_data import create_player_contracts
+from setup.create_player_data import create_capfriendly_ids
+from setup.create_player_data import create_capfriendly_ids_by_team
 
 from utils import prepare_logging
 prepare_logging(log_types=['file', 'screen'])
