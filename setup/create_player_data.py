@@ -8,6 +8,7 @@ from db.common import session_scope
 from db.player import Player
 from db.team import Team
 from utils.player_data_retriever import PlayerDataRetriever
+from utils.player_contract_retriever import PlayerContractRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ def create_player_data():
             threads.submit(
                 data_retriever.retrieve_player_data,
                 player.player_id
-            ): player for player in players
+            ): player for player in sorted(players)
         }
         for future in concurrent.futures.as_completed(future_tasks):
             try:
@@ -65,7 +66,7 @@ def create_player_contracts():
     """
     Creates player contract items in database.
     """
-    data_retriever = PlayerDataRetriever()
+    data_retriever = PlayerContractRetriever()
 
     with session_scope() as session:
         players = session.query(Player).all()[:]
@@ -75,7 +76,7 @@ def create_player_contracts():
             threads.submit(
                 data_retriever.retrieve_player_contracts,
                 player.player_id
-            ): player for player in players
+            ): player for player in sorted(players)[:3]
         }
         for future in concurrent.futures.as_completed(future_tasks):
             try:
@@ -98,7 +99,7 @@ def create_capfriendly_ids():
             threads.submit(
                 data_retriever.retrieve_capfriendly_id,
                 player.player_id
-            ): player for player in players
+            ): player for player in sorted(players)
         }
         for future in concurrent.futures.as_completed(future_tasks):
             try:
@@ -108,7 +109,9 @@ def create_capfriendly_ids():
 
 
 def create_capfriendly_ids_by_team():
-
+    """
+    Creates capfriendly id attributes for all players of each team in database.
+    """
     data_retriever = PlayerDataRetriever()
 
     from sqlalchemy import and_
@@ -121,6 +124,15 @@ def create_capfriendly_ids_by_team():
             )
         ).all()
 
-    for team in sorted(teams)[:]:
-        print(team)
-        data_retriever.retrieve_capfriendly_ids(team.team_id)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+        future_tasks = {
+            threads.submit(
+                data_retriever.retrieve_capfriendly_ids,
+                team.team_id
+            ): team for team in sorted(teams)[:]
+        }
+        for future in concurrent.futures.as_completed(future_tasks):
+            try:
+                pass
+            except Exception as e:
+                print("Concurrent task generated an exception: %s" % e)
