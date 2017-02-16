@@ -103,3 +103,9 @@ class Player(Base):
 
     def __ne__(self, other):
         return not self == other
+
+    def __gt__(self, other):
+        return self.last_name > other.last_name
+
+    def __lt__(self, other):
+        return self.last_name < other.last_name
