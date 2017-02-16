@@ -21,7 +21,7 @@ from utils import feet_to_m, lbs_to_kg
 logger = logging.getLogger(__name__)
 
 
-class PlayerContractRetriever():
+class PlayerDataRetriever():
 
     NHL_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
     CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
