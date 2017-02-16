@@ -87,7 +87,7 @@ class PlayerContractRetriever():
         Retrieves buyout information for specified player and contract.
         """
         # retrieving raw buyout data
-        buyout_dict = self.retrieve_raw_buyot_data(player_id)
+        buyout_dict = self.retrieve_raw_buyout_data(player_id)
         # setting up buyout item
         buyout = Buyout(player_id, contract.contract_id, buyout_dict)
         # finding suitable buyout in database
@@ -256,7 +256,7 @@ class PlayerContractRetriever():
 
         return seasons, contract_years
 
-    def retrieve_raw_buyot_data(self, player_id):
+    def retrieve_raw_buyout_data(self, player_id):
         """
         Retrieves buyout information for player with specified id as a
         dictionary object.
