@@ -26,19 +26,19 @@ if __name__ == '__main__':
     season_data = retrieve_goals_per_season(1917, 2016)
     calculate_adjustment_factors(season_data)
 
-    # open(goals_per_season_path, 'w').write(
-    #     json.dumps(season_data, sort_keys=True, indent=2))
+    open(goals_per_season_path, 'w').write(
+        json.dumps(season_data, sort_keys=True, indent=2))
 
     # retrieving goal scoring leaders
-    career_goal_leaders = retrieve_career_leaders(350)
+    career_goal_leaders = retrieve_career_leaders(300)
     # yearly_leaders = retrieve_yearly_leaders(1917, 1919)
 
-    # open(career_goal_leaders_path, 'w').write(
-    #     json.dumps(list(career_goal_leaders), indent=2))
+    open(career_goal_leaders_path, 'w').write(
+        json.dumps(list(career_goal_leaders), indent=2))
 
     # adjusting goal scoring totals according to goals scored per season
     adjusted_goal_data = retrieve_and_adjust_goal_totals(
         career_goal_leaders_path, goals_per_season_path)
 
-    # open(adjusted_goal_data_path, 'w').write(
-    #     json.dumps(adjusted_goal_data, sort_keys=True, indent=2))
+    open(adjusted_goal_data_path, 'w').write(
+        json.dumps(adjusted_goal_data, sort_keys=True, indent=2))

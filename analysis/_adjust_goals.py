@@ -89,14 +89,38 @@ def retrieve_regular_goal_totals(plr_name, plr_link):
     table = table.pop(0)
 
     # retrieving seasons played from standard player stats table
+    # the following expression does not include WHA seasons
+    # seasons_played = table.xpath(
+    #     "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
+    #     "'stats_basic_plus_nhl.')]/th[@data-stat='season']/text()")
+    # expression only considering NHL seasons:
     seasons_played = table.xpath(
-        "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, 'stats_basic_plus_nhl.')]/th[@data-stat='season']/text()")
+        "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
+        "'stats_basic_plus_nhl.')]/td[@data-stat='lg_id']/a[text() = 'NHL']" +
+        "/parent::*/preceding-sibling::th/text()"
+    )
     # retrieving games played in each season from standard player stats table
+    # the following expression does not include WHA seasons
+    # games_played = [int(x) for x in table.xpath(
+    #     "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
+    #     "'stats_basic_plus_nhl.')]/td[@data-stat='games_played']//text()")]
+    # expression only considering NHL seasons:
     games_played = [int(x) for x in table.xpath(
-        "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, 'stats_basic_plus_nhl.')]/td[@data-stat='games_played']//text()")]
+        "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
+        "'stats_basic_plus_nhl.')]/td[@data-stat='lg_id']/a[text() = 'NHL']" +
+        "/parent::*/following-sibling::td[@data-stat='games_played']//text()"
+    )]
     # retrieving goals scored in each season from standard player stats table
+    # the following expression does not include WHA seasons
+    # goals_scored = [int(x) for x in table.xpath(
+    #     "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
+    #     "'stats_basic_plus_nhl.')]/td[@data-stat='goals']//text()")]
+    # expression only considering NHL seasons:
     goals_scored = [int(x) for x in table.xpath(
-        "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, 'stats_basic_plus_nhl.')]/td[@data-stat='goals']//text()")]
+        "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
+        "'stats_basic_plus_nhl.')]/td[@data-stat='lg_id']/a[text() = 'NHL']" +
+        "/parent::*/following-sibling::td[@data-stat='goals']//text()"
+    )]
 
     # checking whether number of retrieved data items matches
     assert len(seasons_played) == len(goals_scored)
