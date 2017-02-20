@@ -9,6 +9,7 @@ from db.player import Player
 from db.team import Team
 from utils.player_data_retriever import PlayerDataRetriever
 from utils.player_contract_retriever import PlayerContractRetriever
+from utils.player_draft_retriever import PlayerDraftRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -76,13 +77,39 @@ def create_player_contracts():
             threads.submit(
                 data_retriever.retrieve_player_contracts,
                 player.player_id
-            ): player for player in sorted(players)[:3]
+            ): player for player in sorted(players)[:]
         }
         for future in concurrent.futures.as_completed(future_tasks):
             try:
                 pass
             except Exception as e:
                 print("Concurrent task generated an exception: %s" % e)
+
+
+def create_player_drafts():
+
+    data_retriever = PlayerDraftRetriever()
+
+    with session_scope() as session:
+        players = session.query(Player).all()[:]
+
+    print(len(players))
+
+    for p in players[:3]:
+        data_retriever.retrieve_draft_information(p.player_id)
+
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+    #     future_tasks = {
+    #         threads.submit(
+    #             data_retriever.retrieve_draft_information,
+    #             player.player_id
+    #         ): player for player in sorted(players)[:3]
+    #     }
+    #     for future in concurrent.futures.as_completed(future_tasks):
+    #         try:
+    #             pass
+    #         except Exception as e:
+    #             print("Concurrent task generated an exception: %s" % e)
 
 
 def create_capfriendly_ids():

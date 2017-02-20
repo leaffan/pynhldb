@@ -9,6 +9,7 @@ from setup.create_players import migrate_players
 from setup.create_player_data import create_player_seasons
 from setup.create_player_data import create_player_data
 from setup.create_player_data import create_player_contracts
+from setup.create_player_data import create_player_drafts
 from setup.create_player_data import create_capfriendly_ids
 from setup.create_player_data import create_capfriendly_ids_by_team
 
@@ -22,7 +23,7 @@ if __name__ == '__main__':
         description='Setup script for NHL database creation.')
     parser.add_argument(
         'steps', metavar='setup_steps', help='Setup steps to execute.',
-        choices=['a', 'c', 't', 'd', 'p', 'ps', 'pd', 'cf', 'cft'])
+        choices=['a', 'c', 't', 'd', 'p', 'ps', 'pd', 'cf', 'cft', 'dft'])
 
     args = parser.parse_args()
     setup_steps = args.steps
@@ -45,6 +46,9 @@ if __name__ == '__main__':
     # retrieving contract data for all players in database
     if setup_steps in ['c']:
         create_player_contracts()
+    # retrieving draft data for all players in database
+    if setup_steps in ['dft']:
+        create_player_drafts()
     # retrieving capfriendly ids for all players in database
     if setup_steps in ['cf']:
         create_capfriendly_ids()
