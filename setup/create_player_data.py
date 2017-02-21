@@ -87,29 +87,26 @@ def create_player_contracts():
 
 
 def create_player_drafts():
-
+    """
+    Creates player draft information for all players in database.
+    """
     data_retriever = PlayerDraftRetriever()
 
     with session_scope() as session:
         players = session.query(Player).all()[:]
 
-    print(len(players))
-
-    for p in players[:3]:
-        data_retriever.retrieve_draft_information(p.player_id)
-
-    # with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
-    #     future_tasks = {
-    #         threads.submit(
-    #             data_retriever.retrieve_draft_information,
-    #             player.player_id
-    #         ): player for player in sorted(players)[:3]
-    #     }
-    #     for future in concurrent.futures.as_completed(future_tasks):
-    #         try:
-    #             pass
-    #         except Exception as e:
-    #             print("Concurrent task generated an exception: %s" % e)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+        future_tasks = {
+            threads.submit(
+                data_retriever.retrieve_draft_information,
+                player.player_id
+            ): player for player in sorted(players)[:]
+        }
+        for future in concurrent.futures.as_completed(future_tasks):
+            try:
+                pass
+            except Exception as e:
+                print("Concurrent task generated an exception: %s" % e)
 
 
 def create_capfriendly_ids():
