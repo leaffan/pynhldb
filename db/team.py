@@ -56,11 +56,11 @@ class Team(Base):
             return t
 
     @classmethod
-    def find_by_orig_abbr(cls, abbr):
+    def find_by_abbr(cls, abbr):
         with session_scope() as session:
             try:
                 t = session.query(Team).filter(
-                    Team.orig_abbr == abbr
+                    Team.abbr == abbr
                 ).one()
             except:
                 t = None
