@@ -3,6 +3,7 @@
 
 import logging
 import json
+import concurrent.futures
 
 import requests
 from lxml import html
@@ -25,9 +26,13 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2016):
 
     yearly_top_goalscorers = set()
 
-    for year in range(start_season, end_season)[:3]:
+    for year in range(start_season, end_season)[:]:
         if year == 2004:
             continue
+
+        season = "%d-%s" % (year, str(year + 1)[-2:])
+        logger.info(
+            "+ Retrieving top %d goal scorers for season %s:" % (top, season))
 
         # table rows of interest for current season
         trs = doc.xpath("//div[@id='leaders_y%d']/table/tr" % (year + 1))
@@ -53,17 +58,34 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2016):
 
     # finally turning abbreviated names with abrreviated first names into
     # full names
-    # TODO: move to separate function
     final_year_top_goalscorers = set()
 
-    for link, name in yearly_top_goalscorers:
-        url = "".join((HOCKEY_REF_PREFIX, link))
-        r = requests.get(url)
-        doc = html.fromstring(r.text)
-        full_name = doc.xpath("//h1/text()").pop(0)
-        final_year_top_goalscorers.add((link, full_name))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+        future_tasks = {
+            threads.submit(
+                retrieve_full_name, link):
+                    link for link, name in yearly_top_goalscorers
+        }
+        for future in concurrent.futures.as_completed(future_tasks):
+            try:
+                final_year_top_goalscorers.add(future.result())
+            except Exception as e:
+                print("Concurrent task generated an exception: %s" % e)
 
     return final_year_top_goalscorers
+
+
+def retrieve_full_name(link):
+    """
+    Retrieves full name for specified link to a hockey-reference player profile
+    page.
+    """
+    url = "".join((HOCKEY_REF_PREFIX, link))
+    r = requests.get(url)
+    doc = html.fromstring(r.text)
+    full_name = doc.xpath("//h1/text()").pop(0)
+
+    return (link, full_name)
 
 
 def retrieve_yearly_leaders(start_season=1917, end_season=2016):
@@ -144,11 +166,18 @@ def retrieve_career_leaders(min_goals=350):
 if __name__ == '__main__':
 
     yearly_top_3 = retrieve_yearly_top(3)
+    print(yearly_top_3)
+    print()
     yearly_top_5 = retrieve_yearly_leaders()
+    print(yearly_top_5)
+    print()
     career_leaders = retrieve_career_leaders(300)
+    print(career_leaders)
+    print()
 
     goal_leaders = frozenset().union(
         yearly_top_3, yearly_top_5, career_leaders)
+    print(goal_leaders)
 
-    open(r"goal_leaders.json", 'w').write(
-        json.dumps(list(goal_leaders), sort_keys=True, indent=2))
+    # open(r"goal_leaders.json", 'w').write(
+    #     json.dumps(list(goal_leaders), sort_keys=True, indent=2))
