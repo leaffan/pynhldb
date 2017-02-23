@@ -20,11 +20,21 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
     players_data = json.load(open(players_src))
     goals_per_season_data = json.load(open(goals_per_season_src))
 
+    # TODO: automatically determine whether we're currently in mid-season
+    # if 'overall' in goals_per_season_data:
+    #     del goals_per_season_data['overall']
+    # last_full_season = sorted(
+    #     [int(s.split("-")[0]) for s in goals_per_season_data.keys()]).pop()
+
     adjusted_data = defaultdict(dict)
 
-    for plr_link, plr_name in sorted(players_data)[:]:
-        # retrieving regular goal data from player stats page
-        regular_goal_data = retrieve_regular_goal_totals(plr_name, plr_link)
+    for plr_link in sorted(players_data):
+        plr_name = players_data[plr_link]
+    # for plr_link, plr_name in sorted(players_data)[:]:
+        # retrieving regular goal data from player stats page, thereby
+        # excluding the most recent season, usually an on-going one
+        regular_goal_data = retrieve_regular_goal_totals(
+            plr_name, plr_link, True)
         # adjusting goal scoring totals per season
         adjusted_goal_data = calculate_adjusted_goals(
             regular_goal_data, goals_per_season_data)
@@ -70,7 +80,8 @@ def calculate_adjusted_goals(goal_data, goals_per_season_data):
     return goal_data
 
 
-def retrieve_regular_goal_totals(plr_name, plr_link):
+def retrieve_regular_goal_totals(
+        plr_name, plr_link, exclude_most_recent_season=False):
     """
     Retrieves regular season goal totals for specified player from player's
     stats page.
@@ -89,7 +100,7 @@ def retrieve_regular_goal_totals(plr_name, plr_link):
     table = table.pop(0)
 
     # retrieving seasons played from standard player stats table
-    # the following expression does not include WHA seasons
+    # the following expression does not exclude WHA seasons
     # seasons_played = table.xpath(
     #     "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
     #     "'stats_basic_plus_nhl.')]/th[@data-stat='season']/text()")
@@ -100,7 +111,7 @@ def retrieve_regular_goal_totals(plr_name, plr_link):
         "/parent::*/preceding-sibling::th/text()"
     )
     # retrieving games played in each season from standard player stats table
-    # the following expression does not include WHA seasons
+    # the following expression does not exclude WHA seasons
     # games_played = [int(x) for x in table.xpath(
     #     "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
     #     "'stats_basic_plus_nhl.')]/td[@data-stat='games_played']//text()")]
@@ -111,7 +122,7 @@ def retrieve_regular_goal_totals(plr_name, plr_link):
         "/parent::*/following-sibling::td[@data-stat='games_played']//text()"
     )]
     # retrieving goals scored in each season from standard player stats table
-    # the following expression does not include WHA seasons
+    # the following expression does not exclude WHA seasons
     # goals_scored = [int(x) for x in table.xpath(
     #     "tr[contains(@id, 'stats_basic_nhl.') or contains(@id, " +
     #     "'stats_basic_plus_nhl.')]/td[@data-stat='goals']//text()")]
@@ -121,6 +132,15 @@ def retrieve_regular_goal_totals(plr_name, plr_link):
         "'stats_basic_plus_nhl.')]/td[@data-stat='lg_id']/a[text() = 'NHL']" +
         "/parent::*/following-sibling::td[@data-stat='goals']//text()"
     )]
+
+    # excluding most recent season from data, this might be necessary if we're
+    # currently in mid-season (for which one an adjustment factor has not
+    # been provided yet)
+    # TODO: dynamic way of finding current season
+    if exclude_most_recent_season and seasons_played[-1] == "2016-17":
+        seasons_played = seasons_played[:-1]
+        games_played = games_played[:-1]
+        goals_scored = goals_scored[:-1]
 
     # checking whether number of retrieved data items matches
     assert len(seasons_played) == len(goals_scored)
