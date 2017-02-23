@@ -12,16 +12,18 @@ logger = logging.getLogger(__name__)
 URL_TEMPLATE = "http://www.hockey-reference.com/leagues/NHL_%d.html"
 
 
-def retrieve_goals_per_season(start_season=1917, end_season=2016):
+def retrieve_goals_per_season(start_season=1917, end_season=2015):
     """
     Retrieves goals scored for each NHL season.
     """
     logger.info(
-        "+ Calculating goals per game for NHL seasons between %d and %d" % (
-            start_season, end_season))
+        "+ Calculating goals per game for all NHL " +
+        "seasons between %d-%s and %d-%s" % (
+            start_season, str(start_season + 1)[-2:],
+            end_season, str(end_season + 1)[-2:]))
     season_data = defaultdict(dict)
 
-    for year in range(start_season, end_season)[:]:
+    for year in range(start_season, end_season + 1)[:]:
         # skipping season completely lost to a lockout
         if year == 2004:
             continue
@@ -42,8 +44,9 @@ def retrieve_goals_per_season(start_season=1917, end_season=2016):
             sub = html.fromstring(str(comment)[3:-3])
             if not sub.xpath("//table/caption/text()"):
                 continue
-            if sub.xpath("//table/caption/text()")[0] == "Team Statistics Table":
-                    team_stats = sub
+            if sub.xpath(
+                    "//table/caption/text()")[0] == "Team Statistics Table":
+                        team_stats = sub
 
         # retrieving games played by each team as list
         season_games_played = [
