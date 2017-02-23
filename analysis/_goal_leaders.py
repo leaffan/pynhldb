@@ -3,7 +3,6 @@
 
 import logging
 import json
-import concurrent.futures
 
 import requests
 from lxml import html
@@ -16,7 +15,7 @@ CAREER_GOAL_LEADERS_URL = "".join(
     (HOCKEY_REF_PREFIX, "/leaders/goals_career.html"))
 
 
-def retrieve_yearly_top(top=10, start_season=1917, end_season=2016):
+def retrieve_yearly_top(top=10, start_season=1917, end_season=2015):
     """
     Retrieves yearly top (maximum ten) goalscorers from single site.
     """
@@ -24,9 +23,9 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2016):
     r = requests.get(url)
     doc = html.fromstring(r.text)
 
-    yearly_top_goalscorers = set()
+    yearly_top_goalscorers = dict()
 
-    for year in range(start_season, end_season)[:]:
+    for year in range(start_season, end_season + 1)[:]:
         if year == 2004:
             continue
 
@@ -53,49 +52,23 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2016):
                 # target rank
                 if rank > top:
                     break
-            yearly_top_goalscorers.add(
-                (link, name))
+            logger.info("\t+ %s" % name)
+            yearly_top_goalscorers[link] = name
 
-    # finally turning abbreviated names with abrreviated first names into
-    # full names
-    final_year_top_goalscorers = set()
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
-        future_tasks = {
-            threads.submit(
-                retrieve_full_name, link):
-                    link for link, name in yearly_top_goalscorers
-        }
-        for future in concurrent.futures.as_completed(future_tasks):
-            try:
-                final_year_top_goalscorers.add(future.result())
-            except Exception as e:
-                print("Concurrent task generated an exception: %s" % e)
-
-    return final_year_top_goalscorers
+    return yearly_top_goalscorers
 
 
-def retrieve_full_name(link):
+def retrieve_yearly_leaders(start_season=1917, end_season=2015):
     """
-    Retrieves full name for specified link to a hockey-reference player profile
-    page.
+    Retrieves yearly NHL goal-scoring leaders (fixed at top 5, from multiple
+    sites).
+    This function is deprecated. Use the other one for top goalscorer retrieval
+    per season.
     """
-    url = "".join((HOCKEY_REF_PREFIX, link))
-    r = requests.get(url)
-    doc = html.fromstring(r.text)
-    full_name = doc.xpath("//h1/text()").pop(0)
-
-    return (link, full_name)
-
-
-def retrieve_yearly_leaders(start_season=1917, end_season=2016):
-    """
-    Retrieves yearly NHL goal-scoring leaders.
-    """
-    yearly_leaders = set()
+    yearly_leaders = dict()
 
     # retrieving leading goal scorers for each NHL first
-    for year in range(start_season, end_season)[:]:
+    for year in range(start_season, end_season + 1)[:]:
 
         # skipping season completely lost to a lockout
         if year == 2004:
@@ -124,11 +97,12 @@ def retrieve_yearly_leaders(start_season=1917, end_season=2016):
         # retrieving five best goalscorers in current season as list
         five_goal_leaders = leaders.xpath(
             "//div[@id='leaders_goals']/table/tr/td[@class='who']/a")
-        # adding name and link to player page to goalscorer dictionary
+        # adding name and url to player page to goalscorer dictionary
         for leader in five_goal_leaders:
-            logger.info("\t+ %s" % leader.xpath("text()")[0])
-            yearly_leaders.add(
-                (leader.xpath("@href")[0], leader.xpath("text()")[0]))
+            plr_url = leader.xpath("@href")[0]
+            plr_name = leader.xpath("text()")[0]
+            logger.info("\t+ %s" % plr_name)
+            yearly_leaders[plr_url] = plr_name
 
     return yearly_leaders
 
@@ -138,7 +112,7 @@ def retrieve_career_leaders(min_goals=350):
     Retrieves NHL career goal scoring leaders with at least the number of
     specified goals.
     """
-    career_leaders = set()
+    career_leaders = dict()
 
     r = requests.get(CAREER_GOAL_LEADERS_URL)
     doc = html.fromstring(r.text)
@@ -156,9 +130,9 @@ def retrieve_career_leaders(min_goals=350):
         # equal the defined amount of minimum goals
         if goals >= min_goals:
             plr_name = leader_row.xpath("td//a/text()")[0]
+            plr_link = leader_row.xpath("td//a/@href")[0]
             logger.info("\t+ %s (%d career goals)" % (plr_name, goals))
-            career_leaders.add((
-                leader_row.xpath("td//a/@href")[0], plr_name))
+            career_leaders[plr_link] = plr_name
 
     return career_leaders
 
@@ -166,18 +140,12 @@ def retrieve_career_leaders(min_goals=350):
 if __name__ == '__main__':
 
     yearly_top_3 = retrieve_yearly_top(3)
-    print(yearly_top_3)
-    print()
     yearly_top_5 = retrieve_yearly_leaders()
-    print(yearly_top_5)
-    print()
     career_leaders = retrieve_career_leaders(300)
-    print(career_leaders)
-    print()
 
     goal_leaders = frozenset().union(
         yearly_top_3, yearly_top_5, career_leaders)
     print(goal_leaders)
 
-    # open(r"goal_leaders.json", 'w').write(
-    #     json.dumps(list(goal_leaders), sort_keys=True, indent=2))
+    open(r"goal_leaders.json", 'w').write(
+        json.dumps(list(goal_leaders), sort_keys=True, indent=2))
