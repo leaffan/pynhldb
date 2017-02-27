@@ -9,6 +9,33 @@ import re
 from configparser import NoOptionError, NoSectionError
 
 
+def remove_null_strings(list_of_strings):
+    return [s for s in list_of_strings if s.strip()]
+
+
+def feet_to_cm(feet, inches):
+    """
+    Converts feet and inches to centimeters.
+    """
+    if type(feet) is not int:
+        feet = int(feet.replace("'", ""))
+    if type(inches) is not int:
+        inches = int(inches.replace('"', ''))
+    return feet * 30.48 + inches * 2.54
+
+
+def feet_to_m(feet, inches):
+    cm = feet_to_cm(feet, inches)
+    return cm / 100.
+
+
+def lbs_to_kg(lbs):
+    """
+    Converts pounds to kilograms.
+    """
+    return lbs * 0.453592
+
+
 def get_connection_string_from_config_file(cfg_src, section):
     """
     Gets connection parameters from specified section in
@@ -42,29 +69,7 @@ def get_connection_string_from_config_file(cfg_src, section):
     return conn_string
 
 
-def feet_to_cm(feet, inches):
-    """
-    Converts feet and inches to centimeters.
-    """
-    if type(feet) is not int:
-        feet = int(feet.replace("'", ""))
-    if type(inches) is not int:
-        inches = int(inches.replace('"', ''))
-    return feet * 30.48 + inches * 2.54
-
-
-def feet_to_m(feet, inches):
-    cm = feet_to_cm(feet, inches)
-    return cm / 100.
-
-
-def lbs_to_kg(lbs):
-    """
-    Converts pounds to kilograms.
-    """
-    return lbs * 0.453592
-
-
+# logging formatter
 class WhitespaceRemovingFormatter(logging.Formatter):
 
     REGEX = re.compile("^\+?\s")
