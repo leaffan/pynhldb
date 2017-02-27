@@ -32,8 +32,11 @@ class Team(Base):
     @classmethod
     def find_by_name(cls, name):
 
-        if name.lower() in ["canadiens montreal", "montreal canadiens"]:
-            name = "Montréal Canadiens"
+        if name.lower() in [
+                "canadiens montreal",
+                "montreal canadiens",
+                "canadien de montreal"]:
+                    name = "Montréal Canadiens"
 
         with session_scope() as session:
             try:
