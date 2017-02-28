@@ -6,6 +6,8 @@ from lxml import html
 
 from parsers.team_parser import TeamParser
 
+# TODO: add further tests
+
 
 def test_2016():
 
@@ -21,6 +23,8 @@ def test_2016():
 
     tp.create_teams()
 
+    assert tp.teams['road'].name == "Anaheim Ducks"
+    assert tp.teams['home'].name == "Tampa Bay Lightning"
     assert tp.teams['road'].game_no == 54
     assert tp.teams['home'].game_no == 53
     assert tp.teams['road'].home_road_no == 28
@@ -43,6 +47,8 @@ def test_2001_canadien():
 
     tp.create_teams()
 
+    assert tp.teams['road'].name == "San Jose Sharks"
+    assert tp.teams['home'].name == "Montréal Canadiens"
     assert tp.teams['road'].game_no == 51
     assert tp.teams['home'].game_no == 53
     assert tp.teams['road'].home_road_no == 27
@@ -65,6 +71,8 @@ def test_2001_atlanta_phoenix():
 
     tp.create_teams()
 
+    assert tp.teams['road'].name == "Phoenix Coyotes"
+    assert tp.teams['home'].name == "Atlanta Thrashers"
     assert tp.teams['road'].game_no == 52
     assert tp.teams['home'].game_no == 53
     assert tp.teams['road'].home_road_no == 27
@@ -74,6 +82,5 @@ def test_2001_atlanta_phoenix():
 
 
 def get_data(url):
-
     r = requests.get(url)
     return html.fromstring(r.text)
