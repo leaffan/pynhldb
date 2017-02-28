@@ -9,13 +9,17 @@ from utils import remove_null_strings
 
 logger = logging.getLogger(__name__)
 
+# TODO: use logger
+
 
 class TeamParser():
 
+    # regular expression to retrieve overall and home/road game counts
     GAME_COUNT_REGEX = re.compile(".+?(\d+).+?(\d+)")
 
     def __init__(self, raw_data):
-        self.data = raw_data
+        self.raw_data = raw_data
+        # preparing dictionary containers for parsed team data
         self.team_data = dict()
         self.teams = dict()
 
@@ -56,34 +60,34 @@ class TeamParser():
 
     def load_data(self):
         """
-        Loads raw data from html.
+        Loads raw data from html and pre-processes it.
         """
-        # index variable for pre-2007 team score retrieval
+        # index variable for pre-2007 team and team score retrieval
         idx = 0
 
         # defining and itearting over combinations of table id used in html and
         # internal dictionary key
         for (html_id, dict_key) in [("Visitor", "road"), ("Home", "home")]:
             # team information retrieval from 2007 to present
-            data_str = self.data.xpath(
+            data_str = self.raw_data.xpath(
                 "//table[@id='%s']/tr/td/text()" % html_id)
             # previously to 2007 this kind of information can only be retrieved
             # via a center tag inside a table data cell with a given width
             # as there are two teams per game sheet we need to track the
             # count via an index variable *idx*
             if not data_str:
-                data_str = [s.strip() for s in self.data.xpath(
+                data_str = [s.strip() for s in self.raw_data.xpath(
                     "//td[@width=125][%d]/center" % (idx + 1) +
                     "/descendant-or-self::*/text()")]
             # team score retrieval from 2007 to present
-            score_str = self.data.xpath(
+            score_str = self.raw_data.xpath(
                 "//table[@id='%s']/tr/td/table/tr/td/text()" % html_id)
             # previously to 2007 score information can only be retrieved
             # via the specified table width and font size values
             # as there are two scores per game sheet we need to track the
             # count via an index variable *idx*
             if not score_str:
-                score_str = [self.data.xpath(
+                score_str = [self.raw_data.xpath(
                     "//td[@width=25]/font[@size=7]/text()")[idx].strip()]
             self.team_data[dict_key] = data_str + score_str
             idx += 1
