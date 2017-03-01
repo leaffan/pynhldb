@@ -13,6 +13,22 @@ def remove_null_strings(list_of_strings):
     return [s for s in list_of_strings if s.strip()]
 
 
+def retrieve_season(date):
+    """
+    Identifies season based on month of given date, anything until June
+    belongs to the season ending in the date's year, anything after
+    June belongs to the season beginning in the date's year.
+    NB: Season's are identified by the year they're beginning in, even for
+    those that are shortened, i.e. 2012/13.
+    """
+    if date.month < 7:
+        season = date.year - 1
+    else:
+        season = date.year
+
+    return season
+
+
 def feet_to_cm(feet, inches):
     """
     Converts feet and inches to centimeters.
