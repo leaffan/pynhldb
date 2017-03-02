@@ -53,6 +53,12 @@ class GameParser():
         start, end = self.retrieve_game_start_end(game_date, game_type)
         # print("start: %s | end : %s" % (start, end))
 
+        (
+            overtime_game,
+            shootout_game,
+            so_winner) = self.retrieve_overtime_shootout_information(game_type)
+        print(overtime_game, shootout_game, so_winner)
+
     def retrieve_game_attendance_venue(self):
         """
         Retrieves attendance and venue information for current game.
@@ -129,6 +135,46 @@ class GameParser():
                 end_time_stamp.tzinfo))
 
         return start_date_time_stamp, end_date_time_stamp
+
+    def retrieve_overtime_shootout_information(self, game_type):
+        """
+        Retrieves information whether current game ended in overtime or a 
+        shootout.
+        """
+        overtime_game = False
+        shootout_game = False
+        so_winner = None
+
+        # retrieving all scoring summary table rows
+        scoring_trs = self.raw_data.xpath(
+            "//td[contains(text(), 'SCORING SUMMARY')]/ancestor::tr/" +
+            "following-sibling::tr[1]/td/table/tr[contains(@class, 'Color')]")
+
+        # retrieving all table cells with periods a goal was scored in
+        score_periods_tds = [tr.xpath("td[2]/text()")[0] for tr in scoring_trs]
+
+        # checking regular season game...
+        if game_type == 2:
+            # ...for a shootout goal
+            if 'SO' in score_periods_tds:
+                shootout_game = True
+                overtime_game = True
+            # ...for an overtime goal
+            elif 'OT' in score_periods_tds:
+                overtime_game = True
+
+            # retrieve shootout winning team abbreviation
+            if shootout_game:
+                so_winner = [
+                    tr.xpath("td[5]/text()")[0] for tr in scoring_trs][-1]
+        # checking playoff game...
+        elif game_type == 3:
+            # ...for an overtime goal, e.g. if there was a goal scored
+            # in a period later than the third
+            if max([int(x) for x in score_periods_tds]) > 3:
+                overtime_game = True
+
+        return overtime_game, shootout_game, so_winner
 
     def load_data(self):
         """
