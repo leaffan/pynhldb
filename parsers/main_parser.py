@@ -82,7 +82,6 @@ class MainParser():
         # retrieving essential game information, i.e. venue, attendance, score
         game = gp.create_game(teams)
 
-
     def read_on_demand(self, game_id, prefix):
         """
         Reads original HTML data into structured raw data.
