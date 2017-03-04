@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 
 from dateutil import parser
 
+from db.game import Game
 from utils import remove_null_strings, retrieve_season
 
 logger = logging.getLogger(__name__)
@@ -35,29 +36,59 @@ class GameParser():
         # loading and pre-processing raw data
         self.load_data()
 
+        game_data = dict()
+
         # retrieving game date from raw data
-        game_date = parser.parse(self.game_data[0]).date()
+        game_data['date'] = parser.parse(self.game_data[0]).date()
         # retrieving season for current game date
-        season = retrieve_season(game_date)
+        game_data['season'] = retrieve_season(game_data['date'])
         # setting up full game id, containing season, game type
         # and partial game id
-        full_game_id = "%d%s" % (season, self.game_id)
-        # print(full_game_id)
-
+        game_data['game_id'] = "%d%s" % (game_data['season'], self.game_id)
         # retrieving game type from partial game id
-        game_type = int(self.game_id[:2])
-
-        attendance, venue = self.retrieve_game_attendance_venue()
-        # print("'%d' | '%s'" % (attendance, venue))
-
-        start, end = self.retrieve_game_start_end(game_date, game_type)
-        # print("start: %s | end : %s" % (start, end))
-
+        game_data['type'] = int(self.game_id[:2])
+        # retrieving game attendance and venue
         (
-            overtime_game,
-            shootout_game,
-            so_winner) = self.retrieve_overtime_shootout_information(game_type)
-        print(overtime_game, shootout_game, so_winner)
+            game_data['attendance'],
+            game_data['venue']) = self.retrieve_game_attendance_venue()
+        # retrieving game start and end time
+        game_data['start'], game_data['end'] = self.retrieve_game_start_end(
+            game_data['date'], game_data['type'])
+        (
+            game_data['overtime_game'],
+            game_data['shootout_game'],
+            so_winner
+        ) = self.retrieve_overtime_shootout_information(game_data['type'])
+
+        try:
+            game_data['data_last_modified'] = parser.parse(
+                self.raw_data.xpath("//p[@id='last_modified']/text()")[0])
+        except:
+            game_data['data_last_modified'] = None
+
+        team_dict = self.link_game_with_teams(teams)
+
+        game_data = {**game_data, **team_dict}
+
+        game = Game(game_data)
+        print(game)
+
+    def link_game_with_teams(self, teams):
+        """
+        Adds team information to current game.
+        """
+        game_team_dict = dict()
+
+        for key in ['home', 'road']:
+            curr_team = teams[key]
+            game_team_dict["%s_team" % key] = curr_team
+            game_team_dict["%s_team_id" % key] = curr_team.team_id
+            game_team_dict["%s_score" % key] = curr_team.score
+            game_team_dict["%s_overall_game_count" % key] = curr_team.game_no
+            game_team_dict["%s_game_count" % key] = curr_team.home_road_no
+            game_team_dict[curr_team.orig_abbr] = curr_team
+
+        return game_team_dict
 
     def retrieve_game_attendance_venue(self):
         """
