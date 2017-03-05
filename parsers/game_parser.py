@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 
 from dateutil import parser
 
+from db.common import session_scope
 from db.game import Game
 from utils import remove_null_strings, retrieve_season
 
@@ -59,19 +60,40 @@ class GameParser():
             game_data['shootout_game'],
             so_winner
         ) = self.retrieve_overtime_shootout_information(game_data['type'])
-
+        # retrieving last modification date of original data
         try:
             game_data['data_last_modified'] = parser.parse(
                 self.raw_data.xpath("//p[@id='last_modified']/text()")[0])
         except:
             game_data['data_last_modified'] = None
-
+        # retrieving informatioan about participating teams
         team_dict = self.link_game_with_teams(teams)
-
+        # merging team and game information
         game_data = {**game_data, **team_dict}
+        # creating game
+        self.game = Game(game_data)
+        self.create_or_update_game()
 
-        game = Game(game_data)
-        print(game)
+    def create_or_update_game(self):
+        """
+        Creates or updates a game database item.
+        """
+        # retrieving game from database
+        db_game = Game.find_by_id(self.game.game_id)
+
+        with session_scope() as session:
+            if db_game is not None:
+                # checking for changes
+                if db_game == self.game:
+                    return db_game
+                else:
+                    # updating game
+                    db_game.update(self.game)
+                    session.merge(db_game)
+            else:
+                session.add(self.game)
+
+            self.game = session.commit()
 
     def link_game_with_teams(self, teams):
         """
