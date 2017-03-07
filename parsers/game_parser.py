@@ -45,7 +45,8 @@ class GameParser():
         game_data['season'] = retrieve_season(game_data['date'])
         # setting up full game id, containing season, game type
         # and partial game id
-        game_data['game_id'] = "%d%s" % (game_data['season'], self.game_id)
+        game_data['game_id'] = int(
+            "%d%s" % (game_data['season'], self.game_id))
         # retrieving game type from partial game id
         game_data['type'] = int(self.game_id[:2])
         # retrieving game attendance and venue
@@ -72,13 +73,13 @@ class GameParser():
         game_data = {**game_data, **team_dict}
         # creating game
         self.game = Game(game_data)
-        self.create_or_update_game()
+        return self.create_or_update_game()
 
     def create_or_update_game(self):
         """
         Creates or updates a game database item.
         """
-        # retrieving game from database
+        # trying to retrieve game with same id from database
         db_game = Game.find_by_id(self.game.game_id)
 
         with session_scope() as session:
@@ -93,7 +94,10 @@ class GameParser():
             else:
                 session.add(self.game)
 
-            self.game = session.commit()
+            session.commit()
+            session.refresh(self.game)
+
+        return self.game
 
     def link_game_with_teams(self, teams):
         """
@@ -191,7 +195,7 @@ class GameParser():
 
     def retrieve_overtime_shootout_information(self, game_type):
         """
-        Retrieves information whether current game ended in overtime or a 
+        Retrieves information whether current game ended in overtime or a
         shootout.
         """
         overtime_game = False
@@ -231,7 +235,7 @@ class GameParser():
 
     def load_data(self):
         """
-        Loads raw data from html and pre-processes it.
+        Loads structured raw data and pre-processes it.
         """
         # finding content of html element with *GameInfo*-id
         game_data_str = self.raw_data.xpath(

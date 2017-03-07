@@ -82,7 +82,7 @@ class Game(Base):
     def __str__(self):
         road_team = Team.find_by_id(self.road_team_id)
         home_team = Team.find_by_id(self.home_team_id)
-        return "%-25s (%d) @ %-25s (%d) [%s/%s]" % (
+        return "%-25s (%d) @ %-25s (%d) [%s/%d]" % (
             road_team.name, self.road_score,
             home_team.name, self.home_score,
             self.date, self.game_id)
