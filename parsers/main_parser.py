@@ -8,6 +8,7 @@ from lxml import html
 from utils.data_handler import DataHandler
 from parsers.team_parser import TeamParser
 from parsers.game_parser import GameParser
+from parsers.roster_parser import RosterParser
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,14 @@ class MainParser():
         self.raw_data[game_id] = dict()
         self.parsed_data[game_id] = dict()
 
-        self.create_game_and_teams(game_id)
+        (
+            self.parsed_data[game_id]['game'],
+            self.parsed_data[game_id]['teams']
+        ) = self.create_game_and_teams(game_id)
+
+        print(self.parsed_data[game_id]['game'])
+
+        self.create_rosters(game_id)
 
         # self.read_on_demand(game_id, "ES")
         # print(len(self.raw_data[game_id]), self.raw_data[game_id])
@@ -62,7 +70,7 @@ class MainParser():
         # removing raw structured data from memory
         del self.raw_data[game_id]
 
-    # TODO: test with another prefix instead of 'ES' and check memory usage
+    # TODO:  test with another prefix instead of 'ES' and check memory usage
     def create_game_and_teams(self, game_id):
         """
         Retrieves essential game and team information from structured raw data.
@@ -70,17 +78,35 @@ class MainParser():
         # reading data anew if necessary
         self.read_on_demand(game_id, 'GS')
         # setting up parser for team data
-        tp = TeamParser(self.raw_data[game_id]['GS'])
+        tp = TeamParser(
+            self.raw_data[game_id]['GS'])
         # retrieving teams participating in current game
         teams = tp.create_teams()
-
         # setting up parser for game data
         gp = GameParser(
             game_id,
             self.raw_data[game_id]['GS'],
             self.read_on_demand(game_id, 'SO'))
         # retrieving essential game information, i.e. venue, attendance, score
+        # using previously parsed team information
         game = gp.create_game(teams)
+
+        return game, teams
+
+    def create_rosters(self, game_id):
+        """
+        Retrieves roster information from structured raw data.
+        """
+        # reading data anew if necessary
+        self.read_on_demand(game_id, "ES")
+
+        # setting up parser for roster data
+        rp = RosterParser(self.raw_data[game_id]['ES'])
+        # retrieving roster information using previously retrieved game and
+        # team information
+        self.parsed_data[game_id]['rosters'] = rp.create_roster(
+            self.parsed_data[game_id]['game'],
+            self.parsed_data[game_id]['teams'])
 
     def read_on_demand(self, game_id, prefix):
         """
