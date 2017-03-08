@@ -7,10 +7,23 @@ import logging.handlers
 import os
 import re
 from configparser import NoOptionError, NoSectionError
+from datetime import timedelta
 
 
 def remove_null_strings(list_of_strings):
     return [s for s in list_of_strings if s.strip()]
+
+
+def str_to_timedelta(interval_as_str):
+    """
+    Converts a string time interval, i.e. '12:34', to an actual time interval.
+    """
+    try:
+        m, s = [int(x) for x in interval_as_str.split(":")]
+    except ValueError:
+        m = 0
+        s = 0
+    return timedelta(0, m * 60 + s)
 
 
 def retrieve_season(date):
