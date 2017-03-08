@@ -29,6 +29,8 @@ class PlayerGame(Base):
         for attr in self.STANDARD_ATTRS:
             if attr in data_dict:
                 setattr(self, attr, data_dict[attr])
+            else:
+                setattr(self, attr, None)
 
     @classmethod
     def find(self, game_id, player_id):
@@ -42,6 +44,39 @@ class PlayerGame(Base):
             except:
                 plr_game = None
             return plr_game
+
+    def update(self, other):
+        for attr in self.STANDARD_ATTRS:
+            setattr(self, attr, getattr(other, attr))
+
+    def __eq__(self, other):
+        return (
+            (
+                self.no, self.position, self.goals, self.assists,
+                self.primary_assists, self.secondary_assists, self.points,
+                self.plus_minus, self.penalties, self.pim,
+                self.toi_overall, self.toi_pp, self.toi_sh, self.toi_ev,
+                self.avg_shift, self.no_shifts, self.shots_on_goal,
+                self.shots_blocked, self.shots_missed, self.hits,
+                self.giveaways, self.takeaways,
+                self.blocks, self.faceoffs_won, self.faceoffs_lost,
+                # self.on_ice_shots_on_goal, self.on_ice_shots_missed,
+                # self.on_ice_shots_blocked
+                ) == (
+                other.no, other.position, other.goals, other.assists,
+                other.primary_assists, other.secondary_assists, other.points,
+                other.plus_minus, other.penalties, other.pim,
+                other.toi_overall, other.toi_pp, other.toi_sh, other.toi_ev,
+                other.avg_shift, other.no_shifts, other.shots_on_goal,
+                other.shots_blocked, other.shots_missed, other.hits,
+                other.giveaways, other.takeaways,
+                other.blocks, other.faceoffs_won, other.faceoffs_lost,
+                # other.on_ice_shots_on_goal, other.on_ice_shots_missed,
+                # other.on_ice_shots_blocked
+                ))
+
+    def __ne__(self, other):
+        return not self == other
 
     def __str__(self):
         if not hasattr(self, 'player') or self.player is None:
