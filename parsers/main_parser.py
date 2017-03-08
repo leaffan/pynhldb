@@ -53,7 +53,7 @@ class MainParser():
 
         self.parsed_data[game_id]['rosters'] = self.create_rosters(game_id)
 
-        print(self.parsed_data[game_id]['rosters'].keys())
+        print(self.parsed_data[game_id]['rosters'])
 
         # self.read_on_demand(game_id, "ES")
         # print(len(self.raw_data[game_id]), self.raw_data[game_id])
@@ -106,9 +106,11 @@ class MainParser():
         rp = RosterParser(self.raw_data[game_id]['ES'])
         # retrieving roster information using previously retrieved game and
         # team information
-        self.parsed_data[game_id]['rosters'] = rp.create_roster(
+        game_rosters = rp.create_roster(
             self.parsed_data[game_id]['game'],
             self.parsed_data[game_id]['teams'])
+
+        return game_rosters
 
     def read_on_demand(self, game_id, prefix):
         """
