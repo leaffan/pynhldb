@@ -51,7 +51,9 @@ class MainParser():
 
         print(self.parsed_data[game_id]['game'])
 
-        self.create_rosters(game_id)
+        self.parsed_data[game_id]['rosters'] = self.create_rosters(game_id)
+
+        print(self.parsed_data[game_id]['rosters'].keys())
 
         # self.read_on_demand(game_id, "ES")
         # print(len(self.raw_data[game_id]), self.raw_data[game_id])
