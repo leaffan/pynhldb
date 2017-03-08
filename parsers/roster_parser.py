@@ -4,6 +4,7 @@
 import logging
 import uuid
 
+from utils import str_to_timedelta
 from db.common import session_scope
 # from db.player import Player
 from db.player_game import PlayerGame
@@ -12,6 +13,16 @@ logger = logging.getLogger(__name__)
 
 
 class RosterParser():
+
+    # event summary values and statistics for each player in roster in
+    # exact the same order as in the original html table row
+    PLAYER_GAME_ATTRS = [
+        "no", "position", "name", "goals", "assists", "points", "plus_minus",
+        "penalties", "pim", "toi_overall", "no_shifts", "avg_shift", "toi_pp",
+        "toi_sh", "toi_ev", "shots_on_goal", "shots_blocked", "shots_missed",
+        "hits", "giveaways", "takeaways", "blocks",
+        "faceoffs_won", "faceoffs_lost",
+    ]
 
     def __init__(self, raw_data):
         # receiving structured raw data
@@ -33,29 +44,40 @@ class RosterParser():
             self.rosters[key] = dict()
             print("\t+ Roster for %s (%s team):" % (curr_team, key))
             for roster_line in self.roster_data[key]:
-                # retrieving number and player id
-                # no = int(roster_line[0])
-
-                pg_dict = dict()
-                pg_dict['goals'] = int(roster_line[3])
-                pg_dict['assists'] = int(roster_line[4])
-                pg_dict['points'] = int(roster_line[5])
-                pg_dict['pim'] = int(roster_line[8])
-
                 plr_game_id = uuid.uuid4().urn
-                plr_id = roster_line[-1]
+                plr_id = roster_line['plr_id']
                 pg = PlayerGame(
                     plr_game_id, game.game_id,
-                    curr_team.team_id, plr_id, pg_dict)
+                    curr_team.team_id, plr_id, roster_line)
                 print(pg, pg.player_game_id)
 
-                with session_scope() as session:
-                    session.add(pg)
-                    session.commit()
+                pg = self.create_or_update_player_game(pg)
+                self.rosters[key][pg.no] = pg
+        else:
+            return self.rosters
 
-                # plr = Player.find_by_id(plr_id)
-        #         # retrieving name and prename from data line
-        #         name, prename = roster_line[2].split(", ", 2)
+    def create_or_update_player_game(self, pgame):
+        """
+        Creates or updates a player game database item.
+        """
+        db_pgame = PlayerGame.find(pgame.game_id, pgame.player_id)
+
+        with session_scope() as session:
+            if db_pgame is not None:
+                # checking for changes
+                if db_pgame == pgame:
+                    return db_pgame
+                else:
+                    # updating game
+                    db_pgame.update(pgame)
+                    session.merge(db_pgame)
+            else:
+                session.add(pgame)
+
+            session.commit()
+            session.refresh(pgame)
+
+        return pgame
 
     def load_data(self):
         """
@@ -73,6 +95,9 @@ class RosterParser():
 
         # transforming table row elements into lists of data
         for key in ['road', 'home']:
+
+            roster_list = list()
+
             trs = self.roster_data[key]
             # retaining only those rows that have a number in their first table
             # cell, i.e. represent a player
@@ -85,8 +110,27 @@ class RosterParser():
             # replacing null strings with zeros
             contents = [[
                 s.replace('\xa0', '0') for s in item] for item in contents]
-            # appending player's nhl id
-            for t, c in zip(trs, contents):
-                c.append(int(t.xpath("td/span/@nhl_id")[0]))
-            # setting roster data to retrieved contents
-            self.roster_data[key] = contents
+            # creating data dictionaries for each table row, e.g. player
+            for tr, content in zip(trs, contents):
+                single_roster_line = dict()
+                # adding player id to single roster line
+                single_roster_line['plr_id'] = int(
+                    tr.xpath("td/span/@nhl_id")[0])
+                # retrieving values from table row contents
+                for attr in self.PLAYER_GAME_ATTRS:
+                    val = content[self.PLAYER_GAME_ATTRS.index(attr)]
+                    # converting time-on-ice data and average shift length
+                    # to timedelta intervals
+                    if attr.startswith('toi') or attr.startswith('avg'):
+                        val = str_to_timedelta(val)
+                    # leaving position and name unchanged
+                    elif attr in ('position', 'name'):
+                        pass
+                    # converting everything else into integers
+                    else:
+                        val = int(val)
+                    single_roster_line[attr] = val
+                # adding single roster line to all roster lines
+                roster_list.append(single_roster_line)
+            # setting roster data for current team type to retrieved contents
+            self.roster_data[key] = roster_list
