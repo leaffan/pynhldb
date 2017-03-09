@@ -6,7 +6,6 @@ import uuid
 
 from utils import str_to_timedelta
 from db.common import session_scope
-# from db.player import Player
 from db.player_game import PlayerGame
 
 logger = logging.getLogger(__name__)
