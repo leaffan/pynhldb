@@ -20,9 +20,8 @@ class PlayerGame(Base):
         "on_ice_shots_on_goal", "on_ice_shots_blocked", "on_ice_shots_missed"
     ]
 
-    def __init__(self, plr_game_id, game_id, team_id, plr_id, data_dict):
-        self.player_game_id = plr_game_id
-        self.player_game_id_2 = int("%d%02d%d" % (game_id, team_id, plr_id))
+    def __init__(self, game_id, team_id, plr_id, data_dict):
+        self.player_game_id = int("%d%02d%d" % (game_id, team_id, plr_id))
         self.game_id = game_id
         self.team_id = team_id
         self.player_id = plr_id
