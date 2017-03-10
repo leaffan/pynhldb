@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import uuid
 
 from utils import str_to_timedelta
 from db.common import session_scope
@@ -35,7 +34,7 @@ class RosterParser():
         """
         Retrieves players rosters for specified game and teams.
         """
-        # loading raw data
+        # loading and pre-processing structred raw data
         self.load_data()
 
         for key in sorted(self.roster_data.keys(), reverse=True):
@@ -43,13 +42,11 @@ class RosterParser():
             self.rosters[key] = dict()
             print("\t+ Roster for %s (%s team):" % (curr_team, key))
             for roster_line in self.roster_data[key]:
-                plr_game_id = uuid.uuid4().urn
                 plr_id = roster_line['plr_id']
+                # TODO: check whether player exists in database
+                # TODO: otherwise create one
                 pg = PlayerGame(
-                    plr_game_id, game.game_id,
-                    curr_team.team_id, plr_id, roster_line)
-                print(pg, pg.player_game_id)
-
+                    game.game_id, curr_team.team_id, plr_id, roster_line)
                 pg = self.create_or_update_player_game(pg)
                 self.rosters[key][pg.no] = pg
         else:
