@@ -14,18 +14,6 @@ def remove_null_strings(list_of_strings):
     return [s for s in list_of_strings if s.strip()]
 
 
-def str_to_timedelta(interval_as_str):
-    """
-    Converts a string time interval, i.e. '12:34', to an actual time interval.
-    """
-    try:
-        m, s = [int(x) for x in interval_as_str.split(":")]
-    except ValueError:
-        m = 0
-        s = 0
-    return timedelta(0, m * 60 + s)
-
-
 def retrieve_season(date):
     """
     Identifies season based on month of given date, anything until June
@@ -42,6 +30,19 @@ def retrieve_season(date):
     return season
 
 
+# conversion functions
+def str_to_timedelta(interval_as_str):
+    """
+    Converts a string time interval, i.e. '12:34', to an actual time interval.
+    """
+    try:
+        m, s = [int(x) for x in interval_as_str.split(":")]
+    except ValueError:
+        m = 0
+        s = 0
+    return timedelta(0, m * 60 + s)
+
+
 def feet_to_cm(feet, inches):
     """
     Converts feet and inches to centimeters.
@@ -54,6 +55,9 @@ def feet_to_cm(feet, inches):
 
 
 def feet_to_m(feet, inches):
+    """
+    Converts feet and inches to meters.
+    """
     cm = feet_to_cm(feet, inches)
     return cm / 100.
 
@@ -65,6 +69,7 @@ def lbs_to_kg(lbs):
     return lbs * 0.453592
 
 
+# utility function for database connection
 def get_connection_string_from_config_file(cfg_src, section):
     """
     Gets connection parameters from specified section in
@@ -98,9 +103,13 @@ def get_connection_string_from_config_file(cfg_src, section):
     return conn_string
 
 
+# utility class and functions for logging purposes
 # logging formatter
 class WhitespaceRemovingFormatter(logging.Formatter):
-
+    """
+    Defines a special logging formatter that removes '+ ' from the beginning
+    of the logged message.
+    """
     REGEX = re.compile("^\+?\s")
 
     def format(self, record):
@@ -110,7 +119,10 @@ class WhitespaceRemovingFormatter(logging.Formatter):
 
 
 def prepare_logging(log_types=['file', 'screen'], logdir=''):
-
+    """
+    Prepares logging for the specified channels, e.g. 'file' (a log file) and
+    'screen' (the command line).
+    """
     logging.getLogger("requests").setLevel(logging.WARNING)
 
     if not logdir:
