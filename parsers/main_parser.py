@@ -9,6 +9,7 @@ from utils.data_handler import DataHandler
 from parsers.team_parser import TeamParser
 from parsers.game_parser import GameParser
 from parsers.roster_parser import RosterParser
+from parsers.goalie_parser import GoalieParser
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,11 @@ class MainParser():
         self.parsed_data[game_id]['rosters'] = self.create_rosters(game_id)
 
         print(self.parsed_data[game_id]['rosters'])
+
+        self.gop = GoalieParser(self.raw_data[game_id]['GS'])
+        self.gop.create_goalies(
+            self.parsed_data[game_id]['game'],
+            self.parsed_data[game_id]['rosters'])
 
         # self.read_on_demand(game_id, "ES")
         # print(len(self.raw_data[game_id]), self.raw_data[game_id])
