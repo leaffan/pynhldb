@@ -28,7 +28,7 @@ class GameParser():
     # regular expression retrieve attendance figure
     ATTENDANCE_AT_VENUE_REGEX = re.compile("\s(@|at)\s")
 
-    def __init__(self, game_id, raw_data, raw_so_data):
+    def __init__(self, game_id, raw_data, raw_so_data=None):
         self.game_id = game_id
         self.raw_data = raw_data
         self.raw_so_data = raw_so_data

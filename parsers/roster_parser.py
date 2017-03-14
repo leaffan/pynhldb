@@ -27,7 +27,7 @@ class RosterParser():
         self.raw_data = raw_data
         # setting up dictionary for team roster data (from parsed document)
         self.roster_data = dict()
-        # setting up dictionary for team rosters
+        # setting up final dictionary for team rosters
         self.rosters = dict()
 
     def create_roster(self, game, teams):
