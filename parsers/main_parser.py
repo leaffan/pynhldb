@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class MainParser():
     # data prefixes for official html datasets:
-    #   ES ... event summary,
+    #   ES ... event summary
     #   FC ... faceoff comparison
     #   GS ... game summary
     #   PL ... play-by-play report
@@ -42,38 +42,28 @@ class MainParser():
         self.game_ids = self.dh.find_games()
 
     def parse_single_game(self, game_id):
+        """
+        Parses raw structured data for single game to create datbase-ready
+        objects.
+        """
+        # setting up dictionary for structured raw data
         self.raw_data[game_id] = dict()
         self.parsed_data[game_id] = dict()
 
+        # parsing current game and teams participating in it
         (
             self.parsed_data[game_id]['game'],
             self.parsed_data[game_id]['teams']
         ) = self.create_game_and_teams(game_id)
+        # print(self.parsed_data[game_id]['game'])
 
-        print(self.parsed_data[game_id]['game'])
-
+        # parsing players participating in current game
         self.parsed_data[game_id]['rosters'] = self.create_rosters(game_id)
+        # print(self.parsed_data[game_id]['rosters'])
 
-        print(self.parsed_data[game_id]['rosters'])
-
-        self.gop = GoalieParser(self.raw_data[game_id]['GS'])
-        self.gop.create_goalies(
-            self.parsed_data[game_id]['game'],
-            self.parsed_data[game_id]['rosters'])
-
-        # self.read_on_demand(game_id, "ES")
-        # print(len(self.raw_data[game_id]), self.raw_data[game_id])
-        # self.read_on_demand(game_id, "GS")
-        # print(len(self.raw_data[game_id]), self.raw_data[game_id])
-        # self.read_on_demand(game_id, "TV")
-        # print(len(self.raw_data[game_id]), self.raw_data[game_id])
-        # self.read_on_demand(game_id, "TH")
-        # print(len(self.raw_data[game_id]), self.raw_data[game_id])
-        # self.read_on_demand(game_id, "ES")
-        # print(len(self.raw_data[game_id]), self.raw_data[game_id])
-
-        # import time
-        # time.sleep(2)
+        # parsing goalies participating in current game
+        self.parsed_data[game_id]['goalies'] = self.create_goalies(game_id)
+        # print(self.parsed_data[game_id]['goalies'])
 
         # removing raw structured data from memory
         del self.raw_data[game_id]
@@ -112,11 +102,26 @@ class MainParser():
         rp = RosterParser(self.raw_data[game_id]['ES'])
         # retrieving roster information using previously retrieved game and
         # team information
-        game_rosters = rp.create_roster(
+        rosters = rp.create_roster(
             self.parsed_data[game_id]['game'],
             self.parsed_data[game_id]['teams'])
 
-        return game_rosters
+        return rosters
+
+    def create_goalies(self, game_id):
+        """
+        Retrieves goaltender information from structured raw data.
+        """
+        # setting up parser for goalie games
+        gp = GoalieParser(
+            self.raw_data[game_id]['GS'],
+            self.read_on_demand(game_id, 'SO'))
+        # retrieving goalies participating in current game
+        goalies = gp.create_goalies(
+            self.parsed_data[game_id]['game'],
+            self.parsed_data[game_id]['rosters'])
+
+        return goalies
 
     def read_on_demand(self, game_id, prefix):
         """
