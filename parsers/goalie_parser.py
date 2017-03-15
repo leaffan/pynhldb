@@ -4,26 +4,30 @@
 import logging
 import re
 from operator import sub
+from collections import defaultdict
 
 from utils import str_to_timedelta
+from db import create_or_update_db_item
+from db.goalie_game import GoalieGame
 
 logger = logging.getLogger(__name__)
 
 
 class GoalieParser():
 
-    WIN_LOSS_REGEX = re.compile("\((W|L|T|OT)\)")
-
+    # binary goaltender game attributes
     GOALIE_GAME_ATTRS = [
         'win', 'loss', 'tie', 'regulation_tie',
         'overtime_game', 'shootout_game',
         'shutout', 'en_goals', 'otl']
+    WIN_LOSS_REGEX = re.compile("\((W|L|T|OT)\)")
 
     def __init__(self, raw_data, raw_so_data=None):
         self.raw_data = raw_data
+        # retrieving raw structured shootout data (if available)
         self.raw_so_data = raw_so_data
         self.goalie_data = dict()
-        self.goalies = dict()
+        self.goalies = defaultdict(list)
 
     def create_goalies(self, game, rosters):
         self.game = game
@@ -31,40 +35,124 @@ class GoalieParser():
         self.load_data()
 
         for key in ['road', 'home']:
-            if key == 'road':
-                team_id = self.game.road_team_id
-            else:
-                team_id = self.game.home_team_id
 
+            team_id = getattr(self.game, "%s_team_id" % key)
+
+            # retrieving goalies actually playing in game
             goalies_in_game = self.retrieve_goalies_in_game(
                 self.goalie_data[key])
 
             for goalie_data_tr in goalies_in_game:
                 tokens = goalie_data_tr.xpath("td/text()")
 
+                # setting up goalie game data dictionary
                 goalie_game_data_dict = dict()
 
+                # setting several goalie game attributes to default value
                 for item in self.GOALIE_GAME_ATTRS:
                     goalie_game_data_dict[item] = 0
 
-                    goalie_game_data_dict['no'] = int(tokens[0])
-                    plr_game = self.rosters[key][goalie_game_data_dict['no']]
+                goalie_game_data_dict['no'] = int(tokens[0])
+                plr_game = self.rosters[key][goalie_game_data_dict['no']]
 
-                    goalie_game_data_dict = self.retrieve_time_on_ice(
-                        goalie_game_data_dict, tokens)
+                # retrieving goalie's time on ice
+                goalie_game_data_dict = self.retrieve_time_on_ice(
+                    goalie_game_data_dict, tokens)
 
-                    goalie_game_data_dict = self.retrieve_goals_shots_against(
-                        goalie_game_data_dict, tokens)
+                # retrieving shots against, goals against and saves
+                goalie_game_data_dict = self.retrieve_goals_shots_against(
+                    goalie_game_data_dict, tokens)
 
-                    goalie_game_data_dict = self.retrieve_win_loss_situation(
-                        goalie_game_data_dict, tokens)
+                # retrieving win, loss, overtime loss et al.
+                goalie_game_data_dict = self.retrieve_win_loss_situation(
+                    goalie_game_data_dict, tokens)
 
-            for p in sorted(goalie_game_data_dict.keys()):
-                print("\t", p, goalie_game_data_dict[p])
+                # calculating goals against average, save percentage
+                goalie_game_data_dict = self.calculate_gaa_save_pctg(
+                    goalie_game_data_dict, tokens, goalies_in_game)
 
-            print(team_id, plr_game)
+                # retrieving shootout information
+                goalie_game_data_dict = self.retrieve_shootout_information(
+                    goalie_game_data_dict, plr_game)
+
+                # setting up new goalie game item
+                goalie_game = GoalieGame(
+                    self.game.game_id, team_id,
+                    plr_game.player_id, goalie_game_data_dict)
+
+                # trying to find goalie game item from database
+                db_goalie_game = GoalieGame.find(
+                    self.game.game_id, plr_game.player_id)
+
+                # creating new or updating existing goalie game item
+                create_or_update_db_item(db_goalie_game, goalie_game)
+
+                self.goalies[key].append(
+                    GoalieGame.find(self.game.game_id, plr_game.player_id))
+        else:
+            return self.goalies
+
+    def calculate_gaa_save_pctg(self, data_dict, tokens, goalies_in_game):
+        """
+        Calculates goals against average and save percentage for current
+        goalie in game.
+        """
+        if data_dict['shots_against']:
+            # calculating save percentage
+            data_dict['save_pctg'] = round(
+                1 - float(data_dict['goals_against']) / float(
+                    data_dict['shots_against']), 6)
+            # retrieving minutes played
+            m, s = tokens[6].split(":")
+            dec_min = int(m) + int(s) / 60.
+            # calculating goals against average
+            data_dict['gaa'] = round(
+                data_dict['goals_against'] * 60. / dec_min, 6)
+            # registering shutout if applicable
+            if data_dict['gaa'] == 0.0 and len(goalies_in_game) == 1:
+                data_dict['shutout'] = 1
+        else:
+            data_dict['save_pctg'] = None
+            data_dict['gaa'] = None
+        return data_dict
+
+    def retrieve_shootout_information(self, data_dict, plr_game):
+        """
+        Retrieves shootout information for current goalie in game.
+        """
+        if self.raw_so_data is None:
+            return data_dict
+        # retrieving all goalies participating in the shootout
+        so_goalies = set(
+            self.raw_so_data.xpath(
+                "//td[@class='sectionheading' and contains(text(), " +
+                "'Shootout Order')]/parent::tr/following-sibling::tr" +
+                "/td/table/tr[@height='30']/td[5]/text()"))
+        if len(so_goalies) < 2:
+            logger.warn(
+                "Unable to retrieve goalies participating in" +
+                "shootout: %s" % str(so_goalies))
+        for so_goalie in so_goalies:
+            # retrieving shootout goalie's number and name
+            try:
+                so_no, so_name = so_goalie.split()
+            except:
+                logger.warn(
+                    "Unable to retrieve shootout goalie number" +
+                    "and name from %s" % so_goalie)
+                continue
+            so_name = so_name.split(".")
+            if int(so_no) == data_dict['no']:
+                goalie_last_name = plr_game.get_player().last_name.upper()
+                if so_name[-1] == goalie_last_name:
+                    data_dict['shootout_game'] = 1
+                    break
+        return data_dict
 
     def retrieve_win_loss_situation(self, data_dict, tokens):
+        """
+        Retrieves win, losses et al. for current goalie in game.
+        """
         if re.search(self.WIN_LOSS_REGEX, tokens[2]) is not None:
             win_loss = re.search(
                 self.WIN_LOSS_REGEX, tokens[2]).group(1)
@@ -80,6 +168,10 @@ class GoalieParser():
         return data_dict
 
     def retrieve_goals_shots_against(self, data_dict, tokens):
+        """
+        Retrieves shots against, goals against and saves for current goalie in
+        game.
+        """
         try:
             data_dict['goals_against'], data_dict['shots_against'] = tuple(
                 [int(x.strip()) for x in tokens[-1].split("-")])
@@ -93,6 +185,9 @@ class GoalieParser():
         return data_dict
 
     def retrieve_time_on_ice(self, data_dict, tokens):
+        """
+        Retrieves time-on-ice for current goalie in game.
+        """
         data_dict['toi_overall'] = str_to_timedelta(tokens[6])
         data_dict['toi_pp'] = str_to_timedelta(tokens[4])
         data_dict['toi_sh'] = str_to_timedelta(tokens[5])
@@ -141,7 +236,7 @@ class GoalieParser():
             "@class='evenColor' or @class='oddColor']")
 
         # retrieving all table rows with road goalie information by
-        # differentiating home goalie information from complete goalie 
+        # differentiating home goalie information from complete goalie
         # information
         road_goalie_trs = list(
             set(all_goalie_trs).difference(set(home_goalie_trs)))
