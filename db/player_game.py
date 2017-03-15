@@ -44,10 +44,14 @@ class PlayerGame(Base):
                 plr_game = None
             return plr_game
 
+    def get_player(self):
+        return Player.find_by_id(self.player_id)
+
     def update(self, other):
         for attr in self.STANDARD_ATTRS:
             setattr(self, attr, getattr(other, attr))
 
+    # TODO: include further attributes
     def __eq__(self, other):
         return (
             (
