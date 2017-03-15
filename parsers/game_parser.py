@@ -71,7 +71,7 @@ class GameParser():
         # retrieving informatioan about participating teams
         team_dict = self.link_game_with_teams(teams)
         # merging team and game information
-        game_data = {**game_data, **team_dict}
+        game_data = {**game_data, **team_dict}  # noqa: E999
         # creating new game
         game = Game(game_data)
         # trying to find game in database
