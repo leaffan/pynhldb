@@ -11,12 +11,10 @@ class GoalieGame(Base):
     __autoload__ = True
 
     STANDARD_ATTRS = [
-        "position", "no", "goals", "assists", "primary_assists",
-        "secondary_assists", "points", "plus_minus", "penalties", "pim",
-        "toi_overall", "toi_pp", "toi_sh", "toi_ev", "avg_shift", "no_shifts",
-        "shots_on_goal", "shots_blocked", "shots_missed", "hits",
-        "giveaways", "takeaways", "blocks", "faceoffs_won", "faceoffs_lost",
-        "on_ice_shots_on_goal", "on_ice_shots_blocked", "on_ice_shots_missed"
+        "no", "shots_against", "goals_against", "saves", "en_goals",
+        "toi_overall", "toi_pp", "toi_sh", "toi_ev", "win", "loss", "otl",
+        "tie", "regulation_tie", "overtime_game", "shootout_game",
+        "shutout", "gaa", "save_pctg"
     ]
 
     def __init__(self, game_id, team_id, plr_id, data_dict):
@@ -47,3 +45,30 @@ class GoalieGame(Base):
         for attr in self.STANDARD_ATTRS:
             setattr(self, attr, getattr(other, attr))
 
+    def __eq__(self, other):
+        return (
+            (
+                self.game_id, self.player_id, self.team_id, self.no,
+                self.shots_against, self.goals_against, self.saves,
+                self.en_goals, self.toi_overall, self.toi_pp, self.toi_sh,
+                self.toi_ev, self.win, self.loss, self.otl, self.tie,
+                self.regulation_tie, self.overtime_game, self.shootout_game,
+                self.shutout,
+                None if self.gaa is None else round(self.gaa, 5),
+                None if self.save_pctg is None else round(self.save_pctg, 5)
+            ) == (
+                other.game_id, other.player_id, other.team_id, other.no,
+                other.shots_against, other.goals_against, other.saves,
+                other.en_goals, other.toi_overall, other.toi_pp, other.toi_sh,
+                other.toi_ev, other.win, other.loss, other.otl, other.tie,
+                other.regulation_tie, other.overtime_game, other.shootout_game,
+                other.shutout,
+                None if other.gaa is None else round(other.gaa, 5),
+                None if other.save_pctg is None else round(other.save_pctg, 5)
+                ))
+
+    def __ne__(self, other):
+        return not self == other
+
+    def __repr__(self):
+        return "%s(%d)" % (self.__class__.__name__, self.goalie_game_id)
