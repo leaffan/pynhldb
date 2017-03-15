@@ -7,6 +7,7 @@ from datetime import datetime, time, timedelta
 
 from dateutil import parser
 
+from db import create_or_update_db_item
 from db.common import session_scope
 from db.game import Game
 from utils import remove_null_strings, retrieve_season
@@ -71,33 +72,14 @@ class GameParser():
         team_dict = self.link_game_with_teams(teams)
         # merging team and game information
         game_data = {**game_data, **team_dict}
-        # creating game
-        self.game = Game(game_data)
-        return self.create_or_update_game()
+        # creating new game
+        game = Game(game_data)
+        # trying to find game in database
+        db_game = Game.find_by_id(game.game_id)
+        # updating existing or creating new game item in database
+        create_or_update_db_item(db_game, game)
 
-    def create_or_update_game(self):
-        """
-        Creates or updates a game database item.
-        """
-        # trying to retrieve game with same id from database
-        db_game = Game.find_by_id(self.game.game_id)
-
-        with session_scope() as session:
-            if db_game is not None:
-                # checking for changes
-                if db_game == self.game:
-                    return db_game
-                else:
-                    # updating game
-                    db_game.update(self.game)
-                    session.merge(db_game)
-            else:
-                session.add(self.game)
-
-            session.commit()
-            session.refresh(self.game)
-
-        return self.game
+        return Game.find_by_id(game.game_id)
 
     def link_game_with_teams(self, teams):
         """

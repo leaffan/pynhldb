@@ -4,7 +4,7 @@
 import logging
 
 from utils import str_to_timedelta
-from db.common import session_scope
+from db import create_or_update_db_item
 from db.player_game import PlayerGame
 
 logger = logging.getLogger(__name__)
@@ -40,40 +40,24 @@ class RosterParser():
         for key in sorted(self.roster_data.keys(), reverse=True):
             curr_team = teams[key]
             self.rosters[key] = dict()
-            print("\t+ Roster for %s (%s team):" % (curr_team, key))
             for roster_line in self.roster_data[key]:
                 plr_id = roster_line['plr_id']
                 # TODO: check whether player exists in database
                 # TODO: otherwise create one
-                pg = PlayerGame(
+                # setting up new player game item
+                new_pgame = PlayerGame(
                     game.game_id, curr_team.team_id, plr_id, roster_line)
-                pg = self.create_or_update_player_game(pg)
-                self.rosters[key][pg.no] = pg
+                # trying to find existing player game item
+                db_pgame = PlayerGame.find(
+                    new_pgame.game_id, new_pgame.player_id)
+                # updating existing or creating new player game item
+                create_or_update_db_item(db_pgame, new_pgame)
+                # adding player game item to team roster dictionary for current
+                # game using jersey number as key
+                self.rosters[key][new_pgame.no] = PlayerGame.find(
+                    new_pgame.game_id, new_pgame.player_id)
         else:
             return self.rosters
-
-    def create_or_update_player_game(self, pgame):
-        """
-        Creates or updates a player game database item.
-        """
-        db_pgame = PlayerGame.find(pgame.game_id, pgame.player_id)
-
-        with session_scope() as session:
-            if db_pgame is not None:
-                # checking for changes
-                if db_pgame == pgame:
-                    return db_pgame
-                else:
-                    # updating game
-                    db_pgame.update(pgame)
-                    session.merge(db_pgame)
-            else:
-                session.add(pgame)
-
-            session.commit()
-            session.refresh(pgame)
-
-        return pgame
 
     def load_data(self):
         """
