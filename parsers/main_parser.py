@@ -10,6 +10,7 @@ from parsers.team_parser import TeamParser
 from parsers.game_parser import GameParser
 from parsers.roster_parser import RosterParser
 from parsers.goalie_parser import GoalieParser
+from parsers.shift_parser import ShiftParser
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +57,18 @@ class MainParser():
             self.parsed_data[game_id]['teams']
         ) = self.create_game_and_teams(game_id)
         # print(self.parsed_data[game_id]['game'])
+        print(self.parsed_data[game_id]['teams'].keys())
 
         # parsing players participating in current game
         self.parsed_data[game_id]['rosters'] = self.create_rosters(game_id)
-        # print(self.parsed_data[game_id]['rosters'])
+        print(self.parsed_data[game_id]['rosters'].keys())
 
         # parsing goalies participating in current game
         self.parsed_data[game_id]['goalies'] = self.create_goalies(game_id)
         # print(self.parsed_data[game_id]['goalies'])
+
+        # parsing player create_shifts
+        self.create_shifts(game_id)
 
         # removing raw structured data from memory
         del self.raw_data[game_id]
@@ -122,6 +127,25 @@ class MainParser():
             self.parsed_data[game_id]['rosters'])
 
         return goalies
+
+    def create_shifts(self, game_id):
+        """
+        Retrieves shift information.
+        """
+        # doing this for both road and home team
+        for prefix in ['TV', 'TH']:
+            # reading time-on-ice data anew if necessary
+            self.read_on_demand(game_id, prefix)
+            # setting up parser for shift data
+            sp = ShiftParser(self.raw_data[game_id][prefix])
+            # selecting roster corresponding to prefix
+            if prefix == 'TV':
+                roster = self.parsed_data[game_id]['rosters']['road']
+            else:
+                roster = self.parsed_data[game_id]['rosters']['home']
+            # retrieving shift information
+            sp.create_shifts(
+                self.parsed_data[game_id]['game'], roster)
 
     def read_on_demand(self, game_id, prefix):
         """
