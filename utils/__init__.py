@@ -30,21 +30,6 @@ def retrieve_season(date):
     return season
 
 
-def calculate_end_time(start_m, start_s, duration_m, duration_s):
-    """
-    Calculates an end time using the specified start time (minutes and seconds)
-    and duration (minutes and seconds)
-    """
-    end_m = start_m + duration_m
-    end_s = start_s + duration_s
-
-    if end_s > 59:
-        end_m += end_s / 60
-        end_s = end_s % 60
-
-    return end_m, end_s
-
-
 # conversion functions
 def str_to_timedelta(interval_as_str):
     """
