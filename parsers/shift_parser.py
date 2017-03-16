@@ -5,7 +5,7 @@ import logging
 
 from lxml import etree
 
-from utils import calculate_end_time
+from utils import str_to_timedelta
 from db import create_or_update_db_item
 from db.team import Team
 from db.shift import Shift
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 class ShiftParser():
 
+    # partial xpath expression used for per player table row retrieval
     XPATH_EXPR = "sibling::tr[@class = 'oddColor' or @class = '	evenColor']"
 
     def __init__(self, raw_data):
@@ -63,41 +64,33 @@ class ShiftParser():
             else:
                 shift['period'] = int(tokens[1])
 
-            # retrieving shift start time components
-            start_m, start_s = [
-                int(x) for x in tokens[2].split("/")[0].strip().split(":")]
-            # retrieving shift end time components
+            # retrieving shift start time
+            shift['start'] = str_to_timedelta(tokens[2].split("/")[0].strip())
+
+            # retrieving shift end time
             try:
-                end_m, end_s = [
-                    int(x) for x in tokens[3].split("/")[0].strip().split(":")]
+                shift['end'] = str_to_timedelta(
+                    tokens[3].split("/")[0].strip())
             # sometimes no end time is specified
             except:
                 logger.warning(
                     "Unable to extract time interval from raw" +
                     "data: %s (game id: %s, %s)" % (
                         tokens[3], self.game.game_id, player.name))
-                end_m = None
-                end_s = None
+                shift['end'] = None
 
-            # retrieving shift duration components
-            duration_m, duration_s = [int(x) for x in tokens[4].split(":")]
+            # retrieving shift duration
+            shift['duration'] = str_to_timedelta(tokens[4])
 
             # if necessary calculate end time from start time and duration
-            if end_m is None or end_s is None:
-                end_m, end_s = calculate_end_time(
-                    start_m, start_s, duration_m, duration_s)
-
-            # TODO: check if really necessary
-            # converting time interval to strings for easier database insert
-            shift['start'] = "%d minutes %d seconds" % (start_m, start_s)
-            shift['end'] = "%d minutes %d seconds" % (end_m, end_s)
-            shift['duration'] = "%d minutes %d seconds" % (
-                duration_m, duration_s)
+            if shift['end'] is None:
+                shift['end'] = shift['start'] + shift['duration']
 
             shifts.append(shift)
 
         return shifts
 
+    # TODO: optimize retrieval of table rows per player
     def load_data(self):
         """
         Loads structured raw data and pre-processes it.
