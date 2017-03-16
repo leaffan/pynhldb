@@ -54,8 +54,10 @@ class GoalieGame(Base):
                 self.toi_ev, self.win, self.loss, self.otl, self.tie,
                 self.regulation_tie, self.overtime_game, self.shootout_game,
                 self.shutout,
-                None if self.gaa is None else round(self.gaa, 5),
-                None if self.save_pctg is None else round(self.save_pctg, 5)
+                None if self.gaa is None else "{0:f}".format(
+                    round(self.gaa, 6)),
+                None if self.save_pctg is None else "{0:f}".format(
+                    round(self.save_pctg, 6))
             ) == (
                 other.game_id, other.player_id, other.team_id, other.no,
                 other.shots_against, other.goals_against, other.saves,
@@ -63,8 +65,10 @@ class GoalieGame(Base):
                 other.toi_ev, other.win, other.loss, other.otl, other.tie,
                 other.regulation_tie, other.overtime_game, other.shootout_game,
                 other.shutout,
-                None if other.gaa is None else round(other.gaa, 5),
-                None if other.save_pctg is None else round(other.save_pctg, 5)
+                None if other.gaa is None else "{0:f}".format(
+                    round(other.gaa, 6)),
+                None if other.save_pctg is None else "{0:f}".format(
+                    round(other.save_pctg, 6))
                 ))
 
     def __ne__(self, other):
