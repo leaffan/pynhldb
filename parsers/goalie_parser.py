@@ -30,13 +30,15 @@ class GoalieParser():
         self.goalies = defaultdict(list)
 
     def create_goalies(self, game, rosters):
-        self.game = game
-        self.rosters = rosters
+        """
+        Creates goalie game items for given game using specified team rosters.
+        """
+        # loading and pre-processing data
         self.load_data()
 
         for key in ['road', 'home']:
 
-            team_id = getattr(self.game, "%s_team_id" % key)
+            team_id = getattr(game, "%s_team_id" % key)
 
             # retrieving goalies actually playing in game
             goalies_in_game = self.retrieve_goalies_in_game(
@@ -53,7 +55,7 @@ class GoalieParser():
                     goalie_game_data_dict[item] = 0
 
                 goalie_game_data_dict['no'] = int(tokens[0])
-                plr_game = self.rosters[key][goalie_game_data_dict['no']]
+                plr_game = rosters[key][goalie_game_data_dict['no']]
 
                 # retrieving goalie's time on ice
                 goalie_game_data_dict = self.retrieve_time_on_ice(
@@ -65,7 +67,7 @@ class GoalieParser():
 
                 # retrieving win, loss, overtime loss et al.
                 goalie_game_data_dict = self.retrieve_win_loss_situation(
-                    goalie_game_data_dict, tokens)
+                    goalie_game_data_dict, tokens, game)
 
                 # calculating goals against average, save percentage
                 goalie_game_data_dict = self.calculate_gaa_save_pctg(
@@ -77,18 +79,18 @@ class GoalieParser():
 
                 # setting up new goalie game item
                 goalie_game = GoalieGame(
-                    self.game.game_id, team_id,
+                    game.game_id, team_id,
                     plr_game.player_id, goalie_game_data_dict)
 
                 # trying to find goalie game item from database
                 db_goalie_game = GoalieGame.find(
-                    self.game.game_id, plr_game.player_id)
+                    game.game_id, plr_game.player_id)
 
                 # creating new or updating existing goalie game item
                 create_or_update_db_item(db_goalie_game, goalie_game)
 
                 self.goalies[key].append(
-                    GoalieGame.find(self.game.game_id, plr_game.player_id))
+                    GoalieGame.find(game.game_id, plr_game.player_id))
         else:
             return self.goalies
 
@@ -149,7 +151,7 @@ class GoalieParser():
                     break
         return data_dict
 
-    def retrieve_win_loss_situation(self, data_dict, tokens):
+    def retrieve_win_loss_situation(self, data_dict, tokens, game):
         """
         Retrieves win, losses et al. for current goalie in game.
         """
@@ -158,7 +160,7 @@ class GoalieParser():
                 self.WIN_LOSS_REGEX, tokens[2]).group(1)
             if win_loss == 'W':
                 data_dict['win'] = 1
-                if self.game.overtime_game:
+                if game.overtime_game:
                     data_dict['overtime_game'] = 1
             elif win_loss == 'L':
                 data_dict['loss'] = 1
