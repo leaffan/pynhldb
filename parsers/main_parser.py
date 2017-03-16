@@ -11,6 +11,7 @@ from parsers.game_parser import GameParser
 from parsers.roster_parser import RosterParser
 from parsers.goalie_parser import GoalieParser
 from parsers.shift_parser import ShiftParser
+from parsers.event_parser import EventParser
 
 logger = logging.getLogger(__name__)
 
@@ -51,41 +52,59 @@ class MainParser():
         self.raw_data[game_id] = dict()
         self.parsed_data[game_id] = dict()
 
-        # parsing current game and teams participating in it
+        # parsing current basic game information and participating teams
         (
             self.parsed_data[game_id]['game'],
             self.parsed_data[game_id]['teams']
         ) = self.create_game_and_teams(game_id)
         # print(self.parsed_data[game_id]['game'])
-        print(self.parsed_data[game_id]['teams'].keys())
+        # print(self.parsed_data[game_id]['teams'].keys())
 
         # parsing players participating in current game
         self.parsed_data[game_id]['rosters'] = self.create_rosters(game_id)
-        print(self.parsed_data[game_id]['rosters'].keys())
+        # print(self.parsed_data[game_id]['rosters'].keys())
 
         # parsing goalies participating in current game
         self.parsed_data[game_id]['goalies'] = self.create_goalies(game_id)
-        # print(self.parsed_data[game_id]['goalies'])
+        # print(self.parsed_data[game_id]['goalies'].keys())
 
         # parsing player create_shifts
-        self.create_shifts(game_id)
+        self.parsed_data[game_id]['shifts'] = self.create_shifts(game_id)
+        # print(self.parsed_data[game_id]['shifts'].keys())
+
+        self.parsed_data[game_id]['events'] = self.create_events(game_id)
 
         # removing raw structured data from memory
         del self.raw_data[game_id]
 
-    # TODO:  test with another prefix instead of 'ES' and check memory usage
+    def create_events(self, game_id):
+        """
+        Retrieves in-game events.
+        """
+        # reading play-by-play data anew if necessary
+        self.read_on_demand(game_id, 'PL')
+        # setting up parser for event data
+        ep = EventParser(self.raw_data[game_id]['PL'])
+        # retrieving event information using previously retrieved game and
+        # roster information
+        ep.create_events(
+            self.parsed_data[game_id]['game'],
+            self.parsed_data[game_id]['rosters'])
+
     def create_game_and_teams(self, game_id):
         """
         Retrieves essential game and team information from structured raw data.
         """
-        # reading data anew if necessary
+        # reading game summary data anew if necessary
         self.read_on_demand(game_id, 'GS')
         # setting up parser for team data
-        tp = TeamParser(
-            self.raw_data[game_id]['GS'])
+        tp = TeamParser(self.raw_data[game_id]['GS'])
         # retrieving teams participating in current game
         teams = tp.create_teams()
         # setting up parser for game data
+        # GS data prefix, i.e. game summary data is necessary as the parser
+        # collects all periods a goal was scored in
+        # this information is only retrievable from GS type summaries
         gp = GameParser(
             game_id,
             self.raw_data[game_id]['GS'],
@@ -132,20 +151,25 @@ class MainParser():
         """
         Retrieves shift information.
         """
+        # setting up dictionary container for shifts from both teams
+        shifts = dict()
         # doing this for both road and home team
         for prefix in ['TV', 'TH']:
             # reading time-on-ice data anew if necessary
             self.read_on_demand(game_id, prefix)
             # setting up parser for shift data
             sp = ShiftParser(self.raw_data[game_id][prefix])
-            # selecting roster corresponding to prefix
+            # selecting home or road type corresponding to data prefix
             if prefix == 'TV':
-                roster = self.parsed_data[game_id]['rosters']['road']
+                home_road_type = 'road'
             else:
-                roster = self.parsed_data[game_id]['rosters']['home']
+                home_road_type = 'home'
             # retrieving shift information
-            sp.create_shifts(
-                self.parsed_data[game_id]['game'], roster)
+            shifts[home_road_type] = sp.create_shifts(
+                self.parsed_data[game_id]['game'],
+                self.parsed_data[game_id]['rosters'][home_road_type])
+        else:
+            return shifts
 
     def read_on_demand(self, game_id, prefix):
         """
