@@ -50,12 +50,12 @@ class Shift(Base):
         return (
             (
                 self.game_id, self.team_id, self.player_id,
-                self.in_game_shift_cnt, self.start, self.end,
-                self.duration
+                self.in_game_shift_cnt, self.period,
+                self.start, self.end, self.duration
                 ) == (
                 other.game_id, other.team_id, other.player_id,
-                other.in_game_shift_cnt, other.start, other.end,
-                other.duration
+                other.in_game_shift_cnt, other.period,
+                other.start, other.end, other.duration
             ))
 
     def __ne__(self, other):
