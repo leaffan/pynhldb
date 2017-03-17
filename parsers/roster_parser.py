@@ -47,7 +47,7 @@ class RosterParser():
                 # setting up new player game item
                 new_pgame = PlayerGame(
                     game.game_id, curr_team.team_id, plr_id, roster_line)
-                # trying to find existing player game item
+                # trying to find existing player game item in database
                 db_pgame = PlayerGame.find(
                     new_pgame.game_id, new_pgame.player_id)
                 # updating existing or creating new player game item
