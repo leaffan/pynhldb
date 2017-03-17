@@ -36,3 +36,25 @@ class Event(Base):
             except:
                 event = None
             return event
+
+    def update(self, other):
+        for attr in self.STANDARD_ATTRS:
+            setattr(self, attr, getattr(other, attr))
+
+    def __eq__(self, other):
+        return (
+            (
+                self.game_id, self.in_game_event_cnt, self.type, self.period,
+                self.time, self.road_on_ice, self.home_on_ice, self.stop_type,
+                self.road_goalie, self.home_goalie, self.road_score,
+                self.home_score, self.raw_data
+                ) == (
+                other.game_id, other.in_game_event_cnt, other.type,
+                other.period, other.time, other.road_on_ice, other.home_on_ice,
+                other.stop_type, other.road_goalie, other.home_goalie,
+                other.road_score, other.home_score, other.raw_data
+                ))
+
+    def __ne__(self, other):
+        return not self == other
+
