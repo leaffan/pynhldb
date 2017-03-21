@@ -53,7 +53,7 @@ if __name__ == '__main__':
         career_goal_leaders = retrieve_career_leaders(300)
         # yearly_top = retrieve_yearly_top(8, 2013, 2015)
 
-        goal_leaders = {**career_goal_leaders, **yearly_top}
+        goal_leaders = {**career_goal_leaders, **yearly_top}  # noqa: E999
 
         open(career_goal_leaders_path, 'w').write(
             json.dumps(goal_leaders, indent=2))
