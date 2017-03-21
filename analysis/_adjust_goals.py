@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
 import logging
 import json
-from collections import defaultdict
 
 import requests
 from lxml import html
 
 logger = logging.getLogger(__name__)
 BASE_HREF = "http://www.hockey-reference.com"
+MORE_REGEX = re.compile("More\s(.+)\sPages")
 
 
 def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
@@ -26,9 +27,9 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
     # last_full_season = sorted(
     #     [int(s.split("-")[0]) for s in goals_per_season_data.keys()]).pop()
 
-    adjusted_data = defaultdict(dict)
+    adjusted_data = list()
 
-    for plr_link in sorted(players_data):
+    for plr_link in sorted(players_data)[:2]:
         plr_name = players_data[plr_link]
     # for plr_link, plr_name in sorted(players_data)[:]:
         # retrieving regular goal data from player stats page, thereby
@@ -39,7 +40,7 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
         adjusted_goal_data = calculate_adjusted_goals(
             regular_goal_data, goals_per_season_data)
 
-        adjusted_data[full_name] = adjusted_goal_data
+        adjusted_data.append(adjusted_goal_data)
 
     return adjusted_data
 
@@ -94,7 +95,19 @@ def retrieve_regular_goal_totals(
     r = requests.get(url)
     doc = html.fromstring(r.text)
 
-    full_name = doc.xpath("//h1/text()")
+    full_name = doc.xpath("//h1/text()").pop(0)
+    single_player_data['full_name'] = full_name
+
+    # separating full name into last and first name
+    more_pages_text = doc.xpath(
+        "//li[@data-fade-selector='#inpage_nav' and " +
+        "@class='condensed hasmore ']/a/text()")
+    if more_pages_text:
+        more_pages_text = more_pages_text.pop(0)
+        last_name = re.search(MORE_REGEX, more_pages_text).group(1)
+        single_player_data['last_name'] = last_name
+        single_player_data['first_name'] = full_name.replace(
+            last_name, "").strip()
 
     # retrieving table with standard player stats
     table = doc.xpath(
