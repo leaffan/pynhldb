@@ -104,6 +104,7 @@ def retrieve_regular_goal_totals(
 
     full_name = doc.xpath("//h1/text()").pop(0)
     single_player_data['full_name'] = full_name
+    single_player_data['url'] = url
 
     # separating full name into last and first name
     more_pages_text = doc.xpath(
