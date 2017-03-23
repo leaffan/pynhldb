@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import json
 
 import requests
 from lxml import html
@@ -23,7 +22,8 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2015):
     r = requests.get(url)
     doc = html.fromstring(r.text)
 
-    yearly_top_goalscorers = dict()
+    yearly_top_goalscorers = list()
+    processed_urls = set()
 
     for year in range(start_season, end_season + 1)[:]:
         if year == 2004:
@@ -42,9 +42,9 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2015):
         plr_names = [tr.xpath(
             "td[@class='who']/a/descendant-or-self::text()")[0] for tr in trs]
         # retrieving links to player pages
-        plr_links = [tr.xpath("td[@class='who']/a/@href")[0] for tr in trs]
+        plr_urls = [tr.xpath("td[@class='who']/a/@href")[0] for tr in trs]
 
-        for rank, name, link in zip(plr_ranks, plr_names, plr_links):
+        for rank, name, url in zip(plr_ranks, plr_names, plr_urls):
             rank_txt = rank.xpath("text()")
             if rank_txt:
                 rank = int(rank_txt.pop(0)[:-1])
@@ -52,8 +52,17 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2015):
                 # target rank
                 if rank > top:
                     break
+            # skipping player if it was already registered
+            if url in processed_urls:
+                continue
             logger.info("\t+ %s" % name)
-            yearly_top_goalscorers[link] = name
+            # creating and populating single player dictionary
+            single_player_dict = dict()
+            single_player_dict['url'] = url
+            single_player_dict['name'] = name
+            single_player_dict['yearly_leader'] = True
+            yearly_top_goalscorers.append(single_player_dict)
+            processed_urls.add(url)
 
     return yearly_top_goalscorers
 
@@ -65,7 +74,8 @@ def retrieve_yearly_leaders(start_season=1917, end_season=2015):
     This function is deprecated. Use the other one for top goalscorer retrieval
     per season.
     """
-    yearly_leaders = dict()
+    yearly_leaders = list()
+    processed_urls = set()
 
     # retrieving leading goal scorers for each NHL first
     for year in range(start_season, end_season + 1)[:]:
@@ -99,10 +109,19 @@ def retrieve_yearly_leaders(start_season=1917, end_season=2015):
             "//div[@id='leaders_goals']/table/tr/td[@class='who']/a")
         # adding name and url to player page to goalscorer dictionary
         for leader in five_goal_leaders:
-            plr_url = leader.xpath("@href")[0]
-            plr_name = leader.xpath("text()")[0]
-            logger.info("\t+ %s" % plr_name)
-            yearly_leaders[plr_url] = plr_name
+            url = leader.xpath("@href")[0]
+            name = leader.xpath("text()")[0]
+            # skipping player if it was already registered
+            if url in processed_urls:
+                continue
+            logger.info("\t+ %s" % name)
+            # creating and populating single player dictionary
+            single_player_dict = dict()
+            single_player_dict['url'] = url
+            single_player_dict['name'] = name
+            single_player_dict['yearly_leader'] = True
+            yearly_leaders.append(single_player_dict)
+            processed_urls.add(url)
 
     return yearly_leaders
 
@@ -112,7 +131,7 @@ def retrieve_career_leaders(min_goals=350):
     Retrieves NHL career goal scoring leaders with at least the number of
     specified goals.
     """
-    career_leaders = dict()
+    career_leaders = list()
 
     r = requests.get(CAREER_GOAL_LEADERS_URL)
     doc = html.fromstring(r.text)
@@ -129,23 +148,18 @@ def retrieve_career_leaders(min_goals=350):
         # adding name and link to player page if goal total is greater or
         # equal the defined amount of minimum goals
         if goals >= min_goals:
-            plr_name = leader_row.xpath("td//a/text()")[0]
-            plr_link = leader_row.xpath("td//a/@href")[0]
-            logger.info("\t+ %s (%d career goals)" % (plr_name, goals))
-            career_leaders[plr_link] = plr_name
+            name = leader_row.xpath("td//a/text()")[0]
+            url = leader_row.xpath("td//a/@href")[0]
+            logger.info("\t+ %s (%d career goals)" % (name, goals))
+            # creating and populating single player dictionary
+            single_player_dict = dict()
+            single_player_dict['url'] = url
+            single_player_dict['name'] = name
+            single_player_dict['yearly_leader'] = False
+            career_leaders.append(single_player_dict)
 
     return career_leaders
 
 
 if __name__ == '__main__':
-
-    yearly_top_3 = retrieve_yearly_top(3)
-    yearly_top_5 = retrieve_yearly_leaders()
-    career_leaders = retrieve_career_leaders(300)
-
-    goal_leaders = frozenset().union(
-        yearly_top_3, yearly_top_5, career_leaders)
-    print(goal_leaders)
-
-    open(r"goal_leaders.json", 'w').write(
-        json.dumps(list(goal_leaders), sort_keys=True, indent=2))
+    pass
