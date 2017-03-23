@@ -4,6 +4,7 @@
 import re
 import logging
 import json
+from operator import sub, itemgetter
 
 import requests
 from lxml import html
@@ -29,8 +30,9 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
 
     adjusted_data = list()
 
-    for plr_link in sorted(players_data)[:2]:
-        plr_name = players_data[plr_link]
+    for plr in sorted(players_data, key=itemgetter('url')):
+        plr_name = plr['name']
+        plr_link = plr['url']
     # for plr_link, plr_name in sorted(players_data)[:]:
         # retrieving regular goal data from player stats page, thereby
         # excluding the most recent season, usually an on-going one
@@ -39,6 +41,7 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
         # adjusting goal scoring totals per season
         adjusted_goal_data = calculate_adjusted_goals(
             regular_goal_data, goals_per_season_data)
+        adjusted_goal_data['yearly_leader'] = plr['yearly_leader']
 
         adjusted_data.append(adjusted_goal_data)
 
@@ -74,6 +77,10 @@ def calculate_adjusted_goals(goal_data, goals_per_season_data):
             sum_adjusted_goals / sum(goal_data['games']), 4)
     goal_data['adjusted_goals_per_season'] = round(
             sum_adjusted_goals / sum(goal_data['games']) * 82, 4)
+    goal_data['adjusted_goals_diff_game'] = sub(
+        goal_data['adjusted_goals_per_game'], goal_data['goals_per_game'])
+    goal_data['adjusted_goals_diff_season'] = sub(
+        goal_data['adjusted_goals_per_season'], goal_data['goals_per_season'])
 
     logger.info("\t+ %d adjusted goals, %.4f adjusted goals per game" % (
         goal_data['sum_adjusted_goals'], goal_data['adjusted_goals_per_game']))
@@ -108,6 +115,11 @@ def retrieve_regular_goal_totals(
         single_player_data['last_name'] = last_name
         single_player_data['first_name'] = full_name.replace(
             last_name, "").strip()
+    else:
+        (
+            single_player_data['first_name'],
+            single_player_data['last_name']
+        ) = full_name.split()
 
     # retrieving table with standard player stats
     table = doc.xpath(
