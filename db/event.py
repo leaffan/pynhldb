@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# from sqlalchemy import and_
-
 from sqlalchemy import and_
 
 from .common import Base, session_scope
@@ -15,7 +13,7 @@ class Event(Base):
     STANDARD_ATTRS = [
         "game_id", "in_game_event_cnt", "type", "period", "time",
         "road_on_ice", "home_on_ice", "road_score", "home_score", "x", "y",
-        "stop_type", "road_goalie", "home_goalie", "raw_data"
+        "stop_type", "road_goalie", "home_goalie", "raw_data", "num_situation"
     ]
 
     def __init__(self, event_id, event_data_dict):
@@ -47,14 +45,14 @@ class Event(Base):
                 self.game_id, self.in_game_event_cnt, self.type, self.period,
                 self.time, self.road_on_ice, self.home_on_ice, self.stop_type,
                 self.road_goalie, self.home_goalie, self.road_score,
-                self.home_score, self.raw_data
+                self.home_score, self.raw_data, self.num_situation
                 ) == (
                 other.game_id, other.in_game_event_cnt, other.type,
                 other.period, other.time, other.road_on_ice, other.home_on_ice,
                 other.stop_type, other.road_goalie, other.home_goalie,
-                other.road_score, other.home_score, other.raw_data
+                other.road_score, other.home_score, other.raw_data,
+                other.num_situation
                 ))
 
     def __ne__(self, other):
         return not self == other
-
