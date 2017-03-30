@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 
 class DataHandler():
 
-    # TODO: remove read_to_memory crap, because it's useless
-
     GAME_ID_REGEX = re.compile('0(2|3)\d+')
 
     def __init__(self, dir_or_zip):
@@ -46,7 +44,7 @@ class DataHandler():
                     if self.GAME_ID_REGEX.search(e) is not None]))
         return self.game_ids
 
-    def get_game_data(self, game_id, prefix='ES', read_to_memory=False):
+    def get_game_data(self, game_id, prefix='ES'):
         """
         Retrieves game data, i.e. an html dataset, for a given game id
         and prefix. Either holds data in memory or stores it in a temporary
@@ -67,12 +65,10 @@ class DataHandler():
                     # retrieving game data from either
                     # a zipped file or
                     if self.src_type == 'zip':
-                        game_data[abbr] = self._get_game_data_from_zip(
-                            item, read_to_memory)
+                        game_data[abbr] = self._get_game_data_from_zip(item)
                     # a given directory
                     elif self.src_type == 'dir':
-                        game_data[abbr] = self._get_game_data_from_dir(
-                            item, read_to_memory)
+                        game_data[abbr] = self._get_game_data_from_dir(item)
         else:
             return game_data
 
@@ -87,7 +83,7 @@ class DataHandler():
             return [s for s in os.listdir(self.dir) if os.path.splitext(
                 s)[-1].lower().endswith(file_type.lower())]
 
-    def get_game_json_data(self, nhl_game_id, read_to_memory=False):
+    def get_game_json_data(self, nhl_game_id):
         """
         Retrieves JSON game data for specified game id from data directory/
         zip file.
@@ -101,41 +97,33 @@ class DataHandler():
         for item in self._get_contents('.json'):
             if re.search("%s\.json" % nhl_game_id, item):
                 if self.src_type == 'zip':
-                    j_data = self._get_game_data_from_zip(item, read_to_memory)
+                    j_data = self._get_game_data_from_zip(item)
                 elif self.src_type == 'dir':
-                    j_data = self._get_game_data_from_dir(item, read_to_memory)
+                    j_data = self._get_game_data_from_dir(item)
                 break
 
         return j_data
 
-    def _get_game_data_from_zip(self, item, read_to_memory):
+    def _get_game_data_from_zip(self, item):
         """
         Gets a game data item from a zip file.
         """
-        # unzipping contents to memory
-        if read_to_memory:
-            return self.zip.read(item)
         # creating temporary file and returning location
-        else:
-            fd, tmp_name = tempfile.mkstemp('.nhl')
-            fh = open(tmp_name, 'wb')
-            fh.write(self.zip.read(item))
-            os.close(fd)
-            self.tmp_files.add(tmp_name)
-            return tmp_name
+        fd, tmp_name = tempfile.mkstemp('.nhl')
+        fh = open(tmp_name, 'wb')
+        fh.write(self.zip.read(item))
+        os.close(fd)
+        self.tmp_files.add(tmp_name)
+        return tmp_name
 
-    def _get_game_data_from_dir(self, item, read_to_memory):
+    def _get_game_data_from_dir(self, item):
         """
         Gets a game data item from a directory.
         """
         # creating path
         path = os.path.join(self.dir, item)
-        # reading contents to memory
-        if read_to_memory:
-            return open(os.path.join(self.dir, item)).read()
         # returning file location
-        else:
-            return path
+        return path
 
     def clear_temp_files(self):
         for f in self.tmp_files:
