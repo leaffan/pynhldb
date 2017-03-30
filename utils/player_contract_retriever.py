@@ -164,8 +164,9 @@ class PlayerContractRetriever():
             # retrieving player status after contract expires
             contract_dict['expiry_status'] = exp_status.split()[-1]
             # retrieving id of signing team
-            contract_dict['signing_team_id'] = self.get_contract_buyout_signing_team(
-                sign_team)
+            contract_dict[
+                'signing_team_id'] = self.get_contract_buyout_signing_team(
+                    sign_team)
             # retrieving overall contract value
             contract_dict['value'] = int(
                 ct_value.split(":")[-1].strip()[1:].replace(",", ""))
@@ -227,7 +228,9 @@ class PlayerContractRetriever():
                     season, salary = tr.xpath("td/text()")
                 except ValueError:
                     logger.warn(
-                        "+ Unable to retrieve historical salary of %s for season %s" % (plr.name, tr.xpath("td/text()")[0]))
+                        "+ Unable to retrieve historical salary" +
+                        "of %s for season %s" % (
+                            plr.name, tr.xpath("td/text()")[0]))
                     continue
                 season = int(season.split("-")[0])
                 # for the 2004-05 lockout table data does not contain a
@@ -236,7 +239,8 @@ class PlayerContractRetriever():
                     salary = int(salary[1:].replace(",", ""))
                 except ValueError:
                     logger.warn(
-                        "+ Unable to retrieve numeric value from '%s'" % salary)
+                        "+ Unable to retrieve numeric value" +
+                        "from '%s'" % salary)
                     continue
                 historical_salary['season'] = season
                 historical_salary['nhl_salary'] = salary
@@ -388,7 +392,7 @@ class PlayerContractRetriever():
         buyout_status = False
         # but some are, it's then marked in the contract notes
         if 'notes' in contract_dict:
-            if "Contract was bought out." in contract_dict['notes']:
+            if "Contract was bought out.".lower() in contract_dict['notes']:
                 buyout_status = True
         return buyout_status
 
