@@ -35,6 +35,21 @@ class Event(Base):
                 event = None
             return event
 
+    @classmethod
+    def find_by_time_type(self, game_id, event_period, event_time, event_type):
+        with session_scope() as session:
+            try:
+                event = session.query(Event).filter(
+                    and_(
+                        Event.game_id == game_id,
+                        Event.period == event_period,
+                        Event.time == event_time,
+                        Event.type == event_type
+                    )).all()
+            except:
+                event = None
+            return event
+
     def update(self, other):
         for attr in self.STANDARD_ATTRS:
             setattr(self, attr, getattr(other, attr))
