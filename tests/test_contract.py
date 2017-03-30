@@ -15,6 +15,8 @@ def test_contract_creation():
     pcr = PlayerContractRetriever()
     plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
 
+    assert len(plr_contract_list) == 3
+
     for plr_contract_dict in plr_contract_list:
         contract = Contract(player_id, plr_contract_dict)
         contract_db = Contract.find(
