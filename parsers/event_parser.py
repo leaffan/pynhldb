@@ -1,17 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
 import logging
 from collections import defaultdict
 
 from utils import str_to_timedelta
 from db import create_or_update_db_item
+from db.team import Team
 from db.event import Event
+from db.shot import Shot
 
 logger = logging.getLogger(__name__)
 
 
 class EventParser():
+
+    ZONE_REGEX = re.compile(",?\s((Off|Def|Neu)\.)\sZone")
+    PLAYER_REGEX = re.compile("(ONGOAL - |#)(\d{1,2})\s(\w+\'?\s?\w+),?")
+    SHOT_REGEX = re.compile(",\s(.+),.+,\s(.+)\sft\.(Assist)?")
+    SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
+    DISTANCE_REGEX = re.compile("(\d+)\sft\.")
 
     def __init__(self, raw_data):
         self.raw_data = raw_data
@@ -31,45 +40,120 @@ class EventParser():
         for event_data_item in self.event_data:
             event = self.get_event(event_data_item)
 
-        if self.game.type == 2 and event.period == 5:
-            # shootout attempts are either goals, saved shots or misses all
-            # occurring in the fifth period of a regular season game
-            shootout_attempt = self.get_shootout_attempt(event)
-        else:
-            # specifying regular play-by-play event
-            self.specify_event(event)
+            if self.game.type == 2 and event.period == 5:
+                # shootout attempts are either goals, saved shots or misses all
+                # occurring in the fifth period of a regular season game
+                # shootout_attempt = self.get_shootout_attempt(event)
+                pass
+            else:
+                # specifying regular play-by-play event
+                self.specify_event(event)
+
+    def retrieve_standard_event_parameters(self, event):
+        """
+        Retrieves standard event parameters including concerned team, zone and
+        numerical situation.
+        """
+        team = Team.find_by_abbr(event.raw_data[0:3])
+        try:
+            zone = re.search(self.ZONE_REGEX, event.raw_data).group(1)
+        except:
+            logger.warn(
+                "Couldn't retrieve zone from raw data: %s" % event.raw_data)
+            if event.type in ['MISS', 'SHOT', 'GOAL']:
+                zone = 'Off.'
+            else:
+                zone = None
+            logger.info("Set zone deliberately to %s" % zone)
+
+        return team, zone
+
+    def get_shot_on_goal_event(self, event):
+        """
+        Retrieves or creates a shot on goal event.
+        """
+        shot_data_dict = dict()
+        # retrieving the shooter's team and zone where the shot was taken
+        team, zone = self.retrieve_standard_event_parameters(event)
+        # retrieving the shooter's number
+        no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
+        shot_data_dict['team_id'] = team.team_id
+        shot_data_dict['zone'] = zone[0:3]
+        # assuming shooters' team is home and goalie's team is road team
+        plr_key, goalie_key = "home", "road"
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            plr_key, goalie_key = goalie_key, plr_key
+        # retrieving shooter's player id
+        shot_data_dict['player_id'] = self.rosters[plr_key][no].player_id
+        # retrieving goalie's team and player id
+        shot_data_dict['goalie_team_id'] = getattr(
+            self.game, "%s_team_id" % goalie_key)
+        shot_data_dict['goalie_id'] = getattr(event, "%s_goalie" % goalie_key)
+        # checking whether current shot was a penalty shot
+        if "penalty shot" in event.raw_data.lower():
+            shot_data_dict['penalty_shot'] = True
+        # retrieving shot type and distance from goal
+        try:
+            if ". Zone," in event.raw_data:
+                shot_type, distance = self.SHOT_REGEX.search(
+                    event.raw_data).group(1, 2)
+            else:
+                shot_type, distance = self.SHOT_WO_ZONE_REGEX.search(
+                    event.raw_data).group(1, 2)
+            if "," in shot_type:
+                shot_type = shot_type.split(",")[-1].strip()
+            shot_data_dict['shot_type'] = shot_type
+        except:
+            distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
+            logger.warn(
+                "Unable to retrieve shot type from" +
+                "raw data: %s" % event.raw_data)
+        shot_data_dict['distance'] = int(distance)
+        # adjusting scored flag
+        if event.type == 'GOAL':
+            shot_data_dict['scored'] = True
+
+        db_shot = Shot.find_by_event_id(event.event_id)
+
+        new_shot = Shot(event.event_id, shot_data_dict)
+
+        create_or_update_db_item(db_shot, new_shot)
+
+        return Shot.find_by_event_id(event.event_id)
 
     def specify_event(self, event):
         """
         Specifies an event in more detail according to its type.
         """
         if event.type in ['SHOT', 'GOAL']:
-            shot = self.get_shot_event(event)
+            shot = self.get_shot_on_goal_event(event)
+            print(shot.shot_id)
 
-        if event.type == 'GOAL':
-            shot = Shot.find_by_event_id(event.event_id)
-            goal = self.get_goal_event(event, shot)
+        # if event.type == 'GOAL':
+        #     shot = Shot.find_by_event_id(event.event_id)
+        #     goal = self.get_goal_event(event, shot)
 
-        if event.type == 'MISS':
-            miss = self.get_miss_event(event)
+        # if event.type == 'MISS':
+        #     miss = self.get_miss_event(event)
 
-        if event.type == 'BLOCK':
-            block = self.get_block_event(event)
+        # if event.type == 'BLOCK':
+        #     block = self.get_block_event(event)
 
-        if event.type == 'FAC':
-            faceoff = self.get_faceoff_event(event)
+        # if event.type == 'FAC':
+        #     faceoff = self.get_faceoff_event(event)
 
-        if event.type == 'HIT':
-            hit = self.get_hit_event(event)
+        # if event.type == 'HIT':
+        #     hit = self.get_hit_event(event)
 
-        if event.type == 'GIVE':
-            giveaway = self.get_giveaway_event(event)
+        # if event.type == 'GIVE':
+        #     giveaway = self.get_giveaway_event(event)
 
-        if event.type == 'TAKE':
-            takeaway = self.get_takeaway_event(event)
+        # if event.type == 'TAKE':
+        #     takeaway = self.get_takeaway_event(event)
 
-        if event.type == 'PENL':
-            penalty = self.get_penalty_event(event)
+        # if event.type == 'PENL':
+        #     penalty = self.get_penalty_event(event)
 
     def get_event(self, event_data_item):
         """
@@ -88,6 +172,7 @@ class EventParser():
         # retrieving basic event attributes
         event_data_dict['in_game_event_cnt'] = int(tokens[0])
         event_data_dict['period'] = int(tokens[1])
+        event_data_dict['num_situation'] = tokens[2]
         event_data_dict['time'] = str_to_timedelta(tokens[3])
         event_data_dict['type'] = tokens[5]
         event_data_dict['raw_data'] = tokens[6]
