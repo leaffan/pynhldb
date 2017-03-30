@@ -192,3 +192,6 @@ class MainParser():
             orig_data[prefix])
 
         return self.raw_data[game_id][prefix]
+
+    def dispose(self):
+        self.dh.clear_temp_files()
