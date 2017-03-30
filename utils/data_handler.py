@@ -18,6 +18,7 @@ class DataHandler():
     GAME_ID_REGEX = re.compile('0(2|3)\d+')
 
     def __init__(self, dir_or_zip):
+        self.src = dir_or_zip
         if os.path.isdir(dir_or_zip):
             self.dir = dir_or_zip
             self.src_type = 'dir'
@@ -75,14 +76,37 @@ class DataHandler():
         else:
             return game_data
 
-    def _get_contents(self):
+    def _get_contents(self, file_type='HTM'):
         """
         Retrieves all available files from either a zip file or a directory.
         """
         if self.src_type == 'zip':
-            return self.zip.namelist()
+            return [s for s in self.zip.namelist() if os.path.splitext(
+                s)[-1].lower().endswith(file_type.lower())]
         elif self.src_type == 'dir':
-            return os.listdir(self.dir)
+            return [s for s in os.listdir(self.dir) if os.path.splitext(
+                s)[-1].lower().endswith(file_type.lower())]
+
+    def get_game_json_data(self, nhl_game_id, read_to_memory=False):
+        """
+        Retrieves JSON game data for specified game id from data directory/
+        zip file.
+        """
+        # checking whether this zip or dir contains this game
+        if self.game_ids and nhl_game_id not in self.game_ids:
+            logger.error("Game id {0} not found in contents of {1}".format(
+                nhl_game_id, self.src))
+            return None
+
+        for item in self._get_contents('.json'):
+            if re.search("%s\.json" % nhl_game_id, item):
+                if self.src_type == 'zip':
+                    j_data = self._get_game_data_from_zip(item, read_to_memory)
+                elif self.src_type == 'dir':
+                    j_data = self._get_game_data_from_dir(item, read_to_memory)
+                break
+
+        return j_data
 
     def _get_game_data_from_zip(self, item, read_to_memory):
         """
