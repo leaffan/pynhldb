@@ -22,8 +22,31 @@ class EventParser():
     SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
     DISTANCE_REGEX = re.compile("(\d+)\sft\.")
 
-    def __init__(self, raw_data):
+    # official game information json data uses other type denominators than the
+    # official play-by-play summaries (and subsequently the database)
+    # this mapping associates json play types with the corresponding event
+    # types in the play-by-play summaries
+    PLAY_EVENT_TYPE_MAP = {
+        "GIVEAWAY": "GIVE", "BLOCKED_SHOT": "BLOCK", "PENALTY": "PENL",
+        "MISSED_SHOT": "MISS", "SHOT": "SHOT", "FACEOFF": "FAC",
+        "TAKEAWAY": "TAKE", "HIT": "HIT"
+    }
+
+    # official game information json data uses pre-defined player types to
+    # indicate the role a player has with regard to a certain play
+    # this mapping associates play types with the according player types as
+    # utilized in the json data
+    PLAY_PLAYER_TYPES = {
+        'FAC': ('Winner', 'Loser'), 'HIT': ('Hitter', 'Hittee'),
+        'BLOCK': ('Blocker', 'Shooter'), 'GOAL': ('Scorer',),
+        'SHOT': ('Shooter',), 'MISS': ('Shooter',),
+        'PENL': ("PenaltyOn", "DrewBy"), 'GIVE': ("PlayerID",),
+        'TAKE': ("PlayerID",)
+    }
+
+    def __init__(self, raw_data, json_data):
         self.raw_data = raw_data
+        self.json_data = json_data
         # class-wide variables to hold current score for both home and road
         # team, increase accordingly if a goal was score
         self.home_score = 0
@@ -36,6 +59,8 @@ class EventParser():
         self.rosters = rosters
 
         self.load_data()
+
+        return
 
         for event_data_item in self.event_data:
             event = self.get_event(event_data_item)
@@ -128,7 +153,7 @@ class EventParser():
         """
         if event.type in ['SHOT', 'GOAL']:
             shot = self.get_shot_on_goal_event(event)
-            print(shot.shot_id)
+            # print(shot.shot_id)
 
         # if event.type == 'GOAL':
         #     shot = Shot.find_by_event_id(event.event_id)
@@ -172,7 +197,7 @@ class EventParser():
         # retrieving basic event attributes
         event_data_dict['in_game_event_cnt'] = int(tokens[0])
         event_data_dict['period'] = int(tokens[1])
-        event_data_dict['num_situation'] = tokens[2]
+        event_data_dict['num_situation'] = tokens[2].strip()
         event_data_dict['time'] = str_to_timedelta(tokens[3])
         event_data_dict['type'] = tokens[5]
         event_data_dict['raw_data'] = tokens[6]
@@ -188,6 +213,15 @@ class EventParser():
             event_data_dict["%s_on_ice" % key] = players_on_ice[key]
             if key in goalies_on_ice:
                 event_data_dict["%s_goalie" % key] = goalies_on_ice[key]
+
+        # play_key = (
+        #     event_data_dict['period'],
+        #     event_data_dict['time'],
+        #     event_data_dict['type'])
+        # if play_key in self.json_dict:
+        #     if len(self.json_dict[play_key]) == 1:
+        #         event_data_dict['x'] = int(self.json_dict[play_key][0][0]['x'])
+        #         event_data_dict['y'] = int(self.json_dict[play_key][0][0]['y'])
 
         # creating event id
         event_id = "{0:d}{1:04d}".format(
@@ -246,6 +280,46 @@ class EventParser():
         """
         Loads structured raw data and pre-processes it.
         """
+        from collections import defaultdict
+        self.json_dict = defaultdict(list)
+
+        # TODO: cache plays and coordinates from json for later lookup
+        for play in self.json_data['liveData']['plays']['allPlays']:
+            coords = play['coordinates']
+            if not coords:
+                continue
+            play_type = play['result']['eventTypeId']
+            if play_type in self.PLAY_EVENT_TYPE_MAP:
+                play_type = self.PLAY_EVENT_TYPE_MAP[play_type]
+            play_time = str_to_timedelta(play['about']['periodTime'])
+            play_period = play['about']['period']
+            single_play_dict = dict()
+            single_play_dict['x'] = coords['x']
+            single_play_dict['y'] = coords['y']
+            single_play_dict['description'] = play['result']['description']
+
+            for player in play['players']:
+                if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][0]:
+                    single_play_dict['active'] = player['player']['id']
+                    single_play_dict['active_name'] = player['player']['fullName']
+                else:
+                    single_play_dict['passive'] = player['player']['id']
+                    single_play_dict['passive_name'] = player['player']['fullName']
+
+            if play_type == 'PENL':
+                single_play_dict['penalty_minutes'] = play['result']['penaltyMinutes']
+            self.json_dict[(play_period, play_time, play_type)].append(
+                single_play_dict
+            )
+
+        for ptp, pti, pty in sorted(self.json_dict.keys()):
+            if len(self.json_dict[(ptp, pti, pty)]) > 1:
+                print(self.game.game_id, ptp, pti, pty)
+                for entry in self.json_dict[(ptp, pti, pty)]:
+                    for key in entry:
+                        print("\t", key, ":", entry[key])
+                    print("-----")
+
         self.event_data = list()
         # finding all table rows on play-by-play page
         for tr in self.raw_data.xpath("body/table/tr"):
