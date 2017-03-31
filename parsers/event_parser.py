@@ -10,17 +10,26 @@ from db import create_or_update_db_item
 from db.team import Team
 from db.event import Event
 from db.shot import Shot
+from db.penalty import Penalty
 
 logger = logging.getLogger(__name__)
 
 
 class EventParser():
 
+    # regular expressions for retrieving...
+    # ... the zone where an event happened
     ZONE_REGEX = re.compile(",?\s((Off|Def|Neu)\.)\sZone")
+    # ... number of a player shooting on goal
     PLAYER_REGEX = re.compile("(ONGOAL - |#)(\d{1,2})\s(\w+\'?\s?\w+),?")
+    # ... shot type and distance from goal for a shot
     SHOT_REGEX = re.compile(",\s(.+),.+,\s(.+)\sft\.(Assist)?")
+    # ... shot type and distance from goal for a shot when no zone is specified
     SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
+    # ... the distance from goal for a shot
     DISTANCE_REGEX = re.compile("(\d+)\sft\.")
+    # ... the number of a player serving a penalty
+    SERVED_BY_REGEX = re.compile("Served By:\s#(\d+)\s(.+)")
 
     # official game information json data uses other type denominators than the
     # official play-by-play summaries (and subsequently the database)
@@ -139,13 +148,35 @@ class EventParser():
         if event.type == 'GOAL':
             shot_data_dict['scored'] = True
 
+        # retrieving shot with same event id from database
         db_shot = Shot.find_by_event_id(event.event_id)
-
+        # creating new shot on goal
         new_shot = Shot(event.event_id, shot_data_dict)
-
+        # creating or updating shot item in database
         create_or_update_db_item(db_shot, new_shot)
 
         return Shot.find_by_event_id(event.event_id)
+
+    def get_penalty_event(self, event):
+        """
+        Retrieves or creates a penalty event.
+        """
+        penalty_data_dict = dict()
+        # retrieving the shooter's team and zone where the shot was taken
+        team, zone = self.retrieve_standard_event_parameters(event)
+        penalty_data_dict['team_id'] = team.team_id
+        penalty_data_dict['zone'] = zone[0:3]
+        # retrieving number of player serving the penalty (if applicable)
+        try:
+            served_by_no, served_by_name = re.search(
+                self.SERVED_BY_REGEX, event.raw_data).group(1, 2)
+            penalty_data_dict['served_by_no'] = int(served_by_no)
+        except:
+            penalty_data_dict['served_by_no'] = None
+
+        penalty = Penalty(event.event_id, penalty_data_dict)
+
+        return penalty
 
     def specify_event(self, event):
         """
@@ -153,7 +184,7 @@ class EventParser():
         """
         if event.type in ['SHOT', 'GOAL']:
             shot = self.get_shot_on_goal_event(event)
-            # print(shot.shot_id)
+            print(shot.shot_id)
 
         # if event.type == 'GOAL':
         #     shot = Shot.find_by_event_id(event.event_id)
@@ -177,8 +208,9 @@ class EventParser():
         # if event.type == 'TAKE':
         #     takeaway = self.get_takeaway_event(event)
 
-        # if event.type == 'PENL':
-        #     penalty = self.get_penalty_event(event)
+        if event.type == 'PENL':
+            penalty = self.get_penalty_event(event)
+            print(penalty.penalty_id)
 
     def get_event(self, event_data_item):
         """
@@ -220,8 +252,10 @@ class EventParser():
         #     event_data_dict['type'])
         # if play_key in self.json_dict:
         #     if len(self.json_dict[play_key]) == 1:
-        #         event_data_dict['x'] = int(self.json_dict[play_key][0][0]['x'])
-        #         event_data_dict['y'] = int(self.json_dict[play_key][0][0]['y'])
+        #         event_data_dict['x'] = int(
+        #             self.json_dict[play_key][0][0]['x'])
+        #         event_data_dict['y'] = int(
+        #             self.json_dict[play_key][0][0]['y'])
 
         # creating event id
         event_id = "{0:d}{1:04d}".format(
@@ -301,13 +335,16 @@ class EventParser():
             for player in play['players']:
                 if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][0]:
                     single_play_dict['active'] = player['player']['id']
-                    single_play_dict['active_name'] = player['player']['fullName']
+                    single_play_dict['active_name'] = player[
+                        'player']['fullName']
                 else:
                     single_play_dict['passive'] = player['player']['id']
-                    single_play_dict['passive_name'] = player['player']['fullName']
+                    single_play_dict['passive_name'] = player[
+                        'player']['fullName']
 
             if play_type == 'PENL':
-                single_play_dict['penalty_minutes'] = play['result']['penaltyMinutes']
+                single_play_dict['penalty_minutes'] = play[
+                    'result']['penaltyMinutes']
             self.json_dict[(play_period, play_time, play_type)].append(
                 single_play_dict
             )
