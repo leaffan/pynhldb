@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import json
 import logging
 
 from lxml import html
@@ -84,7 +85,8 @@ class MainParser():
         # reading play-by-play data anew if necessary
         self.read_on_demand(game_id, 'PL')
         # setting up parser for event data
-        ep = EventParser(self.raw_data[game_id]['PL'])
+        ep = EventParser(
+            self.raw_data[game_id]['PL'], self.read_json_data(game_id))
         # retrieving event information using previously retrieved game and
         # roster information
         ep.create_events(
@@ -171,6 +173,12 @@ class MainParser():
         else:
             return shifts
 
+    def read_json_data(self, game_id):
+        json_file = self.dh.get_game_json_data(game_id)
+        json_data = json.loads(open(json_file).read())
+
+        return json_data
+
     def read_on_demand(self, game_id, prefix):
         """
         Reads original HTML data into structured raw data.
@@ -182,14 +190,14 @@ class MainParser():
                 return self.raw_data[game_id][prefix]
 
         # retrieving original html data from data source
-        orig_data = self.dh.get_game_data(game_id, prefix, True)
+        orig_data = self.dh.get_game_data(game_id, prefix)
 
         if prefix not in orig_data:
             return
 
         # creating raw structured tree from original html data
-        self.raw_data[game_id][prefix] = html.document_fromstring(
-            orig_data[prefix])
+        self.raw_data[game_id][prefix] = html.document_fromstring(open(
+            orig_data[prefix]).read())
 
         return self.raw_data[game_id][prefix]
 
