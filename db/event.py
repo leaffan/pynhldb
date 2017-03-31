@@ -21,6 +21,8 @@ class Event(Base):
         for attr in self.STANDARD_ATTRS:
             if attr in event_data_dict:
                 setattr(self, attr, event_data_dict[attr])
+            else:
+                setattr(self, attr, None)
 
     @classmethod
     def find(self, game_id, in_game_event_cnt):
@@ -55,18 +57,21 @@ class Event(Base):
             setattr(self, attr, getattr(other, attr))
 
     def __eq__(self, other):
+        # TODO: check why num_situation has to be stripped of white spaces to
+        # make this work
         return (
             (
                 self.game_id, self.in_game_event_cnt, self.type, self.period,
                 self.time, self.road_on_ice, self.home_on_ice, self.stop_type,
                 self.road_goalie, self.home_goalie, self.road_score,
-                self.home_score, self.raw_data, self.num_situation
+                self.home_score, self.raw_data,
+                self.num_situation.strip(), self.x, self.y
                 ) == (
                 other.game_id, other.in_game_event_cnt, other.type,
                 other.period, other.time, other.road_on_ice, other.home_on_ice,
                 other.stop_type, other.road_goalie, other.home_goalie,
                 other.road_score, other.home_score, other.raw_data,
-                other.num_situation
+                other.num_situation.strip(), other.x, other.y
                 ))
 
     def __ne__(self, other):
