@@ -174,6 +174,62 @@ class EventParser():
         except:
             penalty_data_dict['served_by_no'] = None
 
+        # retrieving penalty-worthy infraction
+        # searching for a regular/penalty shot infraction
+        infraction_match = re.search(self.INFRACTION_REGEX, event.raw_data)
+        if infraction_match:
+            infraction = infraction_match.group(2).strip()
+        else:
+            logger.debug(
+                "Couldn't retrieve regular infraction" +
+                "from raw data: %s" % event.raw_data)
+            infraction = None
+
+        # searching for a possible team infraction
+        if infraction is None:
+            infraction_match = re.search(
+                self.TEAM_INFRACTION_REGEX, event.raw_data)
+            if infraction_match:
+                infraction = infraction_match.group(2).strip()
+            else:
+                logger.debug(
+                    "Couldn't retrieve team infraction" +
+                    "from raw data: %s" % event.raw_data)
+                infraction = None
+
+        # searching for a possible anonymous team infraction
+        if infraction is None:
+            infraction_match = re.search(
+                self.ANONYMOUS_TEAM_INFRACTION_REGEX, event.raw_data)
+            if infraction_match:
+                infraction = infraction_match.group(1).strip()
+            else:
+                logger.debug(
+                    "Couldn't retrieve anonymous team infraction" +
+                    "from raw data: %s" % event.raw_data)
+                infraction = None
+
+        # searching for a possible coach infraction
+        if infraction is None:
+            infraction_match = re.search(
+                self.COACH_INFRACTION_REGEX, event.raw_data)
+            if infraction_match:
+                infraction = infraction_match.group(1).strip()
+            else:
+                logger.debug(
+                    "Couldn't retrieve coach infraction" +
+                    "from raw data: %s" % event.raw_data)
+                infraction = None
+        
+        penalty_data_dict['infraction'] = infraction
+
+        if infraction is None:
+            logger.error(
+                "Could not retrieve infraction from" +
+                "raw data: %s (game_id: %s)" % (
+                    event.raw_data, self.game.game_id))
+            return
+
         penalty = Penalty(event.event_id, penalty_data_dict)
 
         return penalty
