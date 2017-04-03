@@ -30,6 +30,15 @@ class EventParser():
     DISTANCE_REGEX = re.compile("(\d+)\sft\.")
     # ... the number of a player serving a penalty
     SERVED_BY_REGEX = re.compile("Served By:\s#(\d+)\s(.+)")
+    # ... a penalty infraction for a player
+    INFRACTION_REGEX = re.compile(
+        "#\d+.{1}[A-Z]+(\'| |\.|\-){0,2}(?:[A-Z ]+)?\.?.{1}([A-Z].+)\(\d")
+    # ... a penalty infraction for a team
+    TEAM_INFRACTION_REGEX = re.compile("(.{3})\sTEAM(.+)\(\d")
+    # ... a penalty infraction for a team but without anyone serving it
+    ANONYMOUS_TEAM_INFRACTION_REGEX = re.compile("Team(.+)\-.+bench")
+    # ... a penalty infraction for a coach
+    COACH_INFRACTION_REGEX = re.compile("#(.+coach)\(\d+")
 
     # official game information json data uses other type denominators than the
     # official play-by-play summaries (and subsequently the database)
@@ -166,13 +175,50 @@ class EventParser():
         team, zone = self.retrieve_standard_event_parameters(event)
         penalty_data_dict['team_id'] = team.team_id
         penalty_data_dict['zone'] = zone[0:3]
+
+        # retrieving number of player taking the penalty (if applicable)
+        try:
+            taken_by_no = int(re.search(
+                self.PENALTY_NO_REGEX, event.raw_data).group(1))
+        except:
+            taken_by_no = None
+
         # retrieving number of player serving the penalty (if applicable)
         try:
             served_by_no, served_by_name = re.search(
                 self.SERVED_BY_REGEX, event.raw_data).group(1, 2)
-            penalty_data_dict['served_by_no'] = int(served_by_no)
+            served_by_no = int(served_by_no)
         except:
-            penalty_data_dict['served_by_no'] = None
+            served_by_no = None
+
+        # retrieving team and number of player drawing the penalty (if
+        # applicable)
+        try:
+            drawn_by_team, drawn_by_no = re.search(
+                self.PENALTY_DRAWN_REGEX, event.raw_data).group(1, 2)
+            drawn_by_no = int(drawn_by_no)
+            drawn_by_team = Team.find_by_abbr(drawn_by_team)
+        except:
+            drawn_by_no = None
+            drawn_by_team = None
+
+        # for a start assuming home team is taking the penalty, road team
+        # is drawing it
+        team_key, team_drawn_key = 'home', 'road'
+        # switching team roles if road team is actually taking the penalty
+        if team.team_id == self.game.road_team_id:
+            team_key, team_drawn_key = team_drawn_key, team_key
+
+        # converting player number(s) to actual player id(s)
+        if taken_by_no is not None:
+            penalty_data_dict['player_id'] = self.rosters[team_key][
+                taken_by_no].player.player_id
+        if served_by_no is not None:
+            penalty_data_dict['server_player_id'] = self.rosters[team_key][
+                served_by_no].player.player_id
+        if drawn_by_no is not None:
+            penalty_data_dict['drawn_player_id'] = self.rosters[
+                team_drawn_key][drawn_by_no].player.player_id
 
         # retrieving penalty-worthy infraction
         # searching for a regular/penalty shot infraction
@@ -220,7 +266,7 @@ class EventParser():
                     "Couldn't retrieve coach infraction" +
                     "from raw data: %s" % event.raw_data)
                 infraction = None
-        
+
         penalty_data_dict['infraction'] = infraction
 
         if infraction is None:
@@ -230,9 +276,14 @@ class EventParser():
                     event.raw_data, self.game.game_id))
             return
 
-        penalty = Penalty(event.event_id, penalty_data_dict)
+        # retrieving penalty with same event id from database
+        db_penalty = Penalty.find_by_event_id(event.event_id)
+        # creating new penalty
+        new_penalty = Penalty(event.event_id, penalty_data_dict)
+        # creating or updating penalty item in database
+        create_or_update_db_item(db_penalty, new_penalty)
 
-        return penalty
+        return Penalty.find_by_event_id(event.event_id)
 
     def specify_event(self, event):
         """
@@ -389,10 +440,11 @@ class EventParser():
             single_play_dict['description'] = play['result']['description']
 
             for player in play['players']:
-                if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][0]:
-                    single_play_dict['active'] = player['player']['id']
-                    single_play_dict['active_name'] = player[
-                        'player']['fullName']
+                if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
+                        0]:
+                            single_play_dict['active'] = player['player']['id']
+                            single_play_dict['active_name'] = player[
+                                'player']['fullName']
                 else:
                     single_play_dict['passive'] = player['player']['id']
                     single_play_dict['passive_name'] = player[
