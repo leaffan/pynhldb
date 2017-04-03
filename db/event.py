@@ -38,6 +38,17 @@ class Event(Base):
             return event
 
     @classmethod
+    def find_by_id(self, event_id):
+        with session_scope() as session:
+            try:
+                event = session.query(Event).filter(
+                    Event.event_id == event_id
+                ).one()
+            except:
+                event = None
+            return event
+
+    @classmethod
     def find_by_time_type(self, game_id, event_period, event_time, event_type):
         with session_scope() as session:
             try:
