@@ -4,6 +4,8 @@
 import uuid
 
 from .common import Base, session_scope
+from db.player import Player
+from db.event import Event
 
 
 class Penalty(Base):
@@ -48,8 +50,19 @@ class Penalty(Base):
                 ) == (
                 other.event_id, other.team_id, other.player_id, other.zone,
                 other.drawn_team_id, other.drawn_player_id,
-                other.served_player_id, other.infraction other.pim
+                other.served_player_id, other.infraction, other.pim
                 ))
 
     def __ne__(self, other):
         return not self == other
+
+    def __str__(self):
+        player = Player.find_by_id(self.player_id)
+        event = Event.find_by_id(self.event_id)
+        if player:
+            return "%s: %d minutes for %s (%d/%s)" % (
+                player.name, self.pim, self.infraction,
+                event.period, event.time)
+        else:
+            return "Bench penalty: %d minutes for %s (%d/%s)" % (
+                self.pim, self.infraction, event.period, event.time)
