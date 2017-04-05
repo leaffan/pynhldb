@@ -65,6 +65,11 @@ class Event(Base):
 
     def update(self, other):
         for attr in self.STANDARD_ATTRS:
+            # avoiding to overwrite coordinates existinf in database
+            # with null values
+            if attr in ['x', 'y']:
+                if getattr(self, attr) and getattr(other, attr) is None:
+                    continue
             setattr(self, attr, getattr(other, attr))
 
     def __eq__(self, other):
