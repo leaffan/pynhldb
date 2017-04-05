@@ -6,7 +6,7 @@ import logging
 from collections import defaultdict
 
 from utils import str_to_timedelta
-from db import create_or_update_db_item
+from db import create_or_update_db_item, commit_db_item
 from db.team import Team
 from db.event import Event
 from db.shot import Shot
@@ -302,7 +302,7 @@ class EventParser():
         """
         if event.type in ['SHOT', 'GOAL']:
             shot = self.get_shot_on_goal_event(event)
-            print(shot)
+            # print(shot)
 
         # if event.type == 'GOAL':
         #     shot = Shot.find_by_event_id(event.event_id)
@@ -329,6 +329,15 @@ class EventParser():
         if event.type == 'PENL':
             penalty = self.get_penalty_event(event)
             print(penalty)
+            if event.x is None:
+                plays = self.json_dict[(event.period, event.time, event.type)]
+                for play in plays:
+                    if self.is_matching_penalty_event(penalty, play):
+                        print("++++++++++ changing event")
+                        event.x = play['x']
+                        event.y = play['y']
+                        commit_db_item(event)
+                    # print("------", match)
 
     def get_event(self, event_data_item):
         """
@@ -366,16 +375,19 @@ class EventParser():
 
         # TODO: add coordinates to events
         # TODO: match multiple plays at the same time with events
-        # play_key = (
-        #     event_data_dict['period'],
-        #     event_data_dict['time'],
-        #     event_data_dict['type'])
-        # if play_key in self.json_dict:
-        #     if len(self.json_dict[play_key]) == 1:
-        #         event_data_dict['x'] = int(
-        #             self.json_dict[play_key][0][0]['x'])
-        #         event_data_dict['y'] = int(
-        #             self.json_dict[play_key][0][0]['y'])
+        play_key = (
+            event_data_dict['period'],
+            event_data_dict['time'],
+            event_data_dict['type'])
+        if play_key in self.json_dict:
+            if len(self.json_dict[play_key]) == 1:
+                single_play_dict = self.json_dict[play_key][0]
+                event_data_dict['x'] = int(single_play_dict['x'])
+                event_data_dict['y'] = int(single_play_dict['y'])
+            else:
+                print()
+                print(self.json_dict[play_key])
+                print()
 
         # creating event id
         event_id = "{0:d}{1:04d}".format(
@@ -391,6 +403,32 @@ class EventParser():
 
         return Event.find(
             self.game.game_id, event_data_dict['in_game_event_cnt'])
+
+    def is_matching_penalty_event(self, penalty, play):
+        """
+        Checks whether the given play retrieved from json data matches with the
+        specified (penalty) event.
+        """
+        # event = Event.find_by_id(penalty.event_id)
+        print("\tid ", play['active'], penalty.player_id)
+        print("\tpim ", play['pim'], penalty.pim)
+        print(
+            "\tinfraction", play['infraction'],
+            penalty.infraction.lower())
+
+        if penalty.player_id is None:
+            if (play['pim'], play['infraction']) == (penalty.pim, penalty.infraction.lower()):
+                # TODO: logger.debug
+                return True
+        else:
+            if play['active'] is not None and play['passive'] is not None:
+                if (play['active'], play['passive'], play['pim'], play['infraction']) == (penalty.player_id, penalty.drawn_player_id, penalty.pim, penalty.infraction.lower()):
+                    return True
+            elif play['active'] is not None:
+                if (play['active'], play['pim'], play['infraction']) == (penalty.player_id, penalty.pim, penalty.infraction.lower()):
+                    return True
+
+        return False
 
     def retrieve_players_on_ice(self, event_data_item):
         """
@@ -468,8 +506,13 @@ class EventParser():
                         'player']['fullName']
             # adding penalty minutes to single play dictionary (if applicable)
             if play_type == 'PENL':
-                single_play_dict['penalty_minutes'] = play[
+                single_play_dict['pim'] = play[
                     'result']['penaltyMinutes']
+                infraction = play['result']['secondaryType'].lower()
+                severity = play['result']['penaltySeverity'].lower()
+                single_play_dict[
+                    'infraction'] = self.adjust_penalty_infraction(
+                        infraction, severity)
             # adding single player dictionary to dictionary of all plays using
             # period, time and type of play as key
             self.json_dict[(play_period, play_time, play_type)].append(
@@ -482,6 +525,21 @@ class EventParser():
                     for key in entry:
                         print("\t", key, ":", entry[key])
                     print("-----")
+
+    def adjust_penalty_infraction(self, infraction, severity):
+        """
+        Adjusts the penalty infraction retrieved from json data to match
+        corresponding information in database.
+        """
+        if infraction == 'too many men on the ice':
+            infraction = "too many men/ice"
+        if severity == 'major' and not infraction.strip().endswith('(maj)'):
+            infraction = " ".join((infraction.strip(), '(maj)'))
+        if severity == 'bench minor' and not infraction.strip().endswith('bench'):
+            infraction = " - ".join((infraction.strip(), 'bench'))
+        if severity == 'misconduct' and not infraction.strip().endswith('(10 min)'):
+            infraction = " ".join((infraction.strip(), '(10 min)'))
+        return infraction
 
     def load_data(self):
         """
