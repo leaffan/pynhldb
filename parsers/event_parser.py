@@ -28,8 +28,6 @@ class EventParser():
     SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
     # ... the distance from goal for a shot
     DISTANCE_REGEX = re.compile("(\d+)\sft\.")
-    # ... the number of a player serving a penalty
-    SERVED_BY_REGEX = re.compile("Served By:\s#(\d+)\s(.+)")
     # ... a penalty infraction for a player
     INFRACTION_REGEX = re.compile(
         "#\d+.{1}[A-Z]+(\'| |\.|\-){0,2}(?:[A-Z ]+)?\.?.{1}([A-Z].+)\(\d")
@@ -39,6 +37,14 @@ class EventParser():
     ANONYMOUS_TEAM_INFRACTION_REGEX = re.compile("Team(.+)\-.+bench")
     # ... a penalty infraction for a coach
     COACH_INFRACTION_REGEX = re.compile("#(.+coach)\(\d+")
+    # ... the number penalty minutes assessed for an infraction
+    PIM_REGEX = re.compile("\((\d+)\smin\)")
+    # ... the number of player taking a penalty
+    PENALTY_NO_REGEX = re.compile("^.{3}\s#(\d+)")
+    # ... number and team of player drawing a penalty
+    PENALTY_DRAWN_REGEX = re.compile("Drawn By:\s(.{3}).+#(\d+)")
+    # ...  number of a player serving a penalty
+    SERVED_BY_REGEX = re.compile("Served By:\s#(\d+)\s(.+)")
 
     # official game information json data uses other type denominators than the
     # official play-by-play summaries (and subsequently the database)
@@ -76,9 +82,10 @@ class EventParser():
         self.game = game
         self.rosters = rosters
 
+        # pre-processing play-by-play summary
         self.load_data()
-
-        return
+        # caching plays with coordinates from json game summary
+        self.cache_plays_with_coordinates()
 
         for event_data_item in self.event_data:
             event = self.get_event(event_data_item)
@@ -212,13 +219,14 @@ class EventParser():
         # converting player number(s) to actual player id(s)
         if taken_by_no is not None:
             penalty_data_dict['player_id'] = self.rosters[team_key][
-                taken_by_no].player.player_id
+                taken_by_no].player_id
         if served_by_no is not None:
             penalty_data_dict['server_player_id'] = self.rosters[team_key][
-                served_by_no].player.player_id
+                served_by_no].player_id
         if drawn_by_no is not None:
             penalty_data_dict['drawn_player_id'] = self.rosters[
-                team_drawn_key][drawn_by_no].player.player_id
+                team_drawn_key][drawn_by_no].player_id
+            penalty_data_dict['drawn_team_id'] = drawn_by_team.team_id
 
         # retrieving penalty-worthy infraction
         # searching for a regular/penalty shot infraction
@@ -274,7 +282,10 @@ class EventParser():
                 "Could not retrieve infraction from" +
                 "raw data: %s (game_id: %s)" % (
                     event.raw_data, self.game.game_id))
-            return
+
+        # retrieving the amount of penalty minutes assessed for this infraction
+        penalty_data_dict['pim'] = int(
+            re.search(self.PIM_REGEX, event.raw_data).group(1))
 
         # retrieving penalty with same event id from database
         db_penalty = Penalty.find_by_event_id(event.event_id)
@@ -291,7 +302,7 @@ class EventParser():
         """
         if event.type in ['SHOT', 'GOAL']:
             shot = self.get_shot_on_goal_event(event)
-            print(shot.shot_id)
+            print(shot)
 
         # if event.type == 'GOAL':
         #     shot = Shot.find_by_event_id(event.event_id)
@@ -317,7 +328,7 @@ class EventParser():
 
         if event.type == 'PENL':
             penalty = self.get_penalty_event(event)
-            print(penalty.penalty_id)
+            print(penalty)
 
     def get_event(self, event_data_item):
         """
@@ -353,6 +364,8 @@ class EventParser():
             if key in goalies_on_ice:
                 event_data_dict["%s_goalie" % key] = goalies_on_ice[key]
 
+        # TODO: add coordinates to events
+        # TODO: match multiple plays at the same time with events
         # play_key = (
         #     event_data_dict['period'],
         #     event_data_dict['time'],
@@ -417,28 +430,32 @@ class EventParser():
 
         return players_on_ice, goalies_on_ice
 
-    def load_data(self):
+    def cache_plays_with_coordinates(self):
         """
-        Loads structured raw data and pre-processes it.
+        Caches plays from json game summary to be later used for linking with
+        retrieved events.
         """
-        from collections import defaultdict
         self.json_dict = defaultdict(list)
 
-        # TODO: cache plays and coordinates from json for later lookup
         for play in self.json_data['liveData']['plays']['allPlays']:
             coords = play['coordinates']
+            # we're only interested in plays that have coordinates
             if not coords:
                 continue
+            # retrieving period and time of the play
+            play_period = play['about']['period']
+            play_time = str_to_timedelta(play['about']['periodTime'])
             play_type = play['result']['eventTypeId']
+            # converting json play type to play-by-play summary event type
             if play_type in self.PLAY_EVENT_TYPE_MAP:
                 play_type = self.PLAY_EVENT_TYPE_MAP[play_type]
-            play_time = str_to_timedelta(play['about']['periodTime'])
-            play_period = play['about']['period']
+            # setting up dictionary for single play
             single_play_dict = dict()
+            # adding coordinates and description to single play dictionary
             single_play_dict['x'] = coords['x']
             single_play_dict['y'] = coords['y']
             single_play_dict['description'] = play['result']['description']
-
+            # adding players participating in play
             for player in play['players']:
                 if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
                         0]:
@@ -449,14 +466,15 @@ class EventParser():
                     single_play_dict['passive'] = player['player']['id']
                     single_play_dict['passive_name'] = player[
                         'player']['fullName']
-
+            # adding penalty minutes to single play dictionary (if applicable)
             if play_type == 'PENL':
                 single_play_dict['penalty_minutes'] = play[
                     'result']['penaltyMinutes']
+            # adding single player dictionary to dictionary of all plays using
+            # period, time and type of play as key
             self.json_dict[(play_period, play_time, play_type)].append(
                 single_play_dict
             )
-
         for ptp, pti, pty in sorted(self.json_dict.keys()):
             if len(self.json_dict[(ptp, pti, pty)]) > 1:
                 print(self.game.game_id, ptp, pti, pty)
@@ -465,6 +483,10 @@ class EventParser():
                         print("\t", key, ":", entry[key])
                     print("-----")
 
+    def load_data(self):
+        """
+        Loads structured raw data and pre-processes it.
+        """
         self.event_data = list()
         # finding all table rows on play-by-play page
         for tr in self.raw_data.xpath("body/table/tr"):
