@@ -11,6 +11,7 @@ if __name__ == '__main__':
     src = r"D:\nhl\official_and_json\2016-17\2017-02\2017-02-01.zip"
     # src = r"D:\nhl\official_and_json\2016-17\2017-02\2017-02-20"
     # src = r"D:\nhl\official_and_json\_2015-16\2016-05\2016-05-09.zip"
+    src = r"D:\nhl\official_and_json\_2015-16\2016-04\2016-04-10.zip"
 
     src_dir = r"D:\nhl\official_and_json\_2014-15\2014-12"
     src_dir = r"D:\nhl\official_and_json\2016-17\2016-10"
@@ -28,6 +29,7 @@ if __name__ == '__main__':
         mp = MainParser(src)
         print(mp.game_ids)
 
-        for game_id in mp.game_ids[:1]:
+        for game_id in mp.game_ids[:]:
             mp.parse_single_game(game_id)
 
+        mp.dispose()
