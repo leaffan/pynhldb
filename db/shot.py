@@ -4,7 +4,8 @@
 import uuid
 
 from db.common import Base, session_scope
-
+from db.player import Player
+from db.event import Event
 
 class Shot(Base):
     __tablename__ = 'shots'
@@ -56,3 +57,16 @@ class Shot(Base):
 
     def __ne__(self, other):
         return not self == other
+
+    def __str__(self):
+        player = Player.find_by_id(self.player_id)
+        goalie = Player.find_by_id(self.goalie_id)
+        event = Event.find_by_id(self.event_id)
+        if goalie is not None:
+            return "%s: shot on goal (%s, %d ft) vs. %s (%d/%s)" % (
+                player.name, self.shot_type, self.distance,
+                goalie.name, event.period, event.time)
+        else:
+            return "%s: shot on goal (%s, %d ft) (%d/%s)" % (
+                player.name, self.shot_type, self.distance,
+                event.period, event.time)

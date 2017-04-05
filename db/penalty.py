@@ -59,7 +59,7 @@ class Penalty(Base):
     def __str__(self):
         player = Player.find_by_id(self.player_id)
         event = Event.find_by_id(self.event_id)
-        if player:
+        if player is not None:
             return "%s: %d minutes for %s (%d/%s)" % (
                 player.name, self.pim, self.infraction,
                 event.period, event.time)
