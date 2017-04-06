@@ -6,6 +6,7 @@ import logging
 from collections import defaultdict
 
 from utils import str_to_timedelta
+from utils.event_matcher import is_matching_event
 from db import create_or_update_db_item, commit_db_item
 from db.team import Team
 from db.event import Event
@@ -94,10 +95,16 @@ class EventParser():
                 # shootout attempts are either goals, saved shots or misses all
                 # occurring in the fifth period of a regular season game
                 # shootout_attempt = self.get_shootout_attempt(event)
+                specific_event = None
                 pass
             else:
                 # specifying regular play-by-play event
-                self.specify_event(event)
+                specific_event = self.specify_event(event)
+
+            print(specific_event)
+
+            if specific_event is not None and event.x is None:
+                self.find_coordinates_for_ambigiuous_events(specific_event)
 
     def retrieve_standard_event_parameters(self, event):
         """
@@ -301,7 +308,7 @@ class EventParser():
         Specifies an event in more detail according to its type.
         """
         if event.type in ['SHOT', 'GOAL']:
-            shot = self.get_shot_on_goal_event(event)
+            return self.get_shot_on_goal_event(event)
             # print(shot)
 
         # if event.type == 'GOAL':
@@ -327,17 +334,17 @@ class EventParser():
         #     takeaway = self.get_takeaway_event(event)
 
         if event.type == 'PENL':
-            penalty = self.get_penalty_event(event)
-            print(penalty)
-            if event.x is None:
-                plays = self.json_dict[(event.period, event.time, event.type)]
-                for play in plays:
-                    if self.is_matching_penalty_event(penalty, play):
-                        print("++++++++++ changing event")
-                        event.x = play['x']
-                        event.y = play['y']
-                        commit_db_item(event)
-                    # print("------", match)
+            return self.get_penalty_event(event)
+
+    def find_coordinates_for_ambigiuous_events(self, specific_event):
+        event = Event.find_by_id(specific_event.event_id)
+        plays = self.json_dict[(event.period, event.time, event.type)]
+        for play in plays:
+            if is_matching_event(play, specific_event):
+                event.x = play['x']
+                event.y = play['y']
+                commit_db_item(event)
+                break
 
     def get_event(self, event_data_item):
         """
@@ -404,32 +411,6 @@ class EventParser():
         return Event.find(
             self.game.game_id, event_data_dict['in_game_event_cnt'])
 
-    def is_matching_penalty_event(self, penalty, play):
-        """
-        Checks whether the given play retrieved from json data matches with the
-        specified (penalty) event.
-        """
-        # event = Event.find_by_id(penalty.event_id)
-        print("\tid ", play['active'], penalty.player_id)
-        print("\tpim ", play['pim'], penalty.pim)
-        print(
-            "\tinfraction", play['infraction'],
-            penalty.infraction.lower())
-
-        if penalty.player_id is None:
-            if (play['pim'], play['infraction']) == (penalty.pim, penalty.infraction.lower()):
-                # TODO: logger.debug
-                return True
-        else:
-            if play['active'] is not None and play['passive'] is not None:
-                if (play['active'], play['passive'], play['pim'], play['infraction']) == (penalty.player_id, penalty.drawn_player_id, penalty.pim, penalty.infraction.lower()):
-                    return True
-            elif play['active'] is not None:
-                if (play['active'], play['pim'], play['infraction']) == (penalty.player_id, penalty.pim, penalty.infraction.lower()):
-                    return True
-
-        return False
-
     def retrieve_players_on_ice(self, event_data_item):
         """
         Gets all players and goalies on ice for current event and each team.
@@ -489,6 +470,8 @@ class EventParser():
                 play_type = self.PLAY_EVENT_TYPE_MAP[play_type]
             # setting up dictionary for single play
             single_play_dict = dict()
+            # adding play type to single play dictionary
+            single_play_dict['play_type'] = play_type
             # adding coordinates and description to single play dictionary
             single_play_dict['x'] = coords['x']
             single_play_dict['y'] = coords['y']
