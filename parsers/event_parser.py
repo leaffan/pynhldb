@@ -4,6 +4,7 @@
 import re
 import logging
 from collections import defaultdict
+from operator import add
 
 from utils import str_to_timedelta
 from utils.event_matcher import is_matching_event
@@ -11,6 +12,7 @@ from db import create_or_update_db_item, commit_db_item
 from db.team import Team
 from db.event import Event
 from db.shot import Shot
+from db.goal import Goal
 from db.penalty import Penalty
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,10 @@ class EventParser():
     SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
     # ... the distance from goal for a shot
     DISTANCE_REGEX = re.compile("(\d+)\sft\.")
+    # ... assistants to a goal
+    ASSIST_REGEX = re.compile("Assists?:\s(.+)(?:;\s(.+))?")
+    # ... the number of player scoring a goal or assist
+    SCORER_NO_REGEX = re.compile("#(\d+)?")
     # ... a penalty infraction for a player
     INFRACTION_REGEX = re.compile(
         "#\d+.{1}[A-Z]+(\'| |\.|\-){0,2}(?:[A-Z ]+)?\.?.{1}([A-Z].+)\(\d")
@@ -74,8 +80,7 @@ class EventParser():
         self.json_data = json_data
         # class-wide variables to hold current score for both home and road
         # team, increase accordingly if a goal was score
-        self.home_score = 0
-        self.road_score = 0
+        self.score = defaultdict(int)
         self.score_diff = 0
         # self.curr_period = 0
 
@@ -101,7 +106,8 @@ class EventParser():
                 # specifying regular play-by-play event
                 specific_event = self.specify_event(event)
 
-            print(specific_event)
+            if specific_event:
+                print(specific_event)
 
             if specific_event is not None and event.x is None:
                 self.find_coordinates_for_ambigiuous_events(specific_event)
@@ -303,17 +309,73 @@ class EventParser():
 
         return Penalty.find_by_event_id(event.event_id)
 
+    def get_goal_event(self, event, shot):
+        """
+        Retrieves or creates a goal event.
+        """
+        goal_data_dict = dict()
+
+        # transferring attributes from shot the goal was scored on
+        goal_data_dict['team_id'] = shot.team_id
+        goal_data_dict['goal_against_team_id'] = shot.goalie_team_id
+        goal_data_dict['player_id'] = shot.player_id
+        goal_data_dict['shot_id'] = shot.shot_id
+
+        # determining whether this was an empty net goal, i.e. no opposing
+        # goalie was on ice for the goal
+        if shot.goalie_id is None:
+            goal_data_dict['empty_net_goal'] = True
+
+        # updating team scores and determining goal type
+        # for a start assuming home team has scored the penalty, road team
+        # has allowed it
+        team_gf_key, team_ga_key = 'home', 'road'
+        # switching team roles if road team has actually scored the goal
+        if shot.team_id == self.game.road_team_id:
+            team_gf_key, team_ga_key = team_ga_key, team_gf_key
+        self.score[team_gf_key] += 1
+        if self.score[team_gf_key] == self.score[team_ga_key]:
+            goal_data_dict['tying_goal'] = True
+        if self.score[team_gf_key] == self.score[team_ga_key] + 1:
+            goal_data_dict['go_ahead_goal'] = True
+
+        # retrieving overall and team goal count in current game
+        goal_data_dict['in_game_cnt'] = add(
+            self.score[team_gf_key], self.score[team_ga_key])
+        goal_data_dict['in_game_team_cnt'] = self.score[team_gf_key]
+
+        # retrieving assistants
+        if self.ASSIST_REGEX.search(event.raw_data):
+            assists = self.ASSIST_REGEX.search(
+                event.raw_data).group(1).split(';')
+            assist_cnt = 0
+            for a in assists:
+                assist_cnt += 1
+                # retrieving assistant's number
+                no = int(self.SCORER_NO_REGEX.search(a).group(1))
+                # retrieving player that was the assistant
+                assistant = self.rosters[team_gf_key][no].player_id
+                goal_data_dict["assist_%d" % assist_cnt] = assistant
+
+        # retrieving goal with same event id from database
+        db_goal = Goal.find_by_event_id(event.event_id)
+        # creating new goal
+        new_goal = Goal(event.event_id, goal_data_dict)
+        # creating or updating penalty item in database
+        create_or_update_db_item(db_goal, new_goal)
+
+        return Goal.find_by_event_id(event.event_id)
+
     def specify_event(self, event):
         """
         Specifies an event in more detail according to its type.
         """
-        if event.type in ['SHOT', 'GOAL']:
+        if event.type == 'SHOT':
             return self.get_shot_on_goal_event(event)
-            # print(shot)
 
-        # if event.type == 'GOAL':
-        #     shot = Shot.find_by_event_id(event.event_id)
-        #     goal = self.get_goal_event(event, shot)
+        if event.type == 'GOAL':
+            shot = self.get_shot_on_goal_event(event)
+            return self.get_goal_event(event, shot)
 
         # if event.type == 'MISS':
         #     miss = self.get_miss_event(event)
@@ -357,8 +419,8 @@ class EventParser():
         event_data_dict = dict()
         # TODO: decide whether to put game id directly in constructor
         event_data_dict['game_id'] = self.game.game_id
-        event_data_dict['home_score'] = self.home_score
-        event_data_dict['road_score'] = self.road_score
+        event_data_dict['home_score'] = self.score['home']
+        event_data_dict['road_score'] = self.score['road']
 
         # retrieving basic event attributes
         event_data_dict['in_game_event_cnt'] = int(tokens[0])
@@ -367,6 +429,9 @@ class EventParser():
         event_data_dict['time'] = str_to_timedelta(tokens[3])
         event_data_dict['type'] = tokens[5]
         event_data_dict['raw_data'] = tokens[6]
+        if tokens[7]:
+            event_data_dict['raw_data'] = "|".join((
+                event_data_dict['raw_data'], tokens[7]))
 
         # stoppages in play are registered as property of the according event
         if event_data_dict['type'] == 'STOP':
@@ -391,10 +456,10 @@ class EventParser():
                 single_play_dict = self.json_dict[play_key][0]
                 event_data_dict['x'] = int(single_play_dict['x'])
                 event_data_dict['y'] = int(single_play_dict['y'])
-            else:
-                print()
-                print(self.json_dict[play_key])
-                print()
+            # else:
+            #     print()
+            #     print(self.json_dict[play_key])
+            #     print()
 
         # creating event id
         event_id = "{0:d}{1:04d}".format(
@@ -518,10 +583,12 @@ class EventParser():
             infraction = "too many men/ice"
         if severity == 'major' and not infraction.strip().endswith('(maj)'):
             infraction = " ".join((infraction.strip(), '(maj)'))
-        if severity == 'bench minor' and not infraction.strip().endswith('bench'):
-            infraction = " - ".join((infraction.strip(), 'bench'))
-        if severity == 'misconduct' and not infraction.strip().endswith('(10 min)'):
-            infraction = " ".join((infraction.strip(), '(10 min)'))
+        if severity == 'bench minor' and not infraction.strip().endswith(
+                'bench'):
+                    infraction = " - ".join((infraction.strip(), 'bench'))
+        if severity == 'misconduct' and not infraction.strip().endswith(
+                '(10 min)'):
+                    infraction = " ".join((infraction.strip(), '(10 min)'))
         return infraction
 
     def load_data(self):
