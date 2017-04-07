@@ -5,6 +5,7 @@ import uuid
 
 from .common import Base, session_scope
 from db.player import Player
+from db.team import Team
 from db.event import Event
 
 
@@ -58,11 +59,12 @@ class Penalty(Base):
 
     def __str__(self):
         player = Player.find_by_id(self.player_id)
+        team = Team.find_by_id(self.team_id)
         event = Event.find_by_id(self.event_id)
         if player is not None:
-            return "%s: %d minutes for %s (%d/%s)" % (
+            return "Penalty: %s - %d minutes for %s (%d/%s)" % (
                 player.name, self.pim, self.infraction,
                 event.period, event.time)
         else:
-            return "Bench penalty: %d minutes for %s (%d/%s)" % (
-                self.pim, self.infraction, event.period, event.time)
+            return "Penalty: %s bench - %d minutes for %s (%d/%s)" % (
+                team, self.pim, self.infraction, event.period, event.time)
