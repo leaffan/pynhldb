@@ -34,6 +34,8 @@ def is_matching_penalty_event(penalty, play):
     print("\tpim ", play['pim'], penalty.pim)
     print("\tinfraction", play['infraction'], penalty.infraction.lower())
 
+    # trying to match play and (team) penalty (i.e. not being given to a
+    # certain player) using penalty minutes and sanctioned infraction
     if penalty.player_id is None:
         if (
             play['pim'], play['infraction']
@@ -43,6 +45,9 @@ def is_matching_penalty_event(penalty, play):
             # TODO: logger.debug
             return True
     else:
+        # trying to match play and penalty using participating players
+        # (including the one drawing the penalty), penalty minutes and
+        # sanctioned infraction
         if play['active'] is not None and play['passive'] is not None:
             if (
                 play['active'], play['passive'],
@@ -51,13 +56,17 @@ def is_matching_penalty_event(penalty, play):
                 penalty.player_id, penalty.drawn_player_id,
                 penalty.pim, penalty.infraction.lower()
             ):
+                # TODO: logger.debug
                 return True
+        # trying to match play and penalty using participating player,
+        # penalty minutes and sanctioned infraction
         elif play['active'] is not None:
             if (
                 play['active'], play['pim'], play['infraction']
             ) == (
                 penalty.player_id, penalty.pim, penalty.infraction.lower()
             ):
+                # TODO: logger.debug
                 return True
 
     return False
