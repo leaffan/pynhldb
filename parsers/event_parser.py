@@ -75,6 +75,11 @@ class EventParser():
         'TAKE': ("PlayerID",)
     }
 
+    SHOT_TYPES = [
+        'Wrist', 'Snap', 'Backhand',
+        'Wrap-around', 'Slap', 'Deflected', 'Tip-In']
+    MISS_TYPES = ['Hit Crossbar', 'Wide of Net', 'Over Net', 'Goalpost']
+
     def __init__(self, raw_data, json_data):
         self.raw_data = raw_data
         self.json_data = json_data
@@ -130,6 +135,18 @@ class EventParser():
             logger.info("Set zone deliberately to %s" % zone)
 
         return team, zone
+
+    def get_missed_shot_event(self, event):
+        """
+        Retrieves or creates a missed shot event.
+        """
+        miss_data_dict = dict()
+        # retrieving the shooter's team and zone where the shot was taken
+        team, zone = self.retrieve_standard_event_parameters(event)
+        # retrieving the shooter's number
+        no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
+        miss_data_dict['team_id'] = team.team_id
+        miss_data_dict['zone'] = zone[0:3]
 
     def get_shot_on_goal_event(self, event):
         """
