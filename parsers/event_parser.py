@@ -15,6 +15,7 @@ from db.shot import Shot
 from db.goal import Goal
 from db.penalty import Penalty
 from db.miss import Miss
+from db.block import Block
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +52,16 @@ class EventParser():
     PENALTY_NO_REGEX = re.compile("^.{3}\s#(\d+)")
     # ... number and team of player drawing a penalty
     PENALTY_DRAWN_REGEX = re.compile("Drawn By:\s(.{3}).+#(\d+)")
-    # ...  number of a player serving a penalty
+    # ...  number of player serving a penalty
     SERVED_BY_REGEX = re.compile("Served By:\s#(\d+)\s(.+)")
+    # ... numbers of players participating in hit/blocked shot
+    HIT_BLOCK_REGEX = re.compile(
+        "(.{3})\s#(\d{1,2})\s.+(?:(?:HIT)|" +
+        "(?:BLOCKED BY))\s+(.{3})\s#(\d{1,2})\s.+")
+    # ... number and team of player blocking a shot
+    ONLY_BLOCKED_BY_REGEX = re.compile("BLOCKED BY\s+(.{3})\s#(\d{1,2})\s.+")
+    # ... shot type of a blocked shot
+    BLOCKED_SHOT_TYPE_REGEX = re.compile(",\s(.+),")
 
     # official game information json data uses other type denominators than the
     # official play-by-play summaries (and subsequently the database)
@@ -150,7 +159,7 @@ class EventParser():
         # retrieving the shooter's number
         no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
 
-        # assuming shooters' team is home and goalie's team is road team
+        # assuming shooter's team is home and goalie's team is road team
         plr_key, goalie_key = "home", "road"
         # otherwise swapping keys
         if team.team_id == self.game.road_team_id:
@@ -440,6 +449,65 @@ class EventParser():
 
         return Goal.find_by_event_id(event.event_id)
 
+    def get_block_event(self, event):
+        """
+        Retrieves or creates a block event.
+        """
+        block_data_dict = dict()
+        # retrieving the shooter's team and zone where the shot was taken
+        blocked_team, zone = self.retrieve_standard_event_parameters(event)
+        block_data_dict['blocked_team_id'] = blocked_team.team_id
+        block_data_dict['zone'] = zone[0:3]
+
+        # trying to retrieve blocking team and numbers of players involved
+        try:
+            blocked_player_no, team, player_no = re.search(
+                self.HIT_BLOCK_REGEX, event.raw_data).group(2, 3, 4)
+            blocked_player_no = int(blocked_player_no)
+        except:
+            logger.warn(
+                "Couldn't retrieve blocked player" +
+                "from raw data: %s" % event.raw_data)
+            team, player_no = re.search(
+                self.ONLY_BLOCKED_BY_REGEX, event.raw_data).group(1, 2)
+            blocked_player_no = None
+        player_no = int(player_no)
+
+        # retrieving blocking team
+        team = Team.find(team)
+        block_data_dict['team_id'] = team.team_id
+        # assuming blocker is from home and blocked player is from road team
+        block_key, blocked_key = "home", "road"
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            block_key, blocked_key = blocked_key, block_key
+        # retrieving blocker's player id
+        block_data_dict['player_id'] = self.rosters[
+            block_key][player_no].player_id
+        # retrieving blocked player's player id
+        if blocked_player_no:
+            block_data_dict['blocked_player_id'] = self.rosters[
+                blocked_key][blocked_player_no].player_id
+
+        # retrieving type of the blocked shot
+        try:
+            shot_type = re.search(
+                self.BLOCKED_SHOT_TYPE_REGEX, event.raw_data).group(1)
+            block_data_dict['shot_type'] = shot_type
+        except AttributeError:
+            logger.warn(
+                "Couldn't retrieve blocked shot type" +
+                "from raw data: %s" % event.raw_data)
+
+        # retrieving blocked shot with same event id from database
+        db_block = Block.find_by_event_id(event.event_id)
+        # creating new blocked shot
+        new_block = Block(event.event_id, block_data_dict)
+        # creating or updating blocked shot item in database
+        create_or_update_db_item(db_block, new_block)
+
+        return Block.find_by_event_id(event.event_id)
+
     def specify_event(self, event):
         """
         Specifies an event in more detail according to its type.
@@ -454,8 +522,8 @@ class EventParser():
         if event.type == 'MISS':
             return self.get_missed_shot_event(event)
 
-        # if event.type == 'BLOCK':
-        #     block = self.get_block_event(event)
+        if event.type == 'BLOCK':
+            return self.get_block_event(event)
 
         # if event.type == 'FAC':
         #     faceoff = self.get_faceoff_event(event)
@@ -560,6 +628,7 @@ class EventParser():
         goalies_on_ice = dict()
 
         try:
+            # retrieving players on ice for current event
             poi_data['road'], poi_data['home'] = event_data_item.xpath(
                 "td/table")
         except:
