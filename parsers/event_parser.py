@@ -14,6 +14,7 @@ from db.event import Event
 from db.shot import Shot
 from db.goal import Goal
 from db.penalty import Penalty
+from db.miss import Miss
 
 logger = logging.getLogger(__name__)
 
@@ -143,10 +144,65 @@ class EventParser():
         miss_data_dict = dict()
         # retrieving the shooter's team and zone where the shot was taken
         team, zone = self.retrieve_standard_event_parameters(event)
-        # retrieving the shooter's number
-        no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
         miss_data_dict['team_id'] = team.team_id
         miss_data_dict['zone'] = zone[0:3]
+
+        # retrieving the shooter's number
+        no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
+
+        # assuming shooters' team is home and goalie's team is road team
+        plr_key, goalie_key = "home", "road"
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            plr_key, goalie_key = goalie_key, plr_key
+        # retrieving shooter's player id
+        miss_data_dict['player_id'] = self.rosters[plr_key][no].player_id
+        # retrieving goalie's team and player id
+        miss_data_dict['goalie_team_id'] = getattr(
+            self.game, "%s_team_id" % goalie_key)
+        miss_data_dict['goalie_id'] = getattr(event, "%s_goalie" % goalie_key)
+        # checking whether current shot was a penalty shot
+        if "penalty shot" in event.raw_data.lower():
+            miss_data_dict['penalty_shot'] = True
+
+        # retrieving combined missed shot properties from raw data
+        miss_props, distance = self.SHOT_REGEX.search(
+            event.raw_data).group(1, 2)
+        # splitting up missed shot properties
+        miss_props_tokens = [s.strip() for s in miss_props.split(',')]
+        # sorting out missed shot properties to retrieve shot/miss type
+        if len(miss_props_tokens) == 3 and miss_props_tokens[0].lower(
+                ) == 'penalty shot':
+                    shot_type, miss_type = miss_props_tokens[1:]
+        elif len(miss_props_tokens) == 2:
+            shot_type, miss_type = miss_props_tokens
+        else:
+            token = miss_props_tokens.pop()
+            if token in self.SHOT_TYPES:
+                shot_type = token
+                miss_type = None
+            elif token in self.MISS_TYPES:
+                shot_type = None
+                miss_type = token
+            else:
+                shot_type = None
+                miss_type = None
+                logger.warn(
+                    "Couldn't retrieve unambigious shot or" +
+                    "miss type from raw data: %s" % event.raw_data)
+        # adding missed shot properties to data dictionary
+        miss_data_dict['shot_type'] = shot_type
+        miss_data_dict['miss_type'] = miss_type
+        miss_data_dict['distance'] = int(distance)
+
+        # retrieving missed shot with same event id from database
+        db_miss = Miss.find_by_event_id(event.event_id)
+        # creating new missed shot
+        new_miss = Miss(event.event_id, miss_data_dict)
+        # creating or updating shot item in database
+        create_or_update_db_item(db_miss, new_miss)
+
+        return Miss.find_by_event_id(event.event_id)
 
     def get_shot_on_goal_event(self, event):
         """
@@ -344,12 +400,13 @@ class EventParser():
             goal_data_dict['empty_net_goal'] = True
 
         # updating team scores and determining goal type
-        # for a start assuming home team has scored the penalty, road team
+        # for a start assuming home team has scored the goal, road team
         # has allowed it
         team_gf_key, team_ga_key = 'home', 'road'
         # switching team roles if road team has actually scored the goal
         if shot.team_id == self.game.road_team_id:
             team_gf_key, team_ga_key = team_ga_key, team_gf_key
+        # increasing team score
         self.score[team_gf_key] += 1
         if self.score[team_gf_key] == self.score[team_ga_key]:
             goal_data_dict['tying_goal'] = True
@@ -394,8 +451,8 @@ class EventParser():
             shot = self.get_shot_on_goal_event(event)
             return self.get_goal_event(event, shot)
 
-        # if event.type == 'MISS':
-        #     miss = self.get_miss_event(event)
+        if event.type == 'MISS':
+            return self.get_missed_shot_event(event)
 
         # if event.type == 'BLOCK':
         #     block = self.get_block_event(event)
@@ -497,6 +554,7 @@ class EventParser():
         """
         Gets all players and goalies on ice for current event and each team.
         """
+        # setting up data containers
         poi_data = dict()
         players_on_ice = defaultdict(list)
         goalies_on_ice = dict()
