@@ -4,6 +4,8 @@
 import uuid
 
 from db.common import Base, session_scope
+from db.event import Event
+from db.player import Player
 
 
 class Block(Base):
@@ -52,3 +54,11 @@ class Block(Base):
 
     def __ne__(self, other):
         return not self == other
+
+    def __str__(self):
+        blocked_plr = Player.find_by_id(self.blocked_player_id)
+        blocking_plr = Player.find_by_id(self.player_id)
+        event = Event.find_by_id(self.event_id)
+        return "Blocked Shot: %s from %s (%s) (%d/%s)" % (
+            blocking_plr.name, blocked_plr.name,
+            self.shot_type, event.period, event.time)
