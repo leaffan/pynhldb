@@ -14,7 +14,7 @@ CAREER_GOAL_LEADERS_URL = "".join(
     (HOCKEY_REF_PREFIX, "/leaders/goals_career.html"))
 
 
-def retrieve_yearly_top(top=10, start_season=1917, end_season=2015):
+def retrieve_yearly_top(top=10, start_season=1917, end_season=2016):
     """
     Retrieves yearly top (maximum ten) goalscorers from single site.
     """
@@ -67,7 +67,7 @@ def retrieve_yearly_top(top=10, start_season=1917, end_season=2015):
     return yearly_top_goalscorers
 
 
-def retrieve_yearly_leaders(start_season=1917, end_season=2015):
+def retrieve_yearly_leaders(start_season=1917, end_season=2016):
     """
     Retrieves yearly NHL goal-scoring leaders (fixed at top 5, from multiple
     sites).

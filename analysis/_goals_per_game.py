@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 URL_TEMPLATE = "http://www.hockey-reference.com/leagues/NHL_%d.html"
 
 
-def retrieve_goals_per_season(start_season=1917, end_season=2015):
+def retrieve_goals_per_season(start_season=1917, end_season=2016):
     """
     Retrieves goals scored for each NHL season.
     """
@@ -82,9 +82,9 @@ def retrieve_goals_per_season(start_season=1917, end_season=2015):
             float(season_goals_scored) / season_games_played, 2)
 
         logger.info(
-            "\t+ %s: %d games played, %d goals scored, %0.2f goals per game" % (
-                season, season_games_played, season_goals_scored,
-                season_data[season]['goals_per_game']))
+            "\t+ %s: %d games played, " % (season, season_games_played) +
+            "%d goals scored, " % season_goals_scored +
+            "%0.2f goals per game" % season_data[season]['goals_per_game'])
 
     return season_data
 
@@ -105,8 +105,9 @@ def calculate_adjustment_factors(season_data):
         float(sum_goals_scored) / sum_games_played, 2)
 
     logger.info(
-        "\t+ Overall: %d games played, %d goals scored, %0.2f goals per game" % (
-            sum_games_played, sum_goals_scored, goals_per_game))
+        "\t+ Overall: %d games played, " % sum_games_played +
+        "%d goals scored, " % sum_goals_scored +
+        "%0.2f goals per game" % goals_per_game)
     logger.info("+ Calculating adjustment factors for each NHL season")
 
     # calculating adjustment factor for each registered season

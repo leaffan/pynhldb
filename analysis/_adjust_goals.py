@@ -33,11 +33,13 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
     for plr in sorted(players_data, key=itemgetter('url')):
         plr_name = plr['name']
         plr_link = plr['url']
-    # for plr_link, plr_name in sorted(players_data)[:]:
         # retrieving regular goal data from player stats page, thereby
-        # excluding the most recent season, usually an on-going one
+        # optionally excluding the most recent season, usually an on-going one
+        # TODO: see above
+        # full_name, regular_goal_data = retrieve_regular_goal_totals(
+        #     plr_name, plr_link, exlude_most_recents_season=True)
         full_name, regular_goal_data = retrieve_regular_goal_totals(
-            plr_name, plr_link, True)
+            plr_name, plr_link)
         # adjusting goal scoring totals per season
         adjusted_goal_data = calculate_adjusted_goals(
             regular_goal_data, goals_per_season_data)
