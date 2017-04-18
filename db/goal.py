@@ -63,12 +63,13 @@ class Goal(Base):
     def __ne__(self, other):
         return not self == other
 
+    # TODO: re-do this mess
     def __str__(self):
         event = Event.find_by_id(self.event_id)
         team = Team.find_by_id(self.team_id)
         player = Player.find_by_id(self.player_id)
 
-        team_and_scorer = "Goal %s: %s" % (team.name, player.name)
+        team_and_scorer = "Goal: %s (%s)" % (player.name, team.name)
 
         assistants = list()
 
