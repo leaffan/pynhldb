@@ -16,6 +16,7 @@ from db.goal import Goal
 from db.penalty import Penalty
 from db.miss import Miss
 from db.block import Block
+from db.faceoff import Faceoff
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +63,8 @@ class EventParser():
     ONLY_BLOCKED_BY_REGEX = re.compile("BLOCKED BY\s+(.{3})\s#(\d{1,2})\s.+")
     # ... shot type of a blocked shot
     BLOCKED_SHOT_TYPE_REGEX = re.compile(",\s(.+),")
+    # ... numbers of players participating in a faceoff
+    FACEOFF_NO_REGEX = re.compile(".{3}\s#(\d{1,2}).+.{3}\s#(\d{1,2})")
 
     # official game information json data uses other type denominators than the
     # official play-by-play summaries (and subsequently the database)
@@ -508,6 +511,54 @@ class EventParser():
 
         return Block.find_by_event_id(event.event_id)
 
+    def get_faceoff_event(self, event):
+        """
+        Retrieves or creates a faceoff event.
+        """
+        faceoff_data_dict = dict()
+        # retrieving team winning the faceoff, numerical situation for
+        # winning team and zone where the faceoff was conducted
+        team, zone = self.retrieve_standard_event_parameters(event)
+        faceoff_data_dict['team_id'] = team.team_id
+        faceoff_data_dict['zone'] = zone[0:3]
+
+        # retrieving numbers of players participating in the faceoff
+        road_plr_no, home_plr_no = [
+            int(n) for n in re.search(
+                self.FACEOFF_NO_REGEX, event.raw_data).group(1, 2)]
+        # assuming faceoff winner is from home and loser is from road team
+        won_key, lost_key = "home", "road"
+        won_no, lost_no = home_plr_no, road_plr_no
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            won_key, lost_key = lost_key, won_key
+            won_no, lost_no = lost_no, won_no
+        # setting players and losing team accordingly
+        faceoff_data_dict['player_id'] = self.rosters[
+            won_key][won_no].player_id
+        faceoff_data_dict['faceoff_lost_player_id'] = self.rosters[
+            lost_key][lost_no].player_id
+        faceoff_data_dict['faceoff_lost_team_id'] = getattr(
+            self.game, "%s_team_id" % lost_key)
+
+        # retrieving zone where the faceoff was lost
+        # TODO: find a less awkward solution to do that
+        if faceoff_data_dict['zone'] == "Neu":
+            faceoff_data_dict['faceoff_lost_zone'] = faceoff_data_dict['zone']
+        elif faceoff_data_dict['zone'] == "Off":
+            faceoff_data_dict['faceoff_lost_zone'] = "Def"
+        elif faceoff_data_dict['zone'] == "Def":
+            faceoff_data_dict['faceoff_lost_zone'] = "Off"
+
+        # retrieving faceoff with same event id from database
+        db_faceoff = Faceoff.find_by_event_id(event.event_id)
+        # creating new faceoff
+        new_faceoff = Faceoff(event.event_id, faceoff_data_dict)
+        # creating or updating faceoff item in database
+        create_or_update_db_item(db_faceoff, new_faceoff)
+
+        return Faceoff.find_by_event_id(event.event_id)
+
     def specify_event(self, event):
         """
         Specifies an event in more detail according to its type.
@@ -525,8 +576,8 @@ class EventParser():
         if event.type == 'BLOCK':
             return self.get_block_event(event)
 
-        # if event.type == 'FAC':
-        #     faceoff = self.get_faceoff_event(event)
+        if event.type == 'FAC':
+            return self.get_faceoff_event(event)
 
         # if event.type == 'HIT':
         #     hit = self.get_hit_event(event)
