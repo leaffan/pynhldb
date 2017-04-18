@@ -92,3 +92,6 @@ class Event(Base):
 
     def __ne__(self, other):
         return not self == other
+
+    def __str__(self):
+        return "(%d/%s)" % (self.period, self.time)
