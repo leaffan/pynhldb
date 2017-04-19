@@ -55,10 +55,15 @@ class EventParser():
     PENALTY_DRAWN_REGEX = re.compile("Drawn By:\s(.{3}).+#(\d+)")
     # ...  number of player serving a penalty
     SERVED_BY_REGEX = re.compile("Served By:\s#(\d+)\s(.+)")
-    # ... numbers of players participating in hit/blocked shot
+    # ... teams and numbers of players involved in hit/blocked shot
     HIT_BLOCK_REGEX = re.compile(
         "(.{3})\s#(\d{1,2})\s.+(?:(?:HIT)|" +
         "(?:BLOCKED BY))\s+(.{3})\s#(\d{1,2})\s.+")
+    # ... teams involved in hit, number of player taking the hit
+    ONLY_HIT_TAKEN_REGEX = re.compile("HIT\s+(.{3})\s#(\d{1,2})\s.+")
+    # ... teams involved in hit, number of player hitting
+    ONLY_HIT_GIVEN_REGEX = re.compile(
+        "(.{3})\s#(\d{1,2})\s.+HIT\s+(.{3})\s#.+")
     # ... number and team of player blocking a shot
     ONLY_BLOCKED_BY_REGEX = re.compile("BLOCKED BY\s+(.{3})\s#(\d{1,2})\s.+")
     # ... shot type of a blocked shot
@@ -559,6 +564,38 @@ class EventParser():
 
         return Faceoff.find_by_event_id(event.event_id)
 
+    def get_hit_event(self, event):
+        """
+        Retrieves or creates a hit event.
+        """
+        hit_data_dict = dict()
+        # retrieving team committing the hit and zone where the hit occurred
+        team, zone = self.retrieve_standard_event_parameters(event)
+        hit_data_dict['team_id'] = team.team_id
+        hit_data_dict['zone'] = zone[0:3]
+
+        if self.HIT_BLOCK_REGEX.search(event.raw_data):
+            plr_no, team_taken, plr_no_taken = self.HIT_BLOCK_REGEX.search(
+                event.raw_data).group(2, 3, 4)
+        else:
+            logger.warn(
+                "Couldn't retrieve all involved players" +
+                "in hit from raw data: %s" % event.raw_data)
+            if self.ONLY_HIT_TAKEN_REGEX.search(event.raw_data):
+                team_taken, plr_no_taken = self.ONLY_HIT_TAKEN_REGEX.search(
+                    event.raw_data).group(1, 2)
+                plr_no = None
+            if self.ONLY_HIT_GIVEN_REGEX.search(event.raw_data):
+                plr_no, team_taken = self.ONLY_HIT_GIVEN_REGEX.search(
+                    event.raw_data).group(2, 3)
+                plr_no_taken = None
+
+        team_taken = Team.find_by_abbr
+
+        hit_data_dict['hit_taken_team_id'] = team_taken.team_id
+
+
+
     def specify_event(self, event):
         """
         Specifies an event in more detail according to its type.
@@ -579,8 +616,8 @@ class EventParser():
         if event.type == 'FAC':
             return self.get_faceoff_event(event)
 
-        # if event.type == 'HIT':
-        #     hit = self.get_hit_event(event)
+        if event.type == 'HIT':
+            return self.get_hit_event(event)
 
         # if event.type == 'GIVE':
         #     giveaway = self.get_giveaway_event(event)
