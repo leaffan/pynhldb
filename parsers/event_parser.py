@@ -17,6 +17,7 @@ from db.penalty import Penalty
 from db.miss import Miss
 from db.block import Block
 from db.faceoff import Faceoff
+from db.hit import Hit
 
 logger = logging.getLogger(__name__)
 
@@ -574,9 +575,14 @@ class EventParser():
         hit_data_dict['team_id'] = team.team_id
         hit_data_dict['zone'] = zone[0:3]
 
+        # TODO: less awkward
+        # trying to retrieve involved players' numbers and team taking the hit
         if self.HIT_BLOCK_REGEX.search(event.raw_data):
             plr_no, team_taken, plr_no_taken = self.HIT_BLOCK_REGEX.search(
                 event.raw_data).group(2, 3, 4)
+            plr_no = int(plr_no)
+            plr_no_taken = int(plr_no_taken)
+        # sometimes only one of the involved players is retrievable
         else:
             logger.warn(
                 "Couldn't retrieve all involved players" +
@@ -585,16 +591,42 @@ class EventParser():
                 team_taken, plr_no_taken = self.ONLY_HIT_TAKEN_REGEX.search(
                     event.raw_data).group(1, 2)
                 plr_no = None
+                plr_no_taken = int(plr_no_taken)
             if self.ONLY_HIT_GIVEN_REGEX.search(event.raw_data):
                 plr_no, team_taken = self.ONLY_HIT_GIVEN_REGEX.search(
                     event.raw_data).group(2, 3)
                 plr_no_taken = None
+                plr_no = int(plr_no)
 
-        team_taken = Team.find_by_abbr
-
+        # setting team taking the hit
+        team_taken = Team.find_by_abbr(team_taken)
         hit_data_dict['hit_taken_team_id'] = team_taken.team_id
 
+        # assuming hitter is from home and hittee is from road team
+        hit_key, taken_key = "home", "road"
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            hit_key, taken_key = taken_key, hit_key
 
+        # setting players accordingly
+        if plr_no:
+            hit_data_dict['player_id'] = self.rosters[hit_key][
+                plr_no].player_id
+        if plr_no_taken:
+            hit_data_dict['hit_taken_player_id'] = self.rosters[taken_key][
+                plr_no_taken].player_id
+
+        # retrieving hit with same event id from database
+        db_hit = Hit.find_by_event_id(event.event_id)
+        # creating new hit
+        new_hit = Hit(event.event_id, hit_data_dict)
+        # creating or updating hit item in database
+        create_or_update_db_item(db_hit, new_hit)
+
+        h = Hit.find_by_event_id(event.event_id)
+
+        print(h)
+        return h
 
     def specify_event(self, event):
         """
