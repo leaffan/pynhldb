@@ -623,10 +623,7 @@ class EventParser():
         # creating or updating hit item in database
         create_or_update_db_item(db_hit, new_hit)
 
-        h = Hit.find_by_event_id(event.event_id)
-
-        print(h)
-        return h
+        return Hit.find_by_event_id(event.event_id)
 
     def specify_event(self, event):
         """
