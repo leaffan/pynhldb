@@ -5,8 +5,8 @@ import uuid
 
 from db.common import Base  # , session_scope
 from db.specific_event import SpecificEvent
-# from db.event import Event
-# from db.player import Player
+from db.event import Event
+from db.player import Player
 
 
 class Hit(Base, SpecificEvent):
@@ -54,3 +54,10 @@ class Hit(Base, SpecificEvent):
 
     def __ne__(self, other):
         return not self == other
+
+    def __str__(self):
+        hit_plr = Player.find_by_id(self.player_id)
+        taken_plr = Player.find_by_id(self.hit_taken_player_id)
+        event = Event.find_by_id(self.event_id)
+        return "Hit: %s on %s (%d/%s)" % (
+            hit_plr.name, taken_plr.name, event.period, event.time)
