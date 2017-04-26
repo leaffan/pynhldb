@@ -3,13 +3,14 @@
 
 import uuid
 
-from db.common import Base, session_scope
+from db.common import Base
+from db.specific_event import SpecificEvent
 from db.team import Team
 from db.player import Player
 from db.event import Event
 
 
-class Goal(Base):
+class Goal(Base, SpecificEvent):
     __tablename__ = 'goals'
     __autoload__ = True
 
@@ -30,38 +31,6 @@ class Goal(Base):
                     setattr(self, attr, False)
                 else:
                     setattr(self, attr, None)
-
-    @classmethod
-    def find_by_event_id(self, event_id):
-        with session_scope() as session:
-            try:
-                goal = session.query(Goal).filter(
-                    Goal.event_id == event_id
-                ).one()
-            except:
-                goal = None
-            return goal
-
-    def update(self, other):
-        for attr in self.STANDARD_ATTRS:
-            setattr(self, attr, getattr(other, attr))
-
-    def __eq__(self, other):
-        return (
-            (
-                self.event_id, self.team_id, self.player_id,
-                self.goal_against_team_id, self.shot_id, self.assist_1,
-                self.assist_2, self.in_game_cnt, self.in_game_team_cnt,
-                self.go_ahead_goal, self.tying_goal, self.empty_net_goal
-                ) == (
-                other.event_id, other.team_id, other.player_id,
-                other.goal_against_team_id, other.shot_id, other.assist_1,
-                other.assist_2, other.in_game_cnt, other.in_game_team_cnt,
-                other.go_ahead_goal, other.tying_goal, other.empty_net_goal
-                ))
-
-    def __ne__(self, other):
-        return not self == other
 
     # TODO: re-do this mess
     def __str__(self):
