@@ -18,6 +18,8 @@ from db.miss import Miss
 from db.block import Block
 from db.faceoff import Faceoff
 from db.hit import Hit
+from db.giveaway import Giveaway
+from db.takeaway import Takeaway
 
 logger = logging.getLogger(__name__)
 
@@ -625,6 +627,72 @@ class EventParser():
 
         return Hit.find_by_event_id(event.event_id)
 
+    def get_giveaway_event(self, event):
+        """
+        Retrieves or creates a giveaway event.
+        """
+        giveaway_data_dict = dict()
+        # retrieving team committing the giveaway and zone where the puck
+        # was given away
+        team, zone = self.retrieve_standard_event_parameters(event)
+        giveaway_data_dict['team_id'] = team.team_id
+        giveaway_data_dict['zone'] = zone[0:3]
+
+        # retrieving the player who committed the giveaway
+        no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
+        # assuming giveaway was committed from home team
+        giveaway_key, given_to_key = "home", "road"
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            giveaway_key, given_to_key = given_to_key, giveaway_key
+
+        giveaway_data_dict['player_id'] = self.rosters[
+            giveaway_key][no].player_id
+        giveaway_data_dict['given_to_team_id'] = Team.find_by_id(
+            getattr(self.game, "%s_team_id" % given_to_key)).team_id
+
+        # retrieving giveaway with same event id from database
+        db_giveaway = Giveaway.find_by_event_id(event.event_id)
+        # creating new giveaway
+        new_giveaway = Giveaway(event.event_id, giveaway_data_dict)
+        # creating or updating giveaway item in database
+        create_or_update_db_item(db_giveaway, new_giveaway)
+
+        return Giveaway.find_by_event_id(event.event_id)
+
+    def get_takeaway_event(self, event):
+        """
+        Retrieves or creates a takeaway event.
+        """
+        takeaway_data_dict = dict()
+        # retrieving team executing the takeaway and zone where the puck
+        # was taken away
+        team, zone = self.retrieve_standard_event_parameters(event)
+        takeaway_data_dict['team_id'] = team.team_id
+        takeaway_data_dict['zone'] = zone[0:3]
+
+        # retrieving the player who executed the takeaway
+        no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
+        # assuming takeaway was executed from home team
+        takeaway_key, taken_from_key = "home", "road"
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            takeaway_key, taken_from_key = taken_from_key, takeaway_key
+
+        takeaway_data_dict['player_id'] = self.rosters[
+            takeaway_key][no].player_id
+        takeaway_data_dict['taken_from_team_id'] = Team.find_by_id(
+            getattr(self.game, "%s_team_id" % taken_from_key)).team_id
+
+        # retrieving takeaway with same event id from database
+        db_takeaway = Takeaway.find_by_event_id(event.event_id)
+        # creating new takeaway
+        new_takeaway = Takeaway(event.event_id, takeaway_data_dict)
+        # creating or updating takeaway item in database
+        create_or_update_db_item(db_takeaway, new_takeaway)
+
+        return Takeaway.find_by_event_id(event.event_id)
+
     def specify_event(self, event):
         """
         Specifies an event in more detail according to its type.
@@ -648,11 +716,11 @@ class EventParser():
         if event.type == 'HIT':
             return self.get_hit_event(event)
 
-        # if event.type == 'GIVE':
-        #     giveaway = self.get_giveaway_event(event)
+        if event.type == 'GIVE':
+            return self.get_giveaway_event(event)
 
-        # if event.type == 'TAKE':
-        #     takeaway = self.get_takeaway_event(event)
+        if event.type == 'TAKE':
+            return self.get_takeaway_event(event)
 
         if event.type == 'PENL':
             return self.get_penalty_event(event)
