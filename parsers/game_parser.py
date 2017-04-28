@@ -10,6 +10,7 @@ from dateutil import parser
 from db import create_or_update_db_item
 from db.common import session_scope
 from db.game import Game
+from db.team_game import TeamGame
 from utils import remove_null_strings, retrieve_season
 
 logger = logging.getLogger(__name__)
@@ -214,6 +215,147 @@ class GameParser():
                 overtime_game = True
 
         return overtime_game, shootout_game, so_winner
+
+    def create_team_games(self, game, gs_data):
+        """
+        Retrieves team-dependent information for this game in order to create
+        a separate NHLTeamGame object.
+        """
+        team_game_data_dict = dict()
+        # retrieving by period goals, shots, penalties and penalties in minutes
+        by_period = gs_data.xpath(
+            "//td[@class='sectionheading']")[2].xpath(
+                "parent::tr/following-sibling::tr")[0]
+        by_period_goals, by_period_shots, by_period_pens, by_period_pims = \
+            [by_period.xpath(
+                ".//tr[@class='oddColor' or " +
+                "@class='evenColor']/td[%d]/text()" % i) for i in range(2, 6)]
+
+        # retrieving powerplay situations
+        pp_situations = gs_data.xpath(
+            "//td[@class='sectionheading']")[3].xpath(
+                "parent::tr/following-sibling::tr")[0]
+        pp_5v4, pp_5v3, pp_4v3 = [pp_situations.xpath(
+            ".//tr[@class='oddColor']/td[%d]/text()" % i) for i in range(1, 4)]
+
+        for key in ('road', 'home'):
+            if key == 'road':
+                team_id = game.road_team_id
+            else:
+                team_id = game.home_team_id
+
+            team_game_data_dict['home_road_type'] = key
+
+            team_game_data_dict = self.retrieve_per_period_data(
+                key, team_game_data_dict,
+                by_period_goals, by_period_shots,
+                by_period_pens, by_period_pims)
+
+            team_game_db = TeamGame.find(game.game_id, team_id)
+
+            new_team_game = TeamGame(
+                game.game_id, team_id, team_game_data_dict)
+
+            create_or_update_db_item(team_game_db, new_team_game)
+
+            team_game = TeamGame.find(game.game_id, team_id)
+
+    def retrieve_power_plays(self, key, team_game_data_dict, pp_raw_data):
+        """
+        Analyzes power play raw data to yield database-ready information.
+        """
+        pp_time_overall = "00:00:00"
+
+        if key == 'road':
+            pp_idx = 0
+        else:
+            pp_idx = -1
+
+        pp_types = ['pp_5v4', 'pp_5v3', 'pp_4v3']
+        pp_time_types = ['pp_time_5v4', 'pp_time_5v3', 'pp_time_4v3']
+
+        for pp_raw in pp_raw_data:
+            try:
+                pp_opps = [
+                    int(x) for x in pp_raw[pp_idx].split("/")[0].split(
+                        "-")][-1]
+                pp_time = ":".join(
+                    (['00'] + pp_raw[pp_idx].split("/")[-1].split(":")))
+            except:
+                pp_opps = 0
+                pp_time = ":".join((['00', '00', '00']))
+
+    def retrieve_per_period_data(
+            self, key, team_game_data_dict,
+            by_period_goals, by_period_shots, by_period_pens, by_period_pims):
+        """
+        Analyzes per-period raw data to yield per-team, per-period goals and
+        shots. Additionally retrieves per-team penalty data.
+        """
+        if key == 'road':
+            team_gf = by_period_goals[:len(by_period_goals) // 2]
+            team_ga = by_period_goals[len(by_period_goals) // 2:]
+            team_sf = by_period_shots[:len(by_period_shots) // 2]
+            team_sa = by_period_shots[len(by_period_shots) // 2:]
+
+            team_game_data_dict['penalties'] = int(
+                by_period_pens[:len(by_period_pens) // 2][-1])
+            team_game_data_dict['pim'] = int(
+                by_period_pims[:len(by_period_pims) // 2][-1])
+        else:
+            team_gf = by_period_goals[len(by_period_goals) // 2:]
+            team_ga = by_period_goals[:len(by_period_goals) // 2]
+            team_sf = by_period_shots[len(by_period_shots) // 2:]
+            team_sa = by_period_shots[:len(by_period_shots) // 2]
+
+            team_game_data_dict['penalties'] = int(
+                by_period_pens[len(by_period_pens) // 2:][-1])
+            team_game_data_dict['pim'] = int(
+                by_period_pims[len(by_period_pims) // 2:][-1])
+
+        team_ot_sf = team_sf[3:-1]
+        team_ot_sa = team_sa[3:-1]
+
+        (
+            team_game_data_dict['goals_for_1st'],
+            team_game_data_dict['goals_for_2nd'],
+            team_game_data_dict['goals_for_3rd']
+        ) = [int(x) for x in team_gf[:3]]
+        team_game_data_dict['goals_for'] = int(team_gf[-1])
+
+        (
+            team_game_data_dict['goals_against_1st'],
+            team_game_data_dict['goals_against_2nd'],
+            team_game_data_dict['goals_against_3rd']
+        ) = [int(x) for x in team_ga[:3]]
+        team_game_data_dict['goals_against'] = int(team_ga[-1])
+
+        (
+            team_game_data_dict['shots_for_1st'],
+            team_game_data_dict['shots_for_2nd'],
+            team_game_data_dict['shots_for_3rd']
+        ) = [int(x) for x in team_sf[:3]]
+        team_game_data_dict['shots_for'] = int(team_sf[-1])
+
+        (
+            team_game_data_dict['shots_against_1st'],
+            team_game_data_dict['shots_against_2nd'],
+            team_game_data_dict['shots_against_3rd']
+        ) = [int(x) for x in team_sa[:3]]
+        team_game_data_dict['shots_against'] = int(team_sa[-1])
+
+        if team_ot_sf or team_ot_sa:
+            shots_for_ot = 0
+            shots_against_ot = 0
+
+            for ot_sf, ot_sa in zip(team_ot_sf, team_ot_sa):
+                shots_for_ot += int(ot_sf)
+                shots_against_ot += int(ot_sa)
+
+            team_game_data_dict['shots_for_ot'] = shots_for_ot
+            team_game_data_dict['shots_against_ot'] = shots_against_ot
+
+        return team_game_data_dict
 
     def load_data(self):
         """
