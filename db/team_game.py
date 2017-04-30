@@ -51,22 +51,17 @@ class TeamGame(Base):
         return Team.find_by_id(self.team_id)
 
     def update(self, other):
-        print("self", self.home_road_type)
-        print("other", other.home_road_type)
         for attr in self.STANDARD_ATTRS:
             setattr(self, attr, getattr(other, attr))
 
     def __eq__(self, other):
         # comparing each standard attribute value (and game and team id) of
         # this object with other one's
-        print("s", self.home_road_type)
-        print("o", other.home_road_type)
-        print("ss", [self.team_id].extend([1, 2, 3]))#.extend([getattr(self, attr) for attr in self.STANDARD_ATTRS]))
-        print("oo", [other.game_id, other.team_id].extend(
-            [getattr(other, attr) for attr in other.STANDARD_ATTRS]))
-        return [self.game_id, self.team_id].extend(
+        return (
+            [self.game_id, self.team_id] + 
             [getattr(self, attr) for attr in self.STANDARD_ATTRS]
-        ) == [other.game_id, other.team_id].extend(
+        ) == (
+            [other.game_id, other.team_id] +
             [getattr(other, attr) for attr in other.STANDARD_ATTRS]
         )
 
