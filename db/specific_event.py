@@ -37,9 +37,11 @@ class SpecificEvent():
     def __eq__(self, other):
         # comparing each standard attribute value (and event id) of this object
         # with other one's
-        return [self.event_id].extend(
+        return (
+            [self.event_id] +
             [getattr(self, attr) for attr in self.STANDARD_ATTRS]
-        ) == [other.event_id].extend(
+        ) == (
+            [other.event_id] +
             [getattr(other, attr) for attr in other.STANDARD_ATTRS]
         )
 
