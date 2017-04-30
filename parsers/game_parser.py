@@ -11,7 +11,7 @@ from db import create_or_update_db_item
 from db.common import session_scope
 from db.game import Game
 from db.team_game import TeamGame
-from utils import remove_null_strings, retrieve_season
+from utils import remove_null_strings, retrieve_season, str_to_timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +222,8 @@ class GameParser():
         a separate NHLTeamGame object.
         """
         team_game_data_dict = dict()
-        # retrieving by period goals, shots, penalties and penalties in minutes
+        # retrieving raw by period goals, shots, penalties and
+        # penalties in minutes
         by_period = gs_data.xpath(
             "//td[@class='sectionheading']")[2].xpath(
                 "parent::tr/following-sibling::tr")[0]
@@ -231,12 +232,14 @@ class GameParser():
                 ".//tr[@class='oddColor' or " +
                 "@class='evenColor']/td[%d]/text()" % i) for i in range(2, 6)]
 
-        # retrieving powerplay situations
+        # retrieving raw powerplay opportunities and minutes
         pp_situations = gs_data.xpath(
             "//td[@class='sectionheading']")[3].xpath(
                 "parent::tr/following-sibling::tr")[0]
         pp_5v4, pp_5v3, pp_4v3 = [pp_situations.xpath(
             ".//tr[@class='oddColor']/td[%d]/text()" % i) for i in range(1, 4)]
+
+        team_games = dict()
 
         for key in ('road', 'home'):
             if key == 'road':
@@ -246,44 +249,70 @@ class GameParser():
 
             team_game_data_dict['home_road_type'] = key
 
+            # retrieving per period and overall shots and goals as well as
+            # raw overall penalties and penalties in minutes from raw data
             team_game_data_dict = self.retrieve_per_period_data(
                 key, team_game_data_dict,
                 by_period_goals, by_period_shots,
                 by_period_pens, by_period_pims)
+            # retrieving power play opportunities and times from raw data
+            team_game_data_dict = self.retrieve_power_plays(
+                key, team_game_data_dict, [pp_5v4, pp_4v3, pp_5v3]
+            )
 
+            # trying to retrieve team game item with same team and game
+            # ids from database
             team_game_db = TeamGame.find(game.game_id, team_id)
-
+            # creating new team game item
             new_team_game = TeamGame(
                 game.game_id, team_id, team_game_data_dict)
-
+            # creating new or updating existing team game item in database
             create_or_update_db_item(team_game_db, new_team_game)
 
-            team_game = TeamGame.find(game.game_id, team_id)
+            team_games[key] = TeamGame.find(game.game_id, team_id)
+
+        return team_games
+
+    def retrieve_win_loss_types(self, team_game, shootout_game, overtime_game):
+        """
+        Identifies win/loss situation for current team in current game.
+        """
 
     def retrieve_power_plays(self, key, team_game_data_dict, pp_raw_data):
         """
         Analyzes power play raw data to yield database-ready information.
         """
-        pp_time_overall = "00:00:00"
+        # initial power play opportunities and time
+        team_game_data_dict['pp_time_overall'] = str_to_timedelta("00:00")
+        team_game_data_dict['pp_overall'] = 0
 
+        # depending on which team is currently handled, a different component
+        # of the raw data has to be used
         if key == 'road':
             pp_idx = 0
         else:
             pp_idx = -1
 
+        # setting up lists of power play types and power play time types
         pp_types = ['pp_5v4', 'pp_5v3', 'pp_4v3']
         pp_time_types = ['pp_time_5v4', 'pp_time_5v3', 'pp_time_4v3']
 
+        # populating power play types with opportunity count and minutes played
         for pp_raw in pp_raw_data:
             try:
-                pp_opps = [
-                    int(x) for x in pp_raw[pp_idx].split("/")[0].split(
-                        "-")][-1]
-                pp_time = ":".join(
-                    (['00'] + pp_raw[pp_idx].split("/")[-1].split(":")))
+                pp_opps = [int(x) for x in pp_raw[pp_idx].split("/")[0].split(
+                    "-")][-1]
+                pp_time = str_to_timedelta(pp_raw[pp_idx].split("/")[-1])
             except:
                 pp_opps = 0
-                pp_time = ":".join((['00', '00', '00']))
+                pp_time = str_to_timedelta("00:00")
+            finally:
+                team_game_data_dict['pp_overall'] += pp_opps
+                team_game_data_dict[pp_types.pop(0)] = pp_opps
+                team_game_data_dict['pp_time_overall'] += pp_time
+                team_game_data_dict[pp_time_types.pop(0)] = pp_time
+
+        return team_game_data_dict
 
     def retrieve_per_period_data(
             self, key, team_game_data_dict,
