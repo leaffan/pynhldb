@@ -248,6 +248,7 @@ class GameParser():
                 team_id = game.home_team_id
 
             team_game_data_dict['home_road_type'] = key
+            team_game_data_dict['team_id'] = team_id
 
             # retrieving per period and overall shots and goals as well as
             # raw overall penalties and penalties in minutes from raw data
@@ -259,6 +260,8 @@ class GameParser():
             team_game_data_dict = self.retrieve_power_plays(
                 key, team_game_data_dict, [pp_5v4, pp_4v3, pp_5v3]
             )
+            team_game_data_dict = self.retrieve_win_loss_types(
+                team_game_data_dict, game.shootout_game, game.overtime_game)
 
             # trying to retrieve team game item with same team and game
             # ids from database
@@ -273,10 +276,24 @@ class GameParser():
 
         return team_games
 
-    def retrieve_win_loss_types(self, team_game, shootout_game, overtime_game):
+    def retrieve_win_loss_types(
+            self, team_game_data_dict, shootout_game, overtime_game):
         """
         Identifies win/loss situation for current team in current game.
         """
+
+        # retrieving all scoring summary table rows
+        scoring_trs = self.raw_data.xpath(
+            "//td[contains(text(), 'SCORING SUMMARY')]/ancestor::tr/" +
+            "following-sibling::tr[1]/td/table/tr[contains(@class, 'Color')]")
+
+        # retrieve shootout winning team abbreviation
+        if shootout_game:
+            so_winner = [
+                tr.xpath("td[5]/text()")[0] for tr in scoring_trs][-1]
+
+            if so_winner == team_game_data_dict
+
 
     def retrieve_power_plays(self, key, team_game_data_dict, pp_raw_data):
         """
