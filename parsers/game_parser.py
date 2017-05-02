@@ -221,7 +221,6 @@ class GameParser():
         Retrieves team-dependent information for this game in order to create
         a separate NHLTeamGame object.
         """
-        team_game_data_dict = dict()
         # retrieving raw by period goals, shots, penalties and
         # penalties in minutes
         by_period = gs_data.xpath(
@@ -247,8 +246,10 @@ class GameParser():
             else:
                 team_id = game.home_team_id
 
+            team_game_data_dict = dict()
             team_game_data_dict['home_road_type'] = key
             team_game_data_dict['team_id'] = team_id
+            team_game_data_dict['score'] = getattr(game, "%s_score" % key)
 
             # retrieving per period and overall shots and goals as well as
             # raw overall penalties and penalties in minutes from raw data
@@ -281,19 +282,48 @@ class GameParser():
         """
         Identifies win/loss situation for current team in current game.
         """
+        # retrieving official (e.g. including shootout winner) goals for
+        if (team_game_data_dict['score'] != team_game_data_dict['goals_for']):
+            goals_for = team_game_data_dict['score']
+        else:
+            goals_for = team_game_data_dict['goals_for']
 
-        # retrieving all scoring summary table rows
-        scoring_trs = self.raw_data.xpath(
-            "//td[contains(text(), 'SCORING SUMMARY')]/ancestor::tr/" +
-            "following-sibling::tr[1]/td/table/tr[contains(@class, 'Color')]")
+        # more goals scored than the other team, we have a win
+        if goals_for > team_game_data_dict['goals_against']:
+            team_game_data_dict['win'] = 1
+            # determining type of win
+            if shootout_game:
+                team_game_data_dict['shootout_win'] = 1
+            elif overtime_game:
+                team_game_data_dict['overtime_win'] = 1
+            else:
+                team_game_data_dict['regulation_win'] = 1
+        # less goals scored than the other team, we have a loss
+        elif goals_for < team_game_data_dict['goals_against']:
+            team_game_data_dict['loss'] = 1
+            # determining type of loss
+            if shootout_game:
+                team_game_data_dict['shootout_loss'] = 1
+            elif overtime_game:
+                team_game_data_dict['overtime_loss'] = 1
+            else:
+                team_game_data_dict['regulation_loss'] = 1
+        # otherwise we have a tie
+        else:
+            team_game_data_dict['tie'] = 1
 
-        # retrieve shootout winning team abbreviation
-        if shootout_game:
-            so_winner = [
-                tr.xpath("td[5]/text()")[0] for tr in scoring_trs][-1]
+        # calculating points based on win/loss types
+        points = 0
 
-            if so_winner == team_game_data_dict
+        if 'win' in team_game_data_dict:
+            points += team_game_data_dict['win'] * 2
+        if 'overtime_loss' in team_game_data_dict:
+            points += team_game_data_dict['overtime_loss']
+        if 'shootout_loss' in team_game_data_dict:
+            points += team_game_data_dict['shootout_loss']
+        team_game_data_dict['points'] = points
 
+        return team_game_data_dict
 
     def retrieve_power_plays(self, key, team_game_data_dict, pp_raw_data):
         """
