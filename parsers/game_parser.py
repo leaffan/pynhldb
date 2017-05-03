@@ -92,7 +92,7 @@ class GameParser():
         # for both home and road team...
         for key in ['home', 'road']:
             curr_team = teams[key]
-            # ...retrieving essential information for team and game 
+            # ...retrieving essential information for team and game
             game_team_dict["%s_team" % key] = curr_team
             game_team_dict["%s_team_id" % key] = curr_team.team_id
             game_team_dict["%s_score" % key] = curr_team.score
@@ -263,6 +263,10 @@ class GameParser():
             )
             team_game_data_dict = self.retrieve_win_loss_types(
                 team_game_data_dict, game.shootout_game, game.overtime_game)
+            # retrieving shootout information
+            team_game_data_dict = self.retrieve_shootout_information(
+                team_game_data_dict
+            )
 
             # trying to retrieve team game item with same team and game
             # ids from database
@@ -450,6 +454,30 @@ class GameParser():
 
             team_game_data_dict['shots_for_ot'] = shots_for_ot
             team_game_data_dict['shots_against_ot'] = shots_against_ot
+
+        return team_game_data_dict
+
+    def retrieve_shootout_information(self, team_game_data_dict):
+        """
+        Retrieves shootout attempts/goals for team specified by key.
+        """
+        if self.raw_so_data is None:
+            return team_game_data_dict
+
+        idx = 2
+
+        if team_game_data_dict['home_road_type'] == 'home':
+            idx += 1
+
+        xpath_expr = "//td[contains(text(), 'Shootout Summary')]/ancestor::"\
+            "tr/following-sibling::tr[1]/td/table/tr[%d]/td/text()" % idx
+
+        so_data = self.raw_so_data.xpath(xpath_expr)
+
+        # retrieving number of goals scored in shootout
+        team_game_data_dict['so_goals'] = int(so_data[1])
+        # summing up shots, misses and penalties to retrieve number of attempts
+        team_game_data_dict['so_attempts'] = sum([int(x) for x in so_data[2:]])
 
         return team_game_data_dict
 
