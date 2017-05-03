@@ -12,14 +12,15 @@ class Game(Base):
     __autoload__ = True
 
     STANDARD_ATTRS = [
-        "attendance", "data_last_modified", "date", "end", "game_id",
+        "attendance", "data_last_modified", "date", "end",
         "home_game_count", "home_overall_game_count", "home_score",
         "home_team_id", "overtime_game", "road_game_count",
         "road_overall_game_count", "road_score", "road_team_id",
         "season", "shootout_game", "start", "type", "venue"
     ]
 
-    def __init__(self, game_data_dict):
+    def __init__(self, game_id, game_data_dict):
+        self.game_id = game_id
         for attr in self.STANDARD_ATTRS:
             if attr in game_data_dict:
                 setattr(self, attr, game_data_dict[attr])
@@ -56,13 +57,13 @@ class Game(Base):
     def __eq__(self, other):
         return (
             (
-                self.season, self.type, self.game_id, self.start, self.end,
+                self.season, self.type, self.start, self.end,
                 self.date.strftime("%B %d, %Y"), self.attendance, self.venue,
                 self.road_team_id, self.home_team_id, self.road_score,
                 self.home_score, self.road_overall_game_count,
                 self.home_overall_game_count, self.road_game_count,
                 self.home_game_count) == (
-                other.season, other.type, other.game_id, other.start,
+                other.season, other.type, other.start,
                 other.end, other.date.strftime("%B %d, %Y"),
                 other.attendance, other.venue, other.road_team_id,
                 other.home_team_id, other.road_score, other.home_score,
