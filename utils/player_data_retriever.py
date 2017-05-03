@@ -186,7 +186,10 @@ class PlayerDataRetriever():
                     # regular season or playoffs
                     if stats_type['type']['displayName'] == "yearByYear":
                         season_type = 'RS'
-                    elif stats_type['type']['displayName'] == "yearByYearPlayoffs":
+                    elif (
+                        stats_type['type'][
+                            'displayName'] == "yearByYearPlayoffs"
+                    ):
                             season_type = 'PO'
 
                     # retrieving season and team of current statline
