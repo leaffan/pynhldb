@@ -94,4 +94,5 @@ class Event(Base):
         return not self == other
 
     def __str__(self):
-        return "(%d/%s)" % (self.period, self.time)
+        return "(%d/%02d:%02d)" % (
+            self.period, self.time.seconds // 60, self.time.seconds % 60)
