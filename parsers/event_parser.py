@@ -762,7 +762,8 @@ class EventParser():
 
         # stoppages in play are registered as property of the according event
         if event_data_dict['type'] == 'STOP':
-            event_data_dict['stop_type'] = event_data_dict['raw_data'].lower()
+            event_data_dict['stop_type'] = event_data_dict['raw_data'].lower(
+                ).replace("|", "")
 
         # retrieving players on goalies on ice for current event
         players_on_ice, goalies_on_ice = self.retrieve_players_on_ice(
