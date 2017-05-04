@@ -464,14 +464,15 @@ class GameParser():
         if self.raw_so_data is None:
             return team_game_data_dict
 
+        # setting index to get road team shootout information from raw data 
         idx = 2
-
+        # increasing index variable to get home team shootout information
         if team_game_data_dict['home_road_type'] == 'home':
             idx += 1
-
+        # setting up xpath expression to retrieve shootout information
         xpath_expr = "//td[contains(text(), 'Shootout Summary')]/ancestor::"\
             "tr/following-sibling::tr[1]/td/table/tr[%d]/td/text()" % idx
-
+        # applying xpath expression
         so_data = self.raw_so_data.xpath(xpath_expr)
 
         # retrieving number of goals scored in shootout
