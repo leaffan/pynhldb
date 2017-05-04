@@ -7,6 +7,7 @@ from db.common import Base
 from db.specific_event import SpecificEvent
 from db.player import Player
 from db.event import Event
+from db.team import Team
 
 
 class Miss(Base, SpecificEvent):
@@ -33,12 +34,15 @@ class Miss(Base, SpecificEvent):
     def __str__(self):
         player = Player.find_by_id(self.player_id)
         goalie = Player.find_by_id(self.goalie_id)
+        player_team = Team.find_by_id(self.team_id)
+        goalie_team = Team.find_by_id(self.goalie_team_id)
         event = Event.find_by_id(self.event_id)
         if goalie is not None:
-            return "Missed Shot: %s (%s, %d ft) vs. %s (%d/%s)" % (
-                player.name, self.miss_type, self.distance,
-                goalie.name, event.period, event.time)
+            return "Missed Shot: %s (%s) %s, %d ft vs. %s (%s) - %s" % (
+                player.name, player_team.abbr, self.miss_type, self.distance,
+                goalie.name, goalie_team.abbr, event)
         else:
-            return "Missed Shot: %s (%s, %d ft) (%d/%s)" % (
-                player.name, self.miss_type, self.distance,
-                event.period, event.time)
+            return "Missed Shot: %s (%s) %s, %d ft - %s" % (
+                player.name, player_team.abbr,
+                self.miss_type, self.distance,
+                event)

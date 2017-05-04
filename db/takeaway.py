@@ -7,6 +7,7 @@ from db.common import Base
 from db.specific_event import SpecificEvent
 from db.event import Event
 from db.player import Player
+from db.team import Team
 
 
 class Takeaway(Base, SpecificEvent):
@@ -29,5 +30,6 @@ class Takeaway(Base, SpecificEvent):
     def __str__(self):
         plr = Player.find_by_id(self.player_id)
         event = Event.find_by_id(self.event_id)
-        return "Takeaway: %s (%d/%s)" % (
-            plr.name, event.period, event.time)
+        team = Team.find_by_id(self.team_id)
+        return "Takeaway: %s (%s) - %s" % (
+            plr.name, team.abbr, event)

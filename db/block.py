@@ -7,6 +7,7 @@ from db.common import Base
 from db.specific_event import SpecificEvent
 from db.event import Event
 from db.player import Player
+from db.team import Team
 
 
 class Block(Base, SpecificEvent):
@@ -30,7 +31,10 @@ class Block(Base, SpecificEvent):
     def __str__(self):
         blocked_plr = Player.find_by_id(self.blocked_player_id)
         blocking_plr = Player.find_by_id(self.player_id)
+        blocked_team = Team.find_by_id(self.blocked_team_id)
+        blocking_team = Team.find_by_id(self.team_id)
         event = Event.find_by_id(self.event_id)
-        return "Blocked Shot: %s from %s (%s) (%d/%s)" % (
-            blocking_plr.name, blocked_plr.name,
-            self.shot_type, event.period, event.time)
+        return "Blocked Shot: %s (%s) on %s (%s) %s - %s" % (
+            blocking_plr.name, blocking_team.abbr,
+            blocked_plr.name, blocked_team.abbr,
+            self.shot_type, event)

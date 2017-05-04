@@ -33,9 +33,10 @@ class Penalty(Base, SpecificEvent):
         team = Team.find_by_id(self.team_id)
         event = Event.find_by_id(self.event_id)
         if player is not None:
-            return "Penalty: %s - %d minutes for %s (%d/%s)" % (
-                player.name, self.pim, self.infraction,
-                event.period, event.time)
+            return "Penalty: %s (%s) %d minutes for %s - %s" % (
+                player.name, team.abbr,
+                self.pim, self.infraction,
+                event)
         else:
-            return "Penalty: %s bench - %d minutes for %s (%d/%s)" % (
-                team, self.pim, self.infraction, event.period, event.time)
+            return "Penalty: %s bench %d minutes for %s - %s" % (
+                team, self.pim, self.infraction, event)

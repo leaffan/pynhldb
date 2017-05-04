@@ -38,7 +38,7 @@ class Goal(Base, SpecificEvent):
         team = Team.find_by_id(self.team_id)
         player = Player.find_by_id(self.player_id)
 
-        team_and_scorer = "Goal: %s (%s)" % (player.name, team.name)
+        team_and_scorer = "Goal: %s (%s)" % (player.name, team.abbr)
 
         assistants = list()
 

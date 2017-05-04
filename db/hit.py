@@ -7,6 +7,7 @@ from db.common import Base
 from db.specific_event import SpecificEvent
 from db.event import Event
 from db.player import Player
+from db.team import Team
 
 
 class Hit(Base, SpecificEvent):
@@ -30,6 +31,10 @@ class Hit(Base, SpecificEvent):
     def __str__(self):
         hit_plr = Player.find_by_id(self.player_id)
         taken_plr = Player.find_by_id(self.hit_taken_player_id)
+        hit_team = Team.find_by_id(self.team_id)
+        taken_team = Team.find_by_id(self.hit_taken_team_id)
         event = Event.find_by_id(self.event_id)
-        return "Hit: %s on %s (%d/%s)" % (
-            hit_plr.name, taken_plr.name, event.period, event.time)
+        return "Hit: %s (%s) on %s (%s) - %s" % (
+            hit_plr.name, hit_team.abbr,
+            taken_plr.name, taken_team.abbr,
+            event)

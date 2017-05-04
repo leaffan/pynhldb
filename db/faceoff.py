@@ -7,6 +7,7 @@ from db.common import Base
 from db.specific_event import SpecificEvent
 from db.event import Event
 from db.player import Player
+from db.team import Team
 
 
 class Faceoff(Base, SpecificEvent):
@@ -30,6 +31,10 @@ class Faceoff(Base, SpecificEvent):
     def __str__(self):
         won_plr = Player.find_by_id(self.player_id)
         lost_plr = Player.find_by_id(self.faceoff_lost_player_id)
+        won_team = Team.find_by_id(self.team_id)
+        lost_team = Team.find_by_id(self.faceoff_lost_team_id)
         event = Event.find_by_id(self.event_id)
-        return "Faceoff: %s won vs. %s (%s) (%d/%s)" % (
-            won_plr.name, lost_plr.name, self.zone, event.period, event.time)
+        return "Faceoff: %s (%s) won vs. %s (%s) in %s. zone - %s" % (
+            won_plr.name, won_team.abbr,
+            lost_plr.name, lost_team.abbr,
+            self.zone.lower(), event)
