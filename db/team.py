@@ -63,7 +63,10 @@ class Team(Base):
         with session_scope() as session:
             try:
                 t = session.query(Team).filter(
-                    Team.abbr == abbr
+                    or_(
+                        func.lower(Team.abbr) == abbr.lower(),
+                        func.lower(Team.orig_abbr) == abbr.lower()
+                    )
                 ).one()
             except:
                 t = None
