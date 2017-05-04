@@ -20,6 +20,7 @@ from db.faceoff import Faceoff
 from db.hit import Hit
 from db.giveaway import Giveaway
 from db.takeaway import Takeaway
+from db.shootout_attempt import ShootoutAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +126,7 @@ class EventParser():
             if self.game.type == 2 and event.period == 5:
                 # shootout attempts are either goals, saved shots or misses all
                 # occurring in the fifth period of a regular season game
-                # shootout_attempt = self.get_shootout_attempt(event)
-                specific_event = None
-                pass
+                specific_event = self.get_shootout_attempt(event)
             else:
                 # specifying regular play-by-play event
                 specific_event = self.specify_event(event)
@@ -137,6 +136,93 @@ class EventParser():
 
             if specific_event is not None and event.x is None:
                 self.find_coordinates_for_ambigiuous_events(specific_event)
+
+    def get_shootout_attempt(self, event):
+        """
+        Retrieves or creates a shootout attempt event.
+        """
+        # checking attempt type, e.g.. 'MISS', 'SHOT' or 'GOAL'
+        if event.type not in ['GOAL', 'SHOT', 'MISS']:
+            return
+
+        shootout_data_dict = dict()
+
+        shootout_data_dict['attempt_type'] = event.type
+
+        if shootout_data_dict['attempt_type'] == 'MISS':
+            shootout_data_dict['on_goal'] = False
+            shootout_data_dict['scored'] = False
+        elif shootout_data_dict['attempt_type'] == 'SHOT':
+            shootout_data_dict['on_goal'] = True
+            shootout_data_dict['scored'] = False
+        elif shootout_data_dict['attempt_type'] == 'GOAL':
+            shootout_data_dict['on_goal'] = True
+            shootout_data_dict['scored'] = True
+
+        # retrieving team that attempted at shootout and zone where the shot
+        # was taken
+        team, zone = self.retrieve_standard_event_parameters(event)
+        shootout_data_dict['team_id'] = team.team_id
+        shootout_data_dict['zone'] = zone[0:3]
+
+        # retrieving shootout shooter and goalie
+        no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
+
+        # assuming shooter's team is home and goalie's team is road team
+        plr_key, goalie_key = "home", "road"
+        # otherwise swapping keys
+        if team.team_id == self.game.road_team_id:
+            plr_key, goalie_key = goalie_key, plr_key
+
+        shootout_data_dict['player_id'] = self.rosters[plr_key][no].player_id
+        shootout_data_dict['goalie_id'] = getattr(
+            event, "%s_goalie" % goalie_key)
+        shootout_data_dict['goalie_team_id'] = getattr(
+            self.game, "%s_team_id" % goalie_key)
+
+        # retrieving shot properties
+        # TODO: re-factor (?)
+        if ". Zone," in event.raw_data:
+            try:
+                so_attempt_props, distance = self.SHOT_REGEX.search(
+                    event.raw_data).group(1, 2)
+            except:
+                so_attempt_props = None
+                distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
+                logger.warn(
+                    "Couldn't retrieve shootout attempt properties" +
+                    "from raw data: %s" % event.raw_data)
+        else:
+            so_attempt_props, distance = self.SHOT_WO_ZONE_REGEX.search(
+                event.raw_data).group(1, 2)
+
+        if so_attempt_props is not None:
+            if shootout_data_dict['on_goal']:
+                shootout_data_dict['shot_type'] = so_attempt_props
+            else:
+                shot_miss_types = [
+                    token.strip() for token in so_attempt_props.split(',')]
+                if len(shot_miss_types) == 2:
+                    (
+                        shootout_data_dict['shot_type'],
+                        shootout_data_dict['miss_type']) = shot_miss_types
+                else:
+                    shootout_data_dict['shot_type'] = so_attempt_props
+                    logger.warn(
+                        "Couldn't retrieve shootout attempt miss" +
+                        "type from raw data: %s" % event.raw_data)
+
+        shootout_data_dict['distance'] = int(distance)
+
+        # retrieving shootout attempt with same event id from database
+        db_shootout_attempt = ShootoutAttempt.find_by_event_id(event.event_id)
+        # creating new shootout attempt
+        new_shootout_attempt = ShootoutAttempt(
+            event.event_id, shootout_data_dict)
+        # creating or updating shootout attempt item in database
+        create_or_update_db_item(db_shootout_attempt, new_shootout_attempt)
+
+        return ShootoutAttempt.find_by_event_id(event.event_id)
 
     def retrieve_standard_event_parameters(self, event):
         """
