@@ -38,19 +38,10 @@ class GameParser():
     def create_game(self, teams):
         # loading and pre-processing raw data
         self.load_data()
-
         game_data = dict()
 
-        # retrieving game date from raw data
-        game_data['date'] = parser.parse(self.game_data[0]).date()
-        # retrieving season for current game date
-        game_data['season'] = retrieve_season(game_data['date'])
-        # setting up full game id, corresponding season, game type
-        # and partial game id
-        game_data['game_id'] = int(
-            "%d%s" % (game_data['season'], self.game_id))
-        # retrieving game type from partial game id
-        game_data['type'] = int(self.game_id[:2])
+        # retrieving standard game information
+        game_data = self.retrieve_standard_game_data(game_data)
         # retrieving game attendance and venue
         (
             game_data['attendance'],
@@ -63,16 +54,11 @@ class GameParser():
             game_data['overtime_game'],
             game_data['shootout_game']
         ) = self.retrieve_overtime_shootout_information(game_data['type'])
-        # retrieving last modification date of original data
-        try:
-            game_data['data_last_modified'] = parser.parse(
-                self.raw_data.xpath("//p[@id='last_modified']/text()")[0])
-        except:
-            game_data['data_last_modified'] = None
+
         # retrieving informatioan about participating teams
-        team_dict = self.link_game_with_teams(teams)
+        team_data = self.link_game_with_teams(teams)
         # merging team and game information
-        game_data = {**game_data, **team_dict}  # noqa: E999
+        game_data = {**game_data, **team_data}  # noqa: E999
 
         # trying to find game with same game id in database
         db_game = Game.find_by_id(game_data['game_id'])
@@ -83,24 +69,29 @@ class GameParser():
 
         return Game.find_by_id(game.game_id)
 
-    def link_game_with_teams(self, teams):
+    def retrieve_standard_game_data(self, game_data):
         """
-        Adds team information to current game.
+        Retrieves basic information for current game, e.g. date, season, type,
+        fully qualified id and last modification date of original data.
         """
-        game_team_dict = dict()
+        # retrieving game date from raw data
+        game_data['date'] = parser.parse(self.game_data[0]).date()
+        # retrieving season for current game date
+        game_data['season'] = retrieve_season(game_data['date'])
+        # setting up full game id, corresponding season, game type
+        # and partial game id
+        game_data['game_id'] = int(
+            "%d%s" % (game_data['season'], self.game_id))
+        # retrieving game type from partial game id
+        game_data['type'] = int(self.game_id[:2])
+        # retrieving last modification date of original data
+        try:
+            game_data['data_last_modified'] = parser.parse(
+                self.raw_data.xpath("//p[@id='last_modified']/text()")[0])
+        except:
+            game_data['data_last_modified'] = None
 
-        # for both home and road team...
-        for key in ['home', 'road']:
-            curr_team = teams[key]
-            # ...retrieving essential information for team and game
-            game_team_dict["%s_team" % key] = curr_team
-            game_team_dict["%s_team_id" % key] = curr_team.team_id
-            game_team_dict["%s_score" % key] = curr_team.score
-            game_team_dict["%s_overall_game_count" % key] = curr_team.game_no
-            game_team_dict["%s_game_count" % key] = curr_team.home_road_no
-            game_team_dict[curr_team.orig_abbr] = curr_team
-
-        return game_team_dict
+        return game_data
 
     def retrieve_game_attendance_venue(self):
         """
@@ -214,6 +205,25 @@ class GameParser():
 
         return overtime_game, shootout_game
 
+    def link_game_with_teams(self, teams):
+        """
+        Adds team information to current game.
+        """
+        game_team_data = dict()
+
+        # for both home and road team...
+        for key in ['home', 'road']:
+            curr_team = teams[key]
+            # ...retrieving essential information for team and game
+            game_team_data["%s_team" % key] = curr_team
+            game_team_data["%s_team_id" % key] = curr_team.team_id
+            game_team_data["%s_score" % key] = curr_team.score
+            game_team_data["%s_overall_game_count" % key] = curr_team.game_no
+            game_team_data["%s_game_count" % key] = curr_team.home_road_no
+            game_team_data[curr_team.orig_abbr] = curr_team
+
+        return game_team_data
+
     def create_team_games(self, game, gs_data):
         """
         Retrieves team-dependent information for this game in order to create
@@ -264,7 +274,7 @@ class GameParser():
             team_game_data_dict = self.retrieve_win_loss_types(
                 team_game_data_dict, game.shootout_game, game.overtime_game)
             # retrieving shootout information
-            team_game_data_dict = self.retrieve_shootout_information(
+            team_game_data_dict = self.retrieve_shootout_attempts(
                 team_game_data_dict
             )
 
@@ -457,14 +467,14 @@ class GameParser():
 
         return team_game_data_dict
 
-    def retrieve_shootout_information(self, team_game_data_dict):
+    def retrieve_shootout_attempts(self, team_game_data_dict):
         """
-        Retrieves shootout attempts/goals for team specified by key.
+        Retrieves shootout attempts/goals for team involved in current game.
         """
         if self.raw_so_data is None:
             return team_game_data_dict
 
-        # setting index to get road team shootout information from raw data 
+        # setting index to get road team shootout information from raw data
         idx = 2
         # increasing index variable to get home team shootout information
         if team_game_data_dict['home_road_type'] == 'home':
