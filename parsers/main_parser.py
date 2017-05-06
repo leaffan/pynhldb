@@ -65,6 +65,14 @@ class MainParser():
         self.parsed_data[game_id]['rosters'] = self.create_rosters(game_id)
         # print(self.parsed_data[game_id]['rosters'].keys())
 
+        # retrieving three star selections for game
+        # this has to be done here because roster information is necessary
+        self.gp.retrieve_three_stars(
+            self.parsed_data[game_id]['game'],
+            self.parsed_data[game_id]['teams'],
+            self.parsed_data[game_id]['rosters']
+        )
+
         # parsing goalies participating in current game
         self.parsed_data[game_id]['goalies'] = self.create_goalies(game_id)
         # print(self.parsed_data[game_id]['goalies'].keys())
@@ -107,13 +115,15 @@ class MainParser():
         # GS data prefix, i.e. game summary data is necessary as the parser
         # collects all periods a goal was scored in
         # this information is only retrievable from GS type summaries
-        gp = GameParser(
+        self.gp = GameParser(
             game_id,
             self.raw_data[game_id]['GS'],
             self.read_on_demand(game_id, 'SO'))
         # retrieving essential game information, i.e. venue, attendance, score
         # using previously parsed team information
-        game = gp.create_game(teams)
+        game = self.gp.create_game(teams)
+        # TODO: finish comment
+        self.gp.create_team_games(game, self.raw_data[game_id]['GS'])
 
         return game, teams
 
