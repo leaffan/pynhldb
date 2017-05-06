@@ -64,13 +64,17 @@ class Game(Base):
                 self.road_team_id, self.home_team_id, self.road_score,
                 self.home_score, self.road_overall_game_count,
                 self.home_overall_game_count, self.road_game_count,
-                self.home_game_count) == (
+                self.home_game_count, self.referee_1, self.referee_2,
+                self.linesman_1, self.linesman_2, self.star_1, self.star_2,
+                self.star_3) == (
                 other.season, other.type, other.start,
                 other.end, other.date.strftime("%B %d, %Y"),
                 other.attendance, other.venue, other.road_team_id,
                 other.home_team_id, other.road_score, other.home_score,
                 other.road_overall_game_count, other.home_overall_game_count,
-                other.road_game_count, other.home_game_count
+                other.road_game_count, other.home_game_count, other.referee_1,
+                other.referee_2, other.linesman_1, other.linesman_2,
+                other.star_1, other.star_2, other.star_3
             ))
 
     def __ne__(self, other):
