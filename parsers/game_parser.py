@@ -55,6 +55,9 @@ class GameParser():
             game_data['shootout_game']
         ) = self.retrieve_overtime_shootout_information(game_data['type'])
 
+        # retrieving referees and three star selections
+        self.retrieve_referees_stars(game_data)
+
         # retrieving informatioan about participating teams
         team_data = self.link_game_with_teams(teams)
         # merging team and game information
@@ -204,6 +207,33 @@ class GameParser():
                 overtime_game = True
 
         return overtime_game, shootout_game
+
+    def retrieve_referees_stars(self, game):
+        """
+        Retrieves the game's referees and three stars selections.
+        """
+        referees_stars = self.raw_data.xpath(
+            "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
+            "/tr/td/table/tr/td/table/tr/td[@align='left']/text()"
+        )
+        stars_teams = self.raw_data.xpath(
+            "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
+            "/tr/td/table/tr/td/table/tr/td[@align='center']/text()"
+        )
+        print(stars_teams)
+        stars_teams = [stars_teams[1], stars_teams[4], stars_teams[7]]
+
+        game_data['referee_1'] = referees_stars[0]
+        game.referee_2 = referees_stars[1]
+        game.linesman_1 = referee_stars[2]
+        game.linesman_2 = referees_stars[3]
+
+        db_game = Game.find_by_id(game.game_id)
+
+        create_or_update_db_item(db_game, game)
+
+        print(referees_stars)
+        print(stars_teams)
 
     def link_game_with_teams(self, teams):
         """
