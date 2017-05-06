@@ -16,7 +16,9 @@ class Game(Base):
         "home_game_count", "home_overall_game_count", "home_score",
         "home_team_id", "overtime_game", "road_game_count",
         "road_overall_game_count", "road_score", "road_team_id",
-        "season", "shootout_game", "start", "type", "venue"
+        "season", "shootout_game", "start", "type", "venue",
+        "star_1", "star_2", "star_3", "referee_1", "referee_2",
+        "linesman_1", "linesman_2"
     ]
 
     def __init__(self, game_id, game_data_dict):
