@@ -55,8 +55,8 @@ class GameParser():
             game_data['shootout_game']
         ) = self.retrieve_overtime_shootout_information(game_data['type'])
 
-        # retrieving referees and three star selections
-        self.retrieve_referees_stars(game_data)
+        # retrieving referees
+        game_data = self.retrieve_referees(game_data)
 
         # retrieving informatioan about participating teams
         team_data = self.link_game_with_teams(teams)
@@ -208,32 +208,50 @@ class GameParser():
 
         return overtime_game, shootout_game
 
-    def retrieve_referees_stars(self, game):
+    def retrieve_three_stars(self, game, teams, rosters):
         """
-        Retrieves the game's referees and three stars selections.
+        Retrieves the game's three star selections
         """
-        referees_stars = self.raw_data.xpath(
+        three_stars = self.raw_data.xpath(
             "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
             "/tr/td/table/tr/td/table/tr/td[@align='left']/text()"
-        )
+        )[-3:]
         stars_teams = self.raw_data.xpath(
             "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
             "/tr/td/table/tr/td/table/tr/td[@align='center']/text()"
-        )
-        print(stars_teams)
-        stars_teams = [stars_teams[1], stars_teams[4], stars_teams[7]]
+        )[1::3]
 
-        game_data['referee_1'] = referees_stars[0]
-        game.referee_2 = referees_stars[1]
-        game.linesman_1 = referee_stars[2]
-        game.linesman_2 = referees_stars[3]
+        i = 1
+        for star, star_team in zip(three_stars, stars_teams):
+            # retrieving player's number
+            no = int(star.split()[0])
+            # assuming star selection is from home team
+            key = 'home'
+            # otherwise adjusting key
+            if teams[star_team] == teams['road']:
+                key = 'road'
+            # adding star selection's player id to game data
+            setattr(game, "star_%d" % i, rosters[key][no].player_id)
+            i += 1
 
         db_game = Game.find_by_id(game.game_id)
-
         create_or_update_db_item(db_game, game)
 
-        print(referees_stars)
-        print(stars_teams)
+    def retrieve_referees(self, game_data):
+        """
+        Retrieves the game's referees.
+        """
+        referees = self.raw_data.xpath(
+            "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
+            "/tr/td/table/tr/td/table/tr/td[@align='left']/text()"
+        )[:4]
+
+        game_data['referee_1'] = referees[0]
+        game_data['referee_2'] = referees[1]
+        game_data['linesman_1'] = referees[2]
+        game_data['linesman_2'] = referees[3]
+
+        return game_data
 
     def link_game_with_teams(self, teams):
         """
