@@ -10,6 +10,10 @@ from configparser import NoOptionError, NoSectionError
 from datetime import timedelta
 
 
+def ordinal(n):
+    return "%d%s" % (n, "tsnrhtdd"[(n/10 % 10 != 1)*(n % 10 < 4)*n % 10::4])
+
+
 def remove_null_strings(list_of_strings):
     return [s for s in list_of_strings if s.strip()]
 
