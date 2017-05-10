@@ -11,7 +11,8 @@ from db import create_or_update_db_item
 from db.common import session_scope
 from db.game import Game
 from db.team_game import TeamGame
-from utils import remove_null_strings, retrieve_season, str_to_timedelta
+from utils import (
+    remove_null_strings, retrieve_season, str_to_timedelta, ordinal)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,9 @@ class GameParser():
 
     # regular expression to retrieve attendance figure
     ATTENDANCE_AT_VENUE_REGEX = re.compile("\s(@|at)\s")
+
+    # retrieving per period ordinal strings
+    PER_PERIOD_ORDINALS = [ordinal(i) for i in range(1, 4)]
 
     def __init__(self, game_id, raw_data, raw_so_data=None):
         self.game_id = game_id
@@ -463,39 +467,16 @@ class GameParser():
         team_game_data['penalties'] = team_pens
         team_game_data['pim'] = team_pim
 
-        # retrieving goals for overall and per period
-        team_game_data['goals_for'] = int(team_gf[-1])
-        (
-            team_game_data['goals_for_1st'],
-            team_game_data['goals_for_2nd'],
-            team_game_data['goals_for_3rd']
-        ) = [int(x) for x in team_gf[:3]]
+        # setting goals for per period and overall
+        self.set_goals_shots(team_game_data, "goals_for", team_gf)
+        # setting shots for per period and overall
+        self.set_goals_shots(team_game_data, "shots_for", team_sf)
+        # setting goals against per period and overall
+        self.set_goals_shots(team_game_data, "goals_against", team_ga)
+        # setting shots against per period and overall
+        self.set_goals_shots(team_game_data, "shots_against", team_sa)
 
-        # retrieving goals against overall and per period
-        team_game_data['goals_against'] = int(team_ga[-1])
-        (
-            team_game_data['goals_against_1st'],
-            team_game_data['goals_against_2nd'],
-            team_game_data['goals_against_3rd']
-        ) = [int(x) for x in team_ga[:3]]
-
-        # retrieving shots for overall and per period
-        team_game_data['shots_for'] = int(team_sf[-1])
-        (
-            team_game_data['shots_for_1st'],
-            team_game_data['shots_for_2nd'],
-            team_game_data['shots_for_3rd']
-        ) = [int(x) for x in team_sf[:3]]
-
-        # retrieving shots against overall and per period
-        team_game_data['shots_against'] = int(team_sa[-1])
-        (
-            team_game_data['shots_against_1st'],
-            team_game_data['shots_against_2nd'],
-            team_game_data['shots_against_3rd']
-        ) = [int(x) for x in team_sa[:3]]
-
-        # summing up (potentially available) overtime shots
+        # aggregating overtime shots (if applicable)
         team_ot_sf = team_sf[3:-1]
         team_ot_sa = team_sa[3:-1]
 
@@ -509,6 +490,19 @@ class GameParser():
 
             team_game_data['shots_for_ot'] = shots_for_ot
             team_game_data['shots_against_ot'] = shots_against_ot
+
+        return team_game_data
+
+    def set_goals_shots(self, team_game_data, data_key, source):
+        """
+        Sets goals/shots for/against in for team an current game both overall
+        and per period.
+        """
+        # setting overall count for goals/shots for/against
+        team_game_data[data_key] = int(source[-1])
+        # setting per period count for goals/shots for/against
+        for k, v in zip(self.PER_PERIOD_ORDINALS, [int(x) for x in source]):
+            team_game_data["_".join((data_key, k))] = v
 
         return team_game_data
 
