@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class GameParser():
 
-    # defining time zone information
+    # time zone names and offsets (in seconds)
     TZINFO = {'CET':   3600, 'CEST': 7200,
               'EET':   7200, 'EETDST': 10800,
               'EDT': -14400, 'EST': -18000,
@@ -27,7 +27,7 @@ class GameParser():
               'PDT': -25200, 'PST': -28800,
               'BST':   3600}
 
-    # regular expression retrieve attendance figure
+    # regular expression to retrieve attendance figure
     ATTENDANCE_AT_VENUE_REGEX = re.compile("\s(@|at)\s")
 
     def __init__(self, game_id, raw_data, raw_so_data=None):
@@ -262,7 +262,7 @@ class GameParser():
         # for both home and road team...
         for key in ['home', 'road']:
             curr_team = teams[key]
-            # ...retrieving essential information for team and game
+            # ...retrieving basic information for this team in current game
             game_team_data["%s_team" % key] = curr_team
             game_team_data["%s_team_id" % key] = curr_team.team_id
             game_team_data["%s_score" % key] = curr_team.score
@@ -274,11 +274,9 @@ class GameParser():
 
     def create_team_games(self, game, gs_data):
         """
-        Retrieves team-dependent information for this game in order to create
-        a separate NHLTeamGame object.
+        Retrieves team related information for the current game.
         """
-        # retrieving raw by period goals, shots, penalties and
-        # penalties in minutes
+        # retrieving raw by period goals, shots, penalties and penalty minutes
         by_period = gs_data.xpath(
             "//td[@class='sectionheading']")[2].xpath(
                 "parent::tr/following-sibling::tr")[0]
@@ -302,36 +300,36 @@ class GameParser():
             team_id = getattr(game, "%s_team_id" % key)
 
             # setting team game data dictionary with basic information
-            team_game_data_dict = dict()
-            team_game_data_dict['home_road_type'] = key
-            team_game_data_dict['team_id'] = team_id
-            team_game_data_dict['score'] = getattr(game, "%s_score" % key)
-            team_game_data_dict['score_against'] = getattr(
+            team_game_data = dict()
+            team_game_data['home_road_type'] = key
+            team_game_data['team_id'] = team_id
+            team_game_data['score'] = getattr(game, "%s_score" % key)
+            team_game_data['score_against'] = getattr(
                 game, "%s_score" % key_against)
 
             # retrieving per period and overall shots and goals as well as
             # raw overall penalties and penalties in minutes from raw data
-            team_game_data_dict = self.retrieve_per_period_data(
-                key, team_game_data_dict,
+            team_game_data = self.retrieve_per_period_data(
+                key, team_game_data,
                 by_period_goals, by_period_shots,
                 by_period_pens, by_period_pims)
             # retrieving power play opportunities and times from raw data
-            team_game_data_dict = self.retrieve_power_plays(
-                key, team_game_data_dict, [pp_5v4, pp_4v3, pp_5v3]
+            team_game_data = self.retrieve_power_plays(
+                key, team_game_data, [pp_5v4, pp_4v3, pp_5v3]
             )
-            team_game_data_dict = self.retrieve_win_loss_types(
-                team_game_data_dict, game.shootout_game, game.overtime_game)
-            # retrieving shootout information
-            team_game_data_dict = self.retrieve_shootout_attempts(
-                team_game_data_dict
-            )
+            team_game_data = self.retrieve_win_loss_types(
+                team_game_data, game.shootout_game, game.overtime_game)
+            # retrieving shootout information (if applicable)
+            if self.raw_so_data is not None:
+                team_game_data = self.retrieve_shootout_attempts(
+                    team_game_data
+                )
 
             # trying to retrieve team game item with same team and game
             # ids from database
             team_game_db = TeamGame.find(game.game_id, team_id)
             # creating new team game item
-            new_team_game = TeamGame(
-                game.game_id, team_id, team_game_data_dict)
+            new_team_game = TeamGame(game.game_id, team_id, team_game_data)
             # creating new or updating existing team game item in database
             create_or_update_db_item(team_game_db, new_team_game)
 
@@ -340,7 +338,7 @@ class GameParser():
         return team_games
 
     def retrieve_win_loss_types(
-            self, team_game_data_dict, shootout_game, overtime_game):
+            self, team_game_data, shootout_game, overtime_game):
         """
         Identifies win/loss situation for current team in current game.
         """
@@ -350,55 +348,54 @@ class GameParser():
             'overtime_win', 'overtime_loss', 'regulation_win',
             'regulation_loss'
         ]:
-            team_game_data_dict[item] = 0
+            team_game_data[item] = 0
 
         # if current team's score is higher than the other one's, we have a win
-        if team_game_data_dict['score'] > team_game_data_dict['score_against']:
-            team_game_data_dict['win'] = 1
+        if team_game_data['score'] > team_game_data['score_against']:
+            team_game_data['win'] = 1
             # determining type of win
             if shootout_game:
-                team_game_data_dict['shootout_win'] = 1
+                team_game_data['shootout_win'] = 1
             elif overtime_game:
-                team_game_data_dict['overtime_win'] = 1
+                team_game_data['overtime_win'] = 1
             else:
-                team_game_data_dict['regulation_win'] = 1
+                team_game_data['regulation_win'] = 1
         # if current team's score is lower than the other one's, we have a loss
         elif (
-            team_game_data_dict['score'] < team_game_data_dict['score_against']
+            team_game_data['score'] < team_game_data['score_against']
         ):
-            team_game_data_dict['loss'] = 1
+            team_game_data['loss'] = 1
             # determining type of loss
             if shootout_game:
-                team_game_data_dict['shootout_loss'] = 1
+                team_game_data['shootout_loss'] = 1
             elif overtime_game:
-                team_game_data_dict['overtime_loss'] = 1
+                team_game_data['overtime_loss'] = 1
             else:
-                team_game_data_dict['regulation_loss'] = 1
+                team_game_data['regulation_loss'] = 1
         # otherwise we have a tie
         else:
-            team_game_data_dict['tie'] = 1
+            team_game_data['tie'] = 1
 
         # calculating points based on win/loss types
         points = 0
 
-        if 'win' in team_game_data_dict:
-            points += team_game_data_dict['win'] * 2
-        if 'overtime_loss' in team_game_data_dict:
-            points += team_game_data_dict['overtime_loss']
-        if 'shootout_loss' in team_game_data_dict:
-            points += team_game_data_dict['shootout_loss']
-        team_game_data_dict['points'] = points
+        if 'win' in team_game_data:
+            points += team_game_data['win'] * 2
+        if 'overtime_loss' in team_game_data:
+            points += team_game_data['overtime_loss']
+        if 'shootout_loss' in team_game_data:
+            points += team_game_data['shootout_loss']
+        team_game_data['points'] = points
 
-        # print(team_game_data_dict)
-        return team_game_data_dict
+        return team_game_data
 
-    def retrieve_power_plays(self, key, team_game_data_dict, pp_raw_data):
+    def retrieve_power_plays(self, key, team_game_data, pp_raw_data):
         """
         Analyzes power play raw data to yield database-ready information.
         """
         # initial power play opportunities and time
-        team_game_data_dict['pp_time_overall'] = str_to_timedelta("00:00")
-        team_game_data_dict['pp_overall'] = 0
+        team_game_data['pp_time_overall'] = str_to_timedelta("00:00")
+        team_game_data['pp_overall'] = 0
 
         # depending on which team is currently handled, a different component
         # of the raw data has to be used
@@ -421,15 +418,15 @@ class GameParser():
                 pp_opps = 0
                 pp_time = str_to_timedelta("00:00")
             finally:
-                team_game_data_dict['pp_overall'] += pp_opps
-                team_game_data_dict[pp_types.pop(0)] = pp_opps
-                team_game_data_dict['pp_time_overall'] += pp_time
-                team_game_data_dict[pp_time_types.pop(0)] = pp_time
+                team_game_data['pp_overall'] += pp_opps
+                team_game_data[pp_types.pop(0)] = pp_opps
+                team_game_data['pp_time_overall'] += pp_time
+                team_game_data[pp_time_types.pop(0)] = pp_time
 
-        return team_game_data_dict
+        return team_game_data
 
     def retrieve_per_period_data(
-            self, key, team_game_data_dict,
+            self, key, team_game_data,
             by_period_goals, by_period_shots, by_period_pens, by_period_pims):
         """
         Analyzes per-period raw data to yield per-team, per-period goals and
@@ -463,39 +460,39 @@ class GameParser():
             team_pens, team_pim = road_pens, road_pim
 
         # adding penalty information to team game data dictionary
-        team_game_data_dict['penalties'] = team_pens
-        team_game_data_dict['pim'] = team_pim
+        team_game_data['penalties'] = team_pens
+        team_game_data['pim'] = team_pim
 
         # retrieving goals for overall and per period
-        team_game_data_dict['goals_for'] = int(team_gf[-1])
+        team_game_data['goals_for'] = int(team_gf[-1])
         (
-            team_game_data_dict['goals_for_1st'],
-            team_game_data_dict['goals_for_2nd'],
-            team_game_data_dict['goals_for_3rd']
+            team_game_data['goals_for_1st'],
+            team_game_data['goals_for_2nd'],
+            team_game_data['goals_for_3rd']
         ) = [int(x) for x in team_gf[:3]]
 
         # retrieving goals against overall and per period
-        team_game_data_dict['goals_against'] = int(team_ga[-1])
+        team_game_data['goals_against'] = int(team_ga[-1])
         (
-            team_game_data_dict['goals_against_1st'],
-            team_game_data_dict['goals_against_2nd'],
-            team_game_data_dict['goals_against_3rd']
+            team_game_data['goals_against_1st'],
+            team_game_data['goals_against_2nd'],
+            team_game_data['goals_against_3rd']
         ) = [int(x) for x in team_ga[:3]]
 
         # retrieving shots for overall and per period
-        team_game_data_dict['shots_for'] = int(team_sf[-1])
+        team_game_data['shots_for'] = int(team_sf[-1])
         (
-            team_game_data_dict['shots_for_1st'],
-            team_game_data_dict['shots_for_2nd'],
-            team_game_data_dict['shots_for_3rd']
+            team_game_data['shots_for_1st'],
+            team_game_data['shots_for_2nd'],
+            team_game_data['shots_for_3rd']
         ) = [int(x) for x in team_sf[:3]]
 
         # retrieving shots against overall and per period
-        team_game_data_dict['shots_against'] = int(team_sa[-1])
+        team_game_data['shots_against'] = int(team_sa[-1])
         (
-            team_game_data_dict['shots_against_1st'],
-            team_game_data_dict['shots_against_2nd'],
-            team_game_data_dict['shots_against_3rd']
+            team_game_data['shots_against_1st'],
+            team_game_data['shots_against_2nd'],
+            team_game_data['shots_against_3rd']
         ) = [int(x) for x in team_sa[:3]]
 
         # summing up (potentially available) overtime shots
@@ -510,22 +507,19 @@ class GameParser():
                 shots_for_ot += int(ot_sf)
                 shots_against_ot += int(ot_sa)
 
-            team_game_data_dict['shots_for_ot'] = shots_for_ot
-            team_game_data_dict['shots_against_ot'] = shots_against_ot
+            team_game_data['shots_for_ot'] = shots_for_ot
+            team_game_data['shots_against_ot'] = shots_against_ot
 
-        return team_game_data_dict
+        return team_game_data
 
-    def retrieve_shootout_attempts(self, team_game_data_dict):
+    def retrieve_shootout_attempts(self, team_game_data):
         """
         Retrieves shootout attempts/goals for team involved in current game.
         """
-        if self.raw_so_data is None:
-            return team_game_data_dict
-
         # setting index to get road team shootout information from raw data
         idx = 2
         # increasing index variable to get home team shootout information
-        if team_game_data_dict['home_road_type'] == 'home':
+        if team_game_data['home_road_type'] == 'home':
             idx += 1
         # setting up xpath expression to retrieve shootout information
         xpath_expr = "//td[contains(text(), 'Shootout Summary')]/ancestor::"\
@@ -534,11 +528,11 @@ class GameParser():
         so_data = self.raw_so_data.xpath(xpath_expr)
 
         # retrieving number of goals scored in shootout
-        team_game_data_dict['so_goals'] = int(so_data[1])
+        team_game_data['so_goals'] = int(so_data[1])
         # summing up shots, misses and penalties to retrieve number of attempts
-        team_game_data_dict['so_attempts'] = sum([int(x) for x in so_data[2:]])
+        team_game_data['so_attempts'] = sum([int(x) for x in so_data[2:]])
 
-        return team_game_data_dict
+        return team_game_data
 
     def load_data(self):
         """
