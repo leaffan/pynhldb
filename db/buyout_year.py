@@ -9,6 +9,7 @@ from sqlalchemy import and_
 class BuyoutYear(Base):
     __tablename__ = 'buyout_years'
     __autoload__ = True
+    __human_readable__ = 'buyout year'
 
     STANDARD_ATTRS = ['season', 'cap_hit', 'cost']
 

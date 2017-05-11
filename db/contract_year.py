@@ -9,6 +9,7 @@ from .common import Base, session_scope
 class ContractYear(Base):
     __tablename__ = 'contract_years'
     __autoload__ = True
+    __human_readable__ = 'contract year'
 
     STANDARD_ATTRS = [
         'season', 'cap_hit', 'aav', 'sign_bonus', 'perf_bonus',
