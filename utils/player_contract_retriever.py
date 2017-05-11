@@ -228,7 +228,7 @@ class PlayerContractRetriever():
                     season, salary = tr.xpath("td/text()")
                 except ValueError:
                     logger.warn(
-                        "+ Unable to retrieve historical salary" +
+                        "+ Unable to retrieve historical salary " +
                         "of %s for season %s" % (
                             plr.name, tr.xpath("td/text()")[0]))
                     continue
@@ -239,7 +239,7 @@ class PlayerContractRetriever():
                     salary = int(salary[1:].replace(",", ""))
                 except ValueError:
                     logger.warn(
-                        "+ Unable to retrieve numeric value" +
+                        "+ Unable to retrieve numeric value " +
                         "from '%s'" % salary)
                     continue
                 historical_salary['season'] = season
