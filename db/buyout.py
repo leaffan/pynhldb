@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import uuid
+
 from .common import Base, session_scope
 
 
@@ -8,12 +10,15 @@ class Buyout(Base):
     __tablename__ = 'buyouts'
     __autoload__ = True
 
+    HUMAN_READABLE = 'buyout'
+
     STANDARD_ATTRS = [
         'buyout_team_id', 'buyout_date', 'length', 'value',
         'start_season', 'end_season'
         ]
 
     def __init__(self, player_id, contract_id, buyout_data_dict):
+        self.buyout_id = uuid.uuid4().urn
         self.player_id = player_id
         self.contract_id = contract_id
         for attr in self.STANDARD_ATTRS:

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import uuid
+
 from sqlalchemy import and_
 
 from .common import Base, session_scope
@@ -10,6 +12,8 @@ class Contract(Base):
     __tablename__ = 'contracts'
     __autoload__ = True
 
+    HUMAN_READABLE = 'contract'
+
     STANDARD_ATTRS = [
         'signing_team_id', 'signing_date', 'length', 'value', 'type',
         'expiry_status', 'source', 'start_season', 'end_season',
@@ -17,6 +21,7 @@ class Contract(Base):
         ]
 
     def __init__(self, player_id, contract_data_dict):
+        self.contract_id = uuid.uuid4().urn
         self.player_id = player_id
         for attr in self.STANDARD_ATTRS:
             if attr in contract_data_dict:

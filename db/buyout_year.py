@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import uuid
+
 from .common import Base, session_scope
 
 from sqlalchemy import and_
@@ -9,11 +11,13 @@ from sqlalchemy import and_
 class BuyoutYear(Base):
     __tablename__ = 'buyout_years'
     __autoload__ = True
-    __human_readable__ = 'buyout year'
+
+    HUMAN_READABLE = 'buyout year'
 
     STANDARD_ATTRS = ['season', 'cap_hit', 'cost']
 
     def __init__(self, player_id, buyout_id, buyout_year_data_dict):
+        self.buyout_year_id = uuid.uuid4().urn
         self.player_id = player_id
         self.buyout_id = buyout_id
         for attr in self.STANDARD_ATTRS:
