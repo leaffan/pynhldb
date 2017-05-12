@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# import uuid
-
 from db.common import Base
 from db.common import session_scope
 
