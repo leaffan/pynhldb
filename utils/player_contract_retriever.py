@@ -205,7 +205,9 @@ class PlayerContractRetriever():
 
         plr = Player.find_by_id(player_id)
         if plr.capfriendly_id is None:
-            logger.warn("+ Unable to historical salary data for %s" % plr.name)
+            logger.warn(
+                "+ Unable to retrieve historical salary " +
+                "data for %s" % plr.name)
             return historical_salaries
 
         url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, plr.capfriendly_id))
@@ -421,7 +423,7 @@ class PlayerContractRetriever():
         Creates or updates a database item.
         """
         plr = Player.find_by_id(new_item.player_id)
-        cls_name = new_item.__class__.__name__.lower()
+        cls_name = new_item.HUMAN_READABLE
 
         with session_scope() as session:
             if not db_item or db_item is None:
