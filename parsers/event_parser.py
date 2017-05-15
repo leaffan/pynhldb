@@ -224,6 +224,28 @@ class EventParser():
 
         return ShootoutAttempt.find_by_event_id(event.event_id)
 
+    def get_shot_attempt_event(self, event):
+        """
+        Retrieves or creates a shot attempt event.
+        """
+        shot_attempt_dict = dict()
+
+        shot_attempt_dict['shot_attempt_type'] = event.type[0]
+        shot_attempt_dict['plus_minus'] = 1
+
+        if not event.home_on_ice or not event.road_on_ice:
+            logger.warn(
+                "Unable to retrieve shot attempt as information about " +
+                "players on ice is not available.")
+        return
+
+        # retrieving skaters for home and road teams, respectively
+        home_skaters = list(set(event.home_on_ice).difference(
+            set(event.goalies_on_ice.values())))
+        road_skaters = list(set(event.road_on_ice).difference(
+            set(event.goalies_on_ice.values())))
+
+
     def retrieve_standard_event_parameters(self, event):
         """
         Retrieves standard event parameters including concerned team, zone and
