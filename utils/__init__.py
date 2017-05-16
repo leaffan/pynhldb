@@ -34,6 +34,18 @@ def retrieve_season(date):
     return season
 
 
+def reverse_num_situation(num_situation):
+    """
+    Returns opposing numerical situation for specified one.
+    """
+    if num_situation == 'PP':
+        return 'SH'
+    elif num_situation == 'SH':
+        return 'PP'
+    else:
+        return num_situation
+
+
 # conversion functions
 def str_to_timedelta(interval_as_str):
     """
