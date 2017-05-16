@@ -6,7 +6,7 @@ import logging
 from collections import defaultdict
 from operator import add
 
-from utils import str_to_timedelta
+from utils import str_to_timedelta, reverse_num_situation
 from utils.event_matcher import is_matching_event
 from db import create_or_update_db_item, commit_db_item
 from db.team import Team
@@ -21,6 +21,7 @@ from db.hit import Hit
 from db.giveaway import Giveaway
 from db.takeaway import Takeaway
 from db.shootout_attempt import ShootoutAttempt
+from db.shot_attempt import ShotAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,12 @@ class EventParser():
             if specific_event is not None and event.x is None:
                 self.find_coordinates_for_ambigiuous_events(specific_event)
 
+            if event.type in ['GOAL', 'SHOT', 'MISS', 'BLOCK']:
+                self.get_shot_attempt_event(event, specific_event)
+
+            if event.type == 'GOAL':
+                self.score_diff = self.score['home'] - self.score['road']
+
     def get_shootout_attempt(self, event):
         """
         Retrieves or creates a shootout attempt event.
@@ -224,7 +231,7 @@ class EventParser():
 
         return ShootoutAttempt.find_by_event_id(event.event_id)
 
-    def get_shot_attempt_event(self, event):
+    def get_shot_attempt_event(self, event, specific_event):
         """
         Retrieves or creates a shot attempt event.
         """
@@ -237,14 +244,93 @@ class EventParser():
             logger.warn(
                 "Unable to retrieve shot attempt as information about " +
                 "players on ice is not available.")
-        return
+            return
 
         # retrieving skaters for home and road teams, respectively
-        home_skaters = list(set(event.home_on_ice).difference(
-            set(event.goalies_on_ice.values())))
-        road_skaters = list(set(event.road_on_ice).difference(
-            set(event.goalies_on_ice.values())))
+        shot_attempt_dict['home_skaters'] = list(set(
+            event.home_on_ice).difference(set([event.home_goalie])))
+        shot_attempt_dict['road_skaters'] = list(set(
+            event.road_on_ice).difference(set([event.road_goalie])))
 
+        # assuming the shooting team is the home team
+        shot_attempt_for_key, shot_attempt_against_key = 'home', 'road'
+        for_score_diff_factor, against_score_diff_factor = 1, -1
+        # otherwise switching keys
+        if specific_event.team_id == self.game.road_team_id:
+            shot_attempt_for_key, shot_attempt_against_key = (
+                shot_attempt_against_key, shot_attempt_for_key)
+            for_score_diff_factor, against_score_diff_factor = (
+                against_score_diff_factor, for_score_diff_factor)
+
+        if event.type in ('MISS', 'SHOT', 'GOAL'):
+            # retrieving numerical situation and actual shooter
+            shot_attempt_dict['num_situation'] = event.num_situation
+            shot_attempt_dict['shooter_id'] = specific_event.player_id
+            # goals are actually just shots that went by the goaltender
+            if event.type == 'GOAL':
+                shot_attempt_dict['shot_attempt_type'] = 'S'
+
+        elif event.type == 'BLOCK':
+            shot_attempt_dict['num_situation'] = reverse_num_situation(
+                event.num_situation)
+            shot_attempt_dict['shooter_id'] = specific_event.blocked_player_id
+            shot_attempt_for_key, shot_attempt_against_key = (
+                shot_attempt_against_key, shot_attempt_for_key)
+            for_score_diff_factor, against_score_diff_factor = (
+                against_score_diff_factor, for_score_diff_factor)
+
+        shot_attempt_dict['shooting_team'] = getattr(
+            self.game, "%s_team_id" % shot_attempt_for_key)
+        shot_attempt_dict['other_team'] = getattr(
+            self.game, "%s_team_id" % shot_attempt_against_key)
+        shot_attempt_dict['plr_situation'] = "%dv%d" % (
+            len(shot_attempt_dict["%s_skaters" % shot_attempt_for_key]),
+            len(shot_attempt_dict["%s_skaters" % shot_attempt_against_key]))
+        shot_attempt_dict['shot_attempt_for_player_ids'] = getattr(
+            event, "%s_on_ice" % shot_attempt_for_key)
+        shot_attempt_dict['shot_attempt_against_player_ids'] = getattr(
+            event, "%s_on_ice" % shot_attempt_against_key)
+
+        from operator import truediv
+
+        shot_attempt_dict['score_diff'] = truediv(
+            self.score_diff, for_score_diff_factor)
+
+        for player_id in shot_attempt_dict['shot_attempt_for_player_ids']:
+            if shot_attempt_dict['shooter_id'] == player_id:
+                shot_attempt_dict['actual'] = True
+            else:
+                shot_attempt_dict['actual'] = False
+
+            new_shot_attempt = ShotAttempt(
+                self.game.game_id, shot_attempt_dict['shooting_team'],
+                event.event_id, player_id, shot_attempt_dict)
+
+            db_shot_attempt = ShotAttempt.find_by_event_player_id(
+                event.event_id, player_id
+            )
+
+            create_or_update_db_item(db_shot_attempt, new_shot_attempt)
+
+        # reversing numerical situation, score differential and player
+        # disposition between teams
+        shot_attempt_dict['num_situation'] = reverse_num_situation(
+            shot_attempt_dict['num_situation'])
+        shot_attempt_dict['score_diff'] = truediv(
+            self.score_diff, against_score_diff_factor)
+        shot_attempt_dict['plr_situation'] = shot_attempt_dict[
+            'plr_situation'][::-1]
+
+        for player_id in shot_attempt_dict['shot_attempt_against_player_ids']:
+            new_shot_attempt = ShotAttempt(
+                self.game.game_id, shot_attempt_dict['other_team'],
+                event.event_id, player_id, shot_attempt_dict)
+
+            db_shot_attempt = ShotAttempt.find_by_event_player_id(
+                event.event_id, player_id
+            )
+
+            create_or_update_db_item(db_shot_attempt, new_shot_attempt)
 
     def retrieve_standard_event_parameters(self, event):
         """
