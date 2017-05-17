@@ -85,7 +85,6 @@ class EventParser():
         "MISSED_SHOT": "MISS", "SHOT": "SHOT", "FACEOFF": "FAC",
         "TAKEAWAY": "TAKE", "HIT": "HIT"
     }
-
     # official game information json data uses pre-defined player types to
     # indicate the role a player has with regard to a certain play
     # this mapping associates play types with the according player types as
@@ -97,7 +96,6 @@ class EventParser():
         'PENL': ("PenaltyOn", "DrewBy"), 'GIVE': ("PlayerID",),
         'TAKE': ("PlayerID",)
     }
-
     SHOT_TYPES = [
         'Wrist', 'Snap', 'Backhand',
         'Wrap-around', 'Slap', 'Deflected', 'Tip-In']
@@ -109,10 +107,13 @@ class EventParser():
         # class-wide variables to hold current score for both home and road
         # team, increase accordingly if a goal was score
         self.score = defaultdict(int)
+        # class-wide variable for score differential
         self.score_diff = 0
-        # self.curr_period = 0
 
     def create_events(self, game, rosters):
+        """
+        Creates and specifies event items.
+        """
         self.game = game
         self.rosters = rosters
 
@@ -122,8 +123,10 @@ class EventParser():
         self.cache_plays_with_coordinates()
 
         for event_data_item in self.event_data:
+            # setting event item with basic information
             event = self.get_event(event_data_item)
 
+            # specifying event further
             if self.game.type == 2 and event.period == 5:
                 # shootout attempts are either goals, saved shots or misses all
                 # occurring in the fifth period of a regular season game
@@ -135,14 +138,122 @@ class EventParser():
             if specific_event:
                 print(specific_event)
 
+            # determining coordinates in case current event is simultaneous
+            # with others
             if specific_event is not None and event.x is None:
-                self.find_coordinates_for_ambigiuous_events(specific_event)
+                self.find_coordinates_for_simultaneous_events(specific_event)
 
-            if event.type in ['GOAL', 'SHOT', 'MISS', 'BLOCK']:
-                self.get_shot_attempt_event(event, specific_event)
+            # skipping shot attempts conducted in a shootout
+            if self.game.type == 2 and event.period == 5:
+                pass
+            # otherwise registering shot attempts
+            else:
+                if event.type in ['GOAL', 'SHOT', 'MISS', 'BLOCK']:
+                    self.get_shot_attempt_event(event, specific_event)
+                # re-calculating score differential after a goal
+                if event.type == 'GOAL':
+                    self.score_diff = self.score['home'] - self.score['road']
 
-            if event.type == 'GOAL':
-                self.score_diff = self.score['home'] - self.score['road']
+    def specify_event(self, event):
+        """
+        Specifies an event in more detail according to its type.
+        """
+        if event.type == 'SHOT':
+            return self.get_shot_on_goal_event(event)
+
+        if event.type == 'GOAL':
+            shot = self.get_shot_on_goal_event(event)
+            return self.get_goal_event(event, shot)
+
+        if event.type == 'MISS':
+            return self.get_missed_shot_event(event)
+
+        if event.type == 'BLOCK':
+            return self.get_block_event(event)
+
+        if event.type == 'FAC':
+            return self.get_faceoff_event(event)
+
+        if event.type == 'HIT':
+            return self.get_hit_event(event)
+
+        if event.type == 'GIVE':
+            return self.get_giveaway_event(event)
+
+        if event.type == 'TAKE':
+            return self.get_takeaway_event(event)
+
+        if event.type == 'PENL':
+            return self.get_penalty_event(event)
+
+    def get_event(self, event_data_item):
+        """
+        Gets basic event information first and triggers type-specific parsing
+        afterwards.
+        """
+        # retrieving data item contents as list
+        tokens = event_data_item.xpath("td/text()")
+        # setting up event data dictionary
+        event_data_dict = dict()
+        # TODO: decide whether to put game id directly in constructor
+        event_data_dict['game_id'] = self.game.game_id
+        event_data_dict['home_score'] = self.score['home']
+        event_data_dict['road_score'] = self.score['road']
+
+        # retrieving basic event attributes
+        event_data_dict['in_game_event_cnt'] = int(tokens[0])
+        event_data_dict['period'] = int(tokens[1])
+        event_data_dict['num_situation'] = tokens[2].strip()
+        event_data_dict['time'] = str_to_timedelta(tokens[3])
+        event_data_dict['type'] = tokens[5]
+        event_data_dict['raw_data'] = tokens[6]
+        if tokens[7].strip():
+            event_data_dict['raw_data'] = "|".join((
+                event_data_dict['raw_data'], tokens[7]))
+
+        # stoppages in play are registered as property of the according event
+        if event_data_dict['type'] == 'STOP':
+            event_data_dict['stop_type'] = event_data_dict['raw_data'].lower(
+                ).replace("|", "")
+
+        # retrieving players on goalies on ice for current event
+        players_on_ice, goalies_on_ice = self.retrieve_players_on_ice(
+            event_data_item)
+        for key in ['home', 'road']:
+            event_data_dict["%s_on_ice" % key] = players_on_ice[key]
+            if key in goalies_on_ice:
+                event_data_dict["%s_goalie" % key] = goalies_on_ice[key]
+
+        # TODO: match all types of multiple plays (not just penalties) at the
+        # same time with events
+        play_key = (
+            event_data_dict['period'],
+            event_data_dict['time'],
+            event_data_dict['type'])
+        if play_key in self.json_dict:
+            if len(self.json_dict[play_key]) == 1:
+                single_play_dict = self.json_dict[play_key][0]
+                event_data_dict['x'] = int(single_play_dict['x'])
+                event_data_dict['y'] = int(single_play_dict['y'])
+            # else:
+            #     print()
+            #     print(self.json_dict[play_key])
+            #     print()
+
+        # creating event id as combination of game id and in-game event count
+        event_id = "{0:d}{1:04d}".format(
+            self.game.game_id, event_data_dict['in_game_event_cnt'])
+
+        # setting up new event item
+        event = Event(event_id, event_data_dict)
+        # trying to find existing event item in database
+        db_event = Event.find(
+            self.game.game_id, event_data_dict['in_game_event_cnt'])
+        # updating existing or creating new event item
+        create_or_update_db_item(db_event, event)
+
+        return Event.find(
+            self.game.game_id, event_data_dict['in_game_event_cnt'])
 
     def get_shootout_attempt(self, event):
         """
@@ -170,7 +281,7 @@ class EventParser():
         # was taken
         team, zone = self.retrieve_standard_event_parameters(event)
         shootout_data_dict['team_id'] = team.team_id
-        shootout_data_dict['zone'] = zone[0:3]
+        shootout_data_dict['zone'] = zone
 
         # retrieving shootout shooter and goalie
         no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
@@ -254,13 +365,15 @@ class EventParser():
 
         # assuming the shooting team is the home team
         shot_attempt_for_key, shot_attempt_against_key = 'home', 'road'
-        for_score_diff_factor, against_score_diff_factor = 1, -1
+        # for_score_diff_factor, against_score_diff_factor = 1, -1
+        shot_attempt_dict['score_diff'] = self.score_diff
         # otherwise switching keys
         if specific_event.team_id == self.game.road_team_id:
             shot_attempt_for_key, shot_attempt_against_key = (
                 shot_attempt_against_key, shot_attempt_for_key)
-            for_score_diff_factor, against_score_diff_factor = (
-                against_score_diff_factor, for_score_diff_factor)
+            # for_score_diff_factor, against_score_diff_factor = (
+            #     against_score_diff_factor, for_score_diff_factor)
+            shot_attempt_dict['score_diff'] = self.score_diff / -1
 
         if event.type in ('MISS', 'SHOT', 'GOAL'):
             # retrieving numerical situation and actual shooter
@@ -276,8 +389,9 @@ class EventParser():
             shot_attempt_dict['shooter_id'] = specific_event.blocked_player_id
             shot_attempt_for_key, shot_attempt_against_key = (
                 shot_attempt_against_key, shot_attempt_for_key)
-            for_score_diff_factor, against_score_diff_factor = (
-                against_score_diff_factor, for_score_diff_factor)
+            # for_score_diff_factor, against_score_diff_factor = (
+            #     against_score_diff_factor, for_score_diff_factor)
+            shot_attempt_dict['score_diff'] = self.score_diff / -1
 
         shot_attempt_dict['shooting_team'] = getattr(
             self.game, "%s_team_id" % shot_attempt_for_key)
@@ -290,11 +404,6 @@ class EventParser():
             event, "%s_on_ice" % shot_attempt_for_key)
         shot_attempt_dict['shot_attempt_against_player_ids'] = getattr(
             event, "%s_on_ice" % shot_attempt_against_key)
-
-        from operator import truediv
-
-        shot_attempt_dict['score_diff'] = truediv(
-            self.score_diff, for_score_diff_factor)
 
         for player_id in shot_attempt_dict['shot_attempt_for_player_ids']:
             if shot_attempt_dict['shooter_id'] == player_id:
@@ -316,10 +425,10 @@ class EventParser():
         # disposition between teams
         shot_attempt_dict['num_situation'] = reverse_num_situation(
             shot_attempt_dict['num_situation'])
-        shot_attempt_dict['score_diff'] = truediv(
-            self.score_diff, against_score_diff_factor)
+        shot_attempt_dict['score_diff'] = shot_attempt_dict['score_diff'] / -1
         shot_attempt_dict['plr_situation'] = shot_attempt_dict[
             'plr_situation'][::-1]
+        shot_attempt_dict['plus_minus'] = -1
 
         for player_id in shot_attempt_dict['shot_attempt_against_player_ids']:
             new_shot_attempt = ShotAttempt(
@@ -332,25 +441,6 @@ class EventParser():
 
             create_or_update_db_item(db_shot_attempt, new_shot_attempt)
 
-    def retrieve_standard_event_parameters(self, event):
-        """
-        Retrieves standard event parameters including concerned team, zone and
-        numerical situation.
-        """
-        team = Team.find_by_abbr(event.raw_data[0:3])
-        try:
-            zone = re.search(self.ZONE_REGEX, event.raw_data).group(1)
-        except:
-            logger.warn(
-                "Couldn't retrieve zone from raw data: %s" % event.raw_data)
-            if event.type in ['MISS', 'SHOT', 'GOAL']:
-                zone = 'Off.'
-            else:
-                zone = None
-            logger.info("Set zone deliberately to %s" % zone)
-
-        return team, zone
-
     def get_missed_shot_event(self, event):
         """
         Retrieves or creates a missed shot event.
@@ -359,7 +449,7 @@ class EventParser():
         # retrieving the shooter's team and zone where the shot was taken
         team, zone = self.retrieve_standard_event_parameters(event)
         miss_data_dict['team_id'] = team.team_id
-        miss_data_dict['zone'] = zone[0:3]
+        miss_data_dict['zone'] = zone
 
         # retrieving the shooter's number
         no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
@@ -428,7 +518,7 @@ class EventParser():
         # retrieving the shooter's number
         no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
         shot_data_dict['team_id'] = team.team_id
-        shot_data_dict['zone'] = zone[0:3]
+        shot_data_dict['zone'] = zone
         # assuming shooters' team is home and goalie's team is road team
         plr_key, goalie_key = "home", "road"
         # otherwise swapping keys
@@ -481,7 +571,7 @@ class EventParser():
         # retrieving the shooter's team and zone where the shot was taken
         team, zone = self.retrieve_standard_event_parameters(event)
         penalty_data_dict['team_id'] = team.team_id
-        penalty_data_dict['zone'] = zone[0:3]
+        penalty_data_dict['zone'] = zone
 
         # retrieving number of player taking the penalty (if applicable)
         try:
@@ -662,7 +752,7 @@ class EventParser():
         # retrieving the shooter's team and zone where the shot was taken
         blocked_team, zone = self.retrieve_standard_event_parameters(event)
         block_data_dict['blocked_team_id'] = blocked_team.team_id
-        block_data_dict['zone'] = zone[0:3]
+        block_data_dict['zone'] = zone
 
         # trying to retrieve blocking team and numbers of players involved
         try:
@@ -722,7 +812,7 @@ class EventParser():
         # winning team and zone where the faceoff was conducted
         team, zone = self.retrieve_standard_event_parameters(event)
         faceoff_data_dict['team_id'] = team.team_id
-        faceoff_data_dict['zone'] = zone[0:3]
+        faceoff_data_dict['zone'] = zone
 
         # retrieving numbers of players participating in the faceoff
         road_plr_no, home_plr_no = [
@@ -769,7 +859,7 @@ class EventParser():
         # retrieving team committing the hit and zone where the hit occurred
         team, zone = self.retrieve_standard_event_parameters(event)
         hit_data_dict['team_id'] = team.team_id
-        hit_data_dict['zone'] = zone[0:3]
+        hit_data_dict['zone'] = zone
 
         # TODO: less awkward
         # trying to retrieve involved players' numbers and team taking the hit
@@ -830,7 +920,7 @@ class EventParser():
         # was given away
         team, zone = self.retrieve_standard_event_parameters(event)
         giveaway_data_dict['team_id'] = team.team_id
-        giveaway_data_dict['zone'] = zone[0:3]
+        giveaway_data_dict['zone'] = zone
 
         # retrieving the player who committed the giveaway
         no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
@@ -863,7 +953,7 @@ class EventParser():
         # was taken away
         team, zone = self.retrieve_standard_event_parameters(event)
         takeaway_data_dict['team_id'] = team.team_id
-        takeaway_data_dict['zone'] = zone[0:3]
+        takeaway_data_dict['zone'] = zone
 
         # retrieving the player who executed the takeaway
         no = int(self.PLAYER_REGEX.search(event.raw_data).group(2))
@@ -887,41 +977,16 @@ class EventParser():
 
         return Takeaway.find_by_event_id(event.event_id)
 
-    def specify_event(self, event):
+    def find_coordinates_for_simultaneous_events(self, specific_event):
         """
-        Specifies an event in more detail according to its type.
+        Determines coordinates for simultaneous events of the same type.
         """
-        if event.type == 'SHOT':
-            return self.get_shot_on_goal_event(event)
-
-        if event.type == 'GOAL':
-            shot = self.get_shot_on_goal_event(event)
-            return self.get_goal_event(event, shot)
-
-        if event.type == 'MISS':
-            return self.get_missed_shot_event(event)
-
-        if event.type == 'BLOCK':
-            return self.get_block_event(event)
-
-        if event.type == 'FAC':
-            return self.get_faceoff_event(event)
-
-        if event.type == 'HIT':
-            return self.get_hit_event(event)
-
-        if event.type == 'GIVE':
-            return self.get_giveaway_event(event)
-
-        if event.type == 'TAKE':
-            return self.get_takeaway_event(event)
-
-        if event.type == 'PENL':
-            return self.get_penalty_event(event)
-
-    def find_coordinates_for_ambigiuous_events(self, specific_event):
+        # retrieving base event for specified specific event
         event = Event.find_by_id(specific_event.event_id)
+        # retrieving plays of same type occurring at the same time from
+        # registry of all plays
         plays = self.json_dict[(event.period, event.time, event.type)]
+        # determining matching play (and coordinates) for current play
         for play in plays:
             if is_matching_event(play, specific_event):
                 event.x = play['x']
@@ -929,74 +994,25 @@ class EventParser():
                 commit_db_item(event)
                 break
 
-    def get_event(self, event_data_item):
+    # TODO: include data dict to assign elements to
+    def retrieve_standard_event_parameters(self, event):
         """
-        Gets basic event information first and triggers type-specific parsing
-        afterwards.
+        Retrieves standard event parameters including concerned team, zone and
+        numerical situation.
         """
-        # retrieving data item contents as list
-        tokens = event_data_item.xpath("td/text()")
-        # setting up event data dictionary
-        event_data_dict = dict()
-        # TODO: decide whether to put game id directly in constructor
-        event_data_dict['game_id'] = self.game.game_id
-        event_data_dict['home_score'] = self.score['home']
-        event_data_dict['road_score'] = self.score['road']
+        team = Team.find_by_abbr(event.raw_data[0:3])
+        try:
+            zone = re.search(self.ZONE_REGEX, event.raw_data).group(1)[0:3]
+        except:
+            logger.warn(
+                "Couldn't retrieve zone from raw data: %s" % event.raw_data)
+            if event.type in ['MISS', 'SHOT', 'GOAL']:
+                zone = 'Off.'
+            else:
+                zone = None
+            logger.info("Set zone deliberately to %s" % zone)
 
-        # retrieving basic event attributes
-        event_data_dict['in_game_event_cnt'] = int(tokens[0])
-        event_data_dict['period'] = int(tokens[1])
-        event_data_dict['num_situation'] = tokens[2].strip()
-        event_data_dict['time'] = str_to_timedelta(tokens[3])
-        event_data_dict['type'] = tokens[5]
-        event_data_dict['raw_data'] = tokens[6]
-        if tokens[7]:
-            event_data_dict['raw_data'] = "|".join((
-                event_data_dict['raw_data'], tokens[7]))
-
-        # stoppages in play are registered as property of the according event
-        if event_data_dict['type'] == 'STOP':
-            event_data_dict['stop_type'] = event_data_dict['raw_data'].lower(
-                ).replace("|", "")
-
-        # retrieving players on goalies on ice for current event
-        players_on_ice, goalies_on_ice = self.retrieve_players_on_ice(
-            event_data_item)
-        for key in ['home', 'road']:
-            event_data_dict["%s_on_ice" % key] = players_on_ice[key]
-            if key in goalies_on_ice:
-                event_data_dict["%s_goalie" % key] = goalies_on_ice[key]
-
-        # TODO: add coordinates to events
-        # TODO: match multiple plays at the same time with events
-        play_key = (
-            event_data_dict['period'],
-            event_data_dict['time'],
-            event_data_dict['type'])
-        if play_key in self.json_dict:
-            if len(self.json_dict[play_key]) == 1:
-                single_play_dict = self.json_dict[play_key][0]
-                event_data_dict['x'] = int(single_play_dict['x'])
-                event_data_dict['y'] = int(single_play_dict['y'])
-            # else:
-            #     print()
-            #     print(self.json_dict[play_key])
-            #     print()
-
-        # creating event id
-        event_id = "{0:d}{1:04d}".format(
-            self.game.game_id, event_data_dict['in_game_event_cnt'])
-
-        # setting up new event item
-        event = Event(event_id, event_data_dict)
-        # trying to find existing event item in database
-        db_event = Event.find(
-            self.game.game_id, event_data_dict['in_game_event_cnt'])
-        # updating existing or creating new event item
-        create_or_update_db_item(db_event, event)
-
-        return Event.find(
-            self.game.game_id, event_data_dict['in_game_event_cnt'])
+        return team, zone
 
     def retrieve_players_on_ice(self, event_data_item):
         """
@@ -1045,6 +1061,7 @@ class EventParser():
         """
         self.json_dict = defaultdict(list)
 
+        # events are called plays in json game summaries
         for play in self.json_data['liveData']['plays']['allPlays']:
             coords = play['coordinates']
             # we're only interested in plays that have coordinates
@@ -1067,11 +1084,13 @@ class EventParser():
             single_play_dict['description'] = play['result']['description']
             # adding players participating in play
             for player in play['players']:
+                # 'active', e.g. blocking, hitting, faceoff-winning player
                 if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
                         0]:
                             single_play_dict['active'] = player['player']['id']
                             single_play_dict['active_name'] = player[
                                 'player']['fullName']
+                # 'passive', e.g. blocked, hit, faceoff-losing player
                 else:
                     single_play_dict['passive'] = player['player']['id']
                     single_play_dict['passive_name'] = player[
