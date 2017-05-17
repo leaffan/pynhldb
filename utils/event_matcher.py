@@ -3,20 +3,34 @@
 
 import logging
 
+from db.event import Event
+
 logger = logging.getLogger(__name__)
 
 
-def is_matching_event(play, event):
+# the *other* player for certain events, i.e. the faceoff loser, a player
+# taking a hit or one having a shot blocked, is not registered under a
+# consistently column name in the database
+# that is why we have to map the according database columns to the
+# corresponding event types
+EVENT_PLAYER_ATTRIBUTE_NAMES = {
+    'FAC': 'faceoff_lost_player_id',
+    'HIT': 'hit_taken_player_id',
+    'BLOCK': 'blocked_player_id'
+}
+
+
+def is_matching_event(play, specific_event):
     """
     Checks whether specified play (retrieved from json data) and database event
     match.
     """
     if play['play_type'] == 'PENL':
-        return is_matching_penalty_event(event, play)
-    # elif event.type in ['HIT', 'BLOCK', 'FAC']:
-    #     return is_matching_hit_block_faceoff_event(play, event)
-    # elif event.type in ['GIVE', 'TAKE']:
-    #     return is_matching_giveaway_takeaway_event(play, event)    
+        return is_matching_penalty_event(specific_event, play)
+    elif play['play_type'] in ['HIT', 'BLOCK', 'FAC']:
+        return is_matching_hit_block_faceoff_event(specific_event, play)
+    elif play['play_type'] in ['GIVE', 'TAKE']:
+        return is_matching_giveaway_takeaway_event(specific_event, play)
     # elif event.type in ['SHOT', 'GOAL']:
     #     return is_matching_shot_event(play, event)
     # elif event.type == 'MISS':
@@ -30,9 +44,9 @@ def is_matching_penalty_event(penalty, play):
     Checks whether the given play retrieved from json data matches with the
     specified (penalty) event.
     """
-    print("\tid ", play['active'], penalty.player_id)
-    print("\tpim ", play['pim'], penalty.pim)
-    print("\tinfraction", play['infraction'], penalty.infraction.lower())
+    # print("\tid ", play['active'], penalty.player_id)
+    # print("\tpim ", play['pim'], penalty.pim)
+    # print("\tinfraction", play['infraction'], penalty.infraction.lower())
 
     # trying to match play and (team) penalty (i.e. not being given to a
     # certain player) using penalty minutes and sanctioned infraction
@@ -70,3 +84,37 @@ def is_matching_penalty_event(penalty, play):
                 return True
 
     return False
+
+
+def is_matching_hit_block_faceoff_event(specific_event, play):
+    """
+    Tries to match given (hit, block or faceoff) event with specified play
+    retrieved from json data.
+    """
+    # retrieving specific event
+    event = Event.find_by_id(specific_event.event_id)
+    # retrieving player id of hit, blocked, faceoff-losing player
+    event_passive_player_id = getattr(
+        specific_event, EVENT_PLAYER_ATTRIBUTE_NAMES[event.type])
+
+    # trying to match using players involved in current event
+    if (
+            play['active'], play['passive']
+    ) == (
+            specific_event.player_id, event_passive_player_id
+    ):
+        # TODO: logger debug
+        return True
+    else:
+        return False
+
+
+def is_matching_giveaway_takeaway_event(specific_event, play):
+    """
+    Tries to match given (giveaway, takeaway) event with specified play
+    retrieved from json data.
+    """
+    if (play['active']) == (specific_event.player_id):
+        return True
+    else:
+        return False
