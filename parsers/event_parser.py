@@ -1079,6 +1079,7 @@ class EventParser():
             # adding play type to single play dictionary
             single_play_dict['play_type'] = play_type
             # adding coordinates and description to single play dictionary
+            single_play_dict['period_type'] = play['about']['periodType']
             single_play_dict['x'] = coords['x']
             single_play_dict['y'] = coords['y']
             single_play_dict['description'] = play['result']['description']
@@ -1104,6 +1105,9 @@ class EventParser():
                 single_play_dict[
                     'infraction'] = self.adjust_penalty_infraction(
                         infraction, severity)
+            if play_type in ['SHOT', 'GOAL']:
+                single_play_dict['shot_type'] = play['result'][
+                    'secondaryType'].lower().replace("shot", "").strip()
             # adding single player dictionary to dictionary of all plays using
             # period, time and type of play as key
             self.json_dict[(play_period, play_time, play_type)].append(
