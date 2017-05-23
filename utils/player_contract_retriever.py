@@ -8,7 +8,7 @@ import requests
 from dateutil import parser
 from lxml import html
 
-from db import commit_db_item
+from db import create_or_update_db_item
 from db.common import session_scope
 from db.player import Player
 from db.team import Team
@@ -60,8 +60,20 @@ class PlayerContractRetriever():
             contract_db = self.create_or_update_database_item(
                 contract, contract_db)
 
+            # creating/retrieving buyout item in/from database (if applicable
+            # to current contract)
+            if contract_db.bought_out:
+                buyout = self.retrieve_buyout(player_id, contract_db)
+            else:
+                buyout = None
+
             # creating or updating contract years in database
             for contract_year_dict in plr_contract_dict['contract_years']:
+                # adding buyout flag to contract year if buyout happened in
+                # this or prior seasons
+                if buyout:
+                    if contract_year_dict['season'] >= buyout.start_season:
+                        contract_year_dict['bought_out'] = True
                 contract_year = ContractYear(
                     player_id, contract_db.contract_id, contract_year_dict)
                 contract_year_db = ContractYear.find(
@@ -69,10 +81,6 @@ class PlayerContractRetriever():
                     contract_year_dict['season'])
                 self.create_or_update_database_item(
                     contract_year, contract_year_db)
-
-            # creating buyout items in database
-            if contract_db.bought_out:
-                self.retrieve_buyout(player_id, contract_db)
 
         # creating or updating historical salary data in database
         for hist_salary_year in historical_salaries:
@@ -105,16 +113,11 @@ class PlayerContractRetriever():
             # creating or updating buyout year
             buyout_year_db = self.create_or_update_database_item(
                 buyout_year, buyout_year_db)
-            # finally adding buyout flag to corresponding contract year
-            contract_year = ContractYear.find(
-                player_id, contract.contract_id, buyout_year_data_dict[
-                    'season'])
-            contract_year.bought_out = True
-            commit_db_item(contract_year)
+        return buyout_db
 
     def retrieve_raw_contract_data(self, player_id):
         """
-        Retrieves contract information for player with specified id as a
+        Retrieves raw contract information for player with specified id as a
         list of dictionary objects.
         """
         # setting up list of contracts for current player
