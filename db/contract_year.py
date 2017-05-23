@@ -26,6 +26,11 @@ class ContractYear(Base):
         for attr in self.STANDARD_ATTRS:
             if attr in contract_year_data_dict:
                 setattr(self, attr, contract_year_data_dict[attr])
+            else:
+                if attr in ['bought_out']:
+                    setattr(self, attr, False)
+                else:
+                    setattr(self, attr, None)
 
     @classmethod
     def find(self, player_id, contract_id, season):
