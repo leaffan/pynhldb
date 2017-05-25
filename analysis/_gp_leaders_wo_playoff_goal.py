@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import asyncio
+import aiohttp
 from collections import OrderedDict
 
 import requests
@@ -40,12 +42,11 @@ def get_links_names_games(url):
     return links, names, games
 
 
-def has_playoff_games(url):
+async def has_playoff_games(client, url):  # noqa: E999
     """
     Checks if a player has participated in playoff games.
     """
-    req = requests.get(url)
-    doc = html.fromstring(req.text)
+    doc = await get_document(client, url)
     # if available playoff data is listed in a section with a special id
     playoff_section = doc.xpath(
         "//div[@class='section_heading']/span[@id='stats_playoffs_nhl_link']")
@@ -55,12 +56,11 @@ def has_playoff_games(url):
         return False
 
 
-def retrieve_seasons_and_teams(url):
+async def retrieve_seasons_and_teams(client, url):  # noqa: E999
     """
     Retrieves seasons and teams for a single player.
     """
-    req = requests.get(url)
-    doc = html.fromstring(req.text)
+    doc = await get_document(client, url)
     teams = doc.xpath(
         "//table[@id='stats_basic_nhl' or @id='stats_basic_plus_nhl']" +
         "/tbody/tr/td[2]/a/text()")
@@ -75,10 +75,14 @@ def retrieve_seasons_and_teams(url):
     return teams, seasons
 
 
-if __name__ == '__main__':
+async def get_document(client, url):  # noqa: E999
+    async with client.get(url) as response:
+        assert response.status == 200
+        return html.fromstring(await response.text())
 
+
+async def main(client):
     result = list()
-
     for offset in range(2200, 2400, 200):
         url = GP_LEADERS_URL_TEMPLATE
         if offset:
@@ -93,9 +97,10 @@ if __name__ == '__main__':
             name = "%s" % " ".join(name.split(",")[::-1])
             print(name, end='')  # noqa: E999
             plr_url = "".join((BASE_URL, link))
-            if not has_playoff_games(plr_url):
+            if not await has_playoff_games(client, plr_url):
                 print(": no playoff games")
-                teams, seasons = retrieve_seasons_and_teams(plr_url)
+                teams, seasons = await retrieve_seasons_and_teams(
+                    client, plr_url)
                 result.append((
                     name, str(games_played),
                     "-".join([str(s) for s in seasons]), ", ".join(teams)))
@@ -106,3 +111,39 @@ if __name__ == '__main__':
 
     open(r"d:\result.txt", "w").write(
         "\n".join(["\t".join(r) for r in result]))
+
+
+if __name__ == '__main__':
+
+    loop = asyncio.get_event_loop()
+    with aiohttp.ClientSession(loop=loop) as session:
+        loop.run_until_complete(main(session))
+    loop.close()
+
+    # for offset in range(2200, 2400, 200):
+    #     url = GP_LEADERS_URL_TEMPLATE
+    #     if offset:
+    #         url = "".join((url, "&offset=%d" % offset))
+    #     print(url)
+    #     links, names, games = get_links_names_games(url)
+
+    #     i = 0
+
+    #     for link, name, games_played in zip(links, names, games):
+    #         i += 1
+    #         name = "%s" % " ".join(name.split(",")[::-1])
+    #         print(name, end='')  # noqa: E999
+    #         plr_url = "".join((BASE_URL, link))
+    #         if not has_playoff_games(plr_url):
+    #             print(": no playoff games")
+    #             teams, seasons = retrieve_seasons_and_teams(plr_url)
+    #             result.append((
+    #                 name, str(games_played),
+    #                 "-".join([str(s) for s in seasons]), ", ".join(teams)))
+    #         else:
+    #             print()
+    #         # if i == 5:
+    #         #     break
+
+    # open(r"d:\result.txt", "w").write(
+    #     "\n".join(["\t".join(r) for r in result]))
