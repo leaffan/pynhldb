@@ -6,7 +6,6 @@ Base class to allow inheriting objects to download multiple files from remote
 locations at once.
 """
 import os
-import sys
 import logging
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -25,8 +24,10 @@ class MultiFileDownloader():
             try:
                 os.makedirs(tgt_dir)
             except:
-                print("Couldn't create target directory '%s'..." % tgt_dir)
-                sys.exit(1)
+                logger.warn(
+                    "Couldn't create target directory '%s', using " % tgt_dir +
+                    "system temporary directory %s instead" % self.TMP_DIR)
+                tgt_dir = self.TMP_DIR
         self.tgt_dir = tgt_dir
         self.files_to_download = list()
         self.downloaded_files = list()
@@ -42,17 +43,20 @@ class MultiFileDownloader():
     def find_files_to_download(self):
         raise NotImplementedError
 
-    def download_files(self, workers):
+    def download_files(self, workers, tgt_dir=None, files_to_download=None):
 
-        tgt_dir = self.tgt_dir
+        if tgt_dir is None:
+            tgt_dir = self.tgt_dir
+        if files_to_download is None:
+            files_to_download = self.files_to_download
 
-        self.files_to_download = sorted(self.files_to_download)
+        files_to_download = sorted(files_to_download)
 
         if workers > 1:
             with ThreadPoolExecutor(max_workers=workers) as download_threads:
                 tasks = {download_threads.submit(
                     self.download_task,
-                    url, tgt_dir): url for url in self.files_to_download}
+                    url, tgt_dir): url for url in files_to_download}
                 for completed_task in as_completed(tasks):
                     try:
                         completed_task.result()
@@ -60,7 +64,7 @@ class MultiFileDownloader():
                         print()
                         print("Task generated an exception: %s" % e)
         else:
-            for url in self.files_to_download:
+            for url in files_to_download:
                 print("Downloading %s" % url)
                 self.download_task(url, tgt_dir)
 
