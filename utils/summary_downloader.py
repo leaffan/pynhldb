@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
+import sys
 import json
+from urllib.parse import urlsplit
 
 import requests
 from dateutil.parser import parse
 from dateutil.rrule import rrule, DAILY
 
-from multi_downloader import MultiFileDownloader
+from .multi_downloader import MultiFileDownloader
 
 
 class SummaryDownloader(MultiFileDownloader):
@@ -31,8 +34,10 @@ class SummaryDownloader(MultiFileDownloader):
 
     MAX_DOWNLOAD_WORKERS = 8
 
-    def __init__(self, tgt_dir, date, to_date='', workers=0):
-
+    def __init__(
+            self, tgt_dir, date, to_date='', zip_summaries=True, workers=0):
+        # constructing base class instance
+        super(self.__class__, self).__init__(tgt_dir, zip_summaries, workers)
         # parsing start date for summary retrieval
         self.date = parse(date)
         # retrieving end date for summary retrieval
@@ -44,8 +49,30 @@ class SummaryDownloader(MultiFileDownloader):
         self.game_dates = list(
             rrule(DAILY, dtstart=self.date, until=self.to_date))
 
+        # preparing connection to dumped dictionary of last modification
+        # to summaries
+        self.mod_pkl = os.path.join(tgt_dir, '_modified_hash.pkl')
+        # loading dictionary of previously downloaded summaries (if available)
+        if os.path.isfile(self.mod_pkl):
+            self.modified_dict = json.loads(open(self.mod_pkl).read())
+        else:
+            self.modified_dict = dict()
+
         if workers:
             self.MAX_DOWNLOAD_WORKERS = workers
+
+    def get_tgt_dir(self):
+        return os.path.join(self.tgt_dir, self.current_date.strftime("%Y-%m"))
+
+    def get_zip_name(self):
+        return "%04d-%02d-%02d" % (
+            self.current_date.year,
+            self.current_date.month,
+            self.current_date.day)
+
+    def get_zip_path(self):
+        return os.path.join(
+            self.get_tgt_dir(), ".".join((self.get_zip_name(), 'zip')))
 
     def find_files_to_download(self):
         """
@@ -53,16 +80,16 @@ class SummaryDownloader(MultiFileDownloader):
         """
         # making sure that the list of files to download is empty
         self.files_to_download = list()
-        # retrieving current date8
-        self.curr_date = self.game_dates.pop(0)
         # retrieving current season
         self.season = (
-            self.curr_date.year if
-            self.curr_date.month > 6 else
-            self.curr_date.year - 1)
+            self.current_date.year if
+            self.current_date.month > 6 else
+            self.current_date.year - 1)
         # preparing formatted date string as necessary for scoreboard retrieval
         fmt_date = "%d-%02d-%02d" % (
-            self.curr_date.year, self.curr_date.month, self.curr_date.day)
+            self.current_date.year,
+            self.current_date.month,
+            self.current_date.day)
 
         # retrieving schedule for current date in json format
         req = requests.get(
@@ -103,20 +130,59 @@ class SummaryDownloader(MultiFileDownloader):
                         rt,
                         str(game_id),
                         ".HTM"))
-                    files_to_download.append(htmlreport_url)
+                    files_to_download.append((htmlreport_url, None))
                 feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(
                     full_game_id)
-                files_to_download.append(feed_json_url)
+                files_to_download.append(
+                    (feed_json_url, ".".join((game_id, "json"))))
 
         return files_to_download
 
+    def download_task(self, url, tgt_dir, tgt_file):
+        """
+        Represents a single downloading task.
+        """
+        # setting up target path
+        if tgt_file is None:
+            tgt_file = os.path.basename(urlsplit(url).path)
+        tgt_path = os.path.join(tgt_dir, tgt_file)
+        # setting up http headers
+        headers = dict()
+        # modifing headers in case we're looking for an update of already
+        # downloaded data
+        if (
+            os.path.isfile(
+                tgt_path) or self.check_for_file(self.zip_path, tgt_file)):
+            if url in self.modified_dict and self.modified_dict[url]:
+                headers['If-Modified-Since'] = self.modified_dict[url]
 
-if __name__ == '__main__':
+        req = requests.get(url, headers=headers)
 
-    date = "2017/04/01"
-    to_date = "2017/04/01"
+        if req.status_code == 304:
+            # logger.debug("%s hasn't been modified since last download,
+            # keeping existing version" % url)
+            sys.stdout.write(".")
+            sys.stdout.flush()
+        elif req.status_code == 200:
+            # logger.debug("Downloading %s" % url)
+            sys.stdout.write("+")
+            sys.stdout.flush()
+            # cleaning up html source
+            open(tgt_path, 'w').write(req.text)
+            # adding target path to list of downloaded files
+            self.downloaded_files.append(tgt_path)
+            # adding date of last modification to corresponding dictionary
+            self.modified_dict[url] = req.headers.get('Last-Modified')
 
-    d = SummaryDownloader(r"d:\tmp", date, to_date)
-    d.find_files_to_download()
-    for f in d.files_to_download:
-        print(f)
+        return tgt_path
+
+    def run(self):
+        for date in self.game_dates:
+            self.current_date = date
+            print(self.current_date)
+            self.find_files_to_download()
+            self.zip_path = self.get_zip_path()
+            self.download_files(self.get_tgt_dir())
+            self.zip_files(self.get_zip_name(), self.get_tgt_dir())
+
+        json.dump(self.modified_dict, open(self.mod_pkl, 'w'))
