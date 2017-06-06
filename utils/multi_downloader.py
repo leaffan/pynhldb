@@ -12,8 +12,6 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
-import requests
-
 logger = logging.getLogger(__name__)
 
 
@@ -79,13 +77,17 @@ class MultiFileDownloader():
                         url, tgt_file) for url, tgt_file in files_to_download}
                 for completed_task in as_completed(tasks):
                     try:
-                        self.downloaded_files.append(completed_task.result())
+                        if completed_task.result():
+                            self.downloaded_files.append(
+                                completed_task.result())
                     except Exception as e:
                         print()
                         print("Task generated an exception: %s" % e)
         else:
             for url, tgt_file in files_to_download:
-                self.download_task(url, tgt_dir, tgt_file)
+                result = self.download_task(url, tgt_dir, tgt_file)
+                if result:
+                    self.downloaded_files.append(result)
 
     def download_task(self, url, tgt_dir, tgt_file):
         """
@@ -115,8 +117,6 @@ class MultiFileDownloader():
         # bailing out if no files were downloaded
         if len(self.downloaded_files) == 0:
             return
-
-        print(sorted(self.downloaded_files))
 
         # setting up zip file location
         zip_file = "".join((zip_name, ".zip"))
@@ -155,7 +155,6 @@ class MultiFileDownloader():
             for f in files_in_zip:
                 files_in_zip_info[f] = existing_zip.getinfo(f).date_time + (
                     0, 0, -1)
-                print(files_in_zip_info[f])
             existing_zip.close()
 
         return files_in_zip, files_in_zip_info
