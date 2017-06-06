@@ -7,6 +7,7 @@ import json
 from urllib.parse import urlsplit
 
 import requests
+from lxml import html, etree
 from dateutil.parser import parse
 from dateutil.rrule import rrule, DAILY
 
@@ -168,7 +169,11 @@ class SummaryDownloader(MultiFileDownloader):
             sys.stdout.write("+")
             sys.stdout.flush()
             # cleaning up html source
-            open(tgt_path, 'w').write(req.text)
+            if url.lower().endswith('.htm'):
+                content = self.adjust_html_response(req)
+            else:
+                content = req.text
+            open(tgt_path, 'w').write(content)
             # adding target path to list of downloaded files
             self.downloaded_files.append(tgt_path)
             # adding date of last modification to corresponding dictionary
@@ -177,12 +182,39 @@ class SummaryDownloader(MultiFileDownloader):
         return tgt_path
 
     def run(self):
+        """
+        Runs downloading process for all registered game dates.
+        """
         for date in self.game_dates:
             self.current_date = date
-            print(self.current_date)
+            print("+ Downloading summaries for %s" % self.current_date)
             self.find_files_to_download()
             self.zip_path = self.get_zip_path()
             self.download_files(self.get_tgt_dir())
             self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
         json.dump(self.modified_dict, open(self.mod_pkl, 'w'))
+
+    def adjust_html_response(self, response):
+        """
+        Applies some modifications to the html source of the given HTTP
+        response in order to alleviate later handling of the data.
+        """
+        # converting to document tree
+        doc = html.document_fromstring(response.text)
+
+        # stripping all script elements in order to remove javascripts
+        etree.strip_elements(doc, "script")
+        # stripping arbitraty xmlfile tag
+        etree.strip_tags(doc, "xmlfile")
+
+        # creating element to hold timestamp of last modification
+        last_modified_element = etree.Element('p', id='last_modified')
+        last_modified_element.text = response.headers.get('Last-Modified')
+
+        # adding timestamp to document tree
+        body = doc.xpath("body").pop(0)
+        body.append(last_modified_element)
+
+        # returning document tree dumped as string
+        return etree.tostring(doc, method='html')
