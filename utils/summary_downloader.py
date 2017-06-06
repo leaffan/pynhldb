@@ -50,8 +50,7 @@ class SummaryDownloader(MultiFileDownloader):
         self.game_dates = list(
             rrule(DAILY, dtstart=self.date, until=self.to_date))
 
-        # preparing connection to dumped dictionary of last modification
-        # to summaries
+        # preparing connection to dumped dictionary of modification timestamps
         self.mod_pkl = os.path.join(tgt_dir, '_modified_hash.pkl')
         # loading dictionary of previously downloaded summaries (if available)
         if os.path.isfile(self.mod_pkl):
@@ -139,6 +138,24 @@ class SummaryDownloader(MultiFileDownloader):
 
         return files_to_download
 
+    def get_last_modification_timestamp(self, url, tgt_path):
+        """
+        Retrieves timestamp of last modification for specified url if data
+        had been downloaded before to the given target location.
+        """
+        # determining whether data has been downloaded before by checking if
+        # target file exists in file system or in a corresponding zip file
+        if (
+            os.path.isfile(tgt_path) or self.check_for_file(
+                self.zip_path, os.path.basename(tgt_path))
+        ):
+            # if data has been downloaded before, retrieve last
+            # modification timestamp
+            if url in self.modified_dict and self.modified_dict[url]:
+                return self.modified_dict[url]
+
+        return ""
+
     def download_task(self, url, tgt_dir, tgt_file):
         """
         Represents a single downloading task.
@@ -147,39 +164,81 @@ class SummaryDownloader(MultiFileDownloader):
         if tgt_file is None:
             tgt_file = os.path.basename(urlsplit(url).path)
         tgt_path = os.path.join(tgt_dir, tgt_file)
-        # setting up http headers
+
+        # downloading data according to actual content type
+        if url.lower().endswith('.htm'):
+            content = self.download_html_content(url, tgt_path)
+        else:
+            content = self.download_json_content(url, tgt_path)
+
+        if content:
+            # writing downloaded content to target path
+            open(tgt_path, 'w').write(content)
+            # adding target path to list of downloaded files
+            # self.downloaded_files.append(tgt_path)
+            return tgt_path
+
+    def download_html_content(self, url, tgt_path):
+        """
+        Downloads html content from specified url.
+        """
+        # retrieving timestamp of last modification in case data has been
+        # downloaded before
+        mod_time_stamp = self.get_last_modification_timestamp(url, tgt_path)
+
+        # setting up http headers using modification time stamp
         headers = dict()
         # modifing headers in case we're looking for an update of already
         # downloaded data
-        if (
-            os.path.isfile(
-                tgt_path) or self.check_for_file(self.zip_path, tgt_file)):
-            if url in self.modified_dict and self.modified_dict[url]:
-                headers['If-Modified-Since'] = self.modified_dict[url]
-
+        if mod_time_stamp:
+            headers['If-Modified-Since'] = mod_time_stamp
         req = requests.get(url, headers=headers)
 
         if req.status_code == 304:
-            # logger.debug("%s hasn't been modified since last download,
-            # keeping existing version" % url)
+            # TODO: proper logging
             sys.stdout.write(".")
             sys.stdout.flush()
+            return
         elif req.status_code == 200:
-            # logger.debug("Downloading %s" % url)
+            # TODO: proper logging
             sys.stdout.write("+")
             sys.stdout.flush()
-            # cleaning up html source
-            if url.lower().endswith('.htm'):
-                content = self.adjust_html_response(req)
-            else:
-                content = req.text
-            open(tgt_path, 'w').write(content)
-            # adding target path to list of downloaded files
-            self.downloaded_files.append(tgt_path)
-            # adding date of last modification to corresponding dictionary
+            # updating modification timestamp in corresponding dictionary
             self.modified_dict[url] = req.headers.get('Last-Modified')
+            # returning downloaded and adjusted html data
+            return self.adjust_html_response(req)
 
-        return tgt_path
+    def download_json_content(self, url, tgt_path):
+        """
+        Downloads json content from specified url.
+        """
+        # retrieving timestamp of last modification in case data has been
+        # downloaded before
+        mod_time_stamp = self.get_last_modification_timestamp(url, tgt_path)
+        # converting modification time stamp into actual datetime
+        if mod_time_stamp:
+            mod_time_stamp = parse(mod_time_stamp)
+
+        req = requests.get(url)
+
+        if req.status_code == 200:
+            json_data = req.json()
+            # retrieving time stamp for downloaded data
+            act_time_stamp = parse(
+                json_data['metaData']['timeStamp'].replace("_", " "))
+            if act_time_stamp == mod_time_stamp:
+                # TODO: proper logging
+                sys.stdout.write(".")
+                sys.stdout.flush()
+                return
+            else:
+                # TODO: proper logging
+                sys.stdout.write("+")
+                sys.stdout.flush()
+                # updating modification timestamp in corresponding dictionary
+                self.modified_dict[url] = str(act_time_stamp)
+                # returning json data as prettily formatted string
+                return json.dumps(json_data, indent=2)
 
     def run(self):
         """
@@ -187,10 +246,13 @@ class SummaryDownloader(MultiFileDownloader):
         """
         for date in self.game_dates:
             self.current_date = date
-            print("+ Downloading summaries for %s" % self.current_date)
+            print(
+                "+ Downloading summaries for %s" % self.current_date.strftime(
+                    "%A, %B %d, %Y"))
             self.find_files_to_download()
             self.zip_path = self.get_zip_path()
             self.download_files(self.get_tgt_dir())
+            print()
             self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
         json.dump(self.modified_dict, open(self.mod_pkl, 'w'))
@@ -217,4 +279,4 @@ class SummaryDownloader(MultiFileDownloader):
         body.append(last_modified_element)
 
         # returning document tree dumped as string
-        return etree.tostring(doc, method='html')
+        return etree.tostring(doc, method='html', encoding='unicode')
