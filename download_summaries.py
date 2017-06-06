@@ -9,8 +9,8 @@ if __name__ == '__main__':
     tgt_dir = r"D:\nhl\official_and_json\2016-17"
     tgt_dir = r"d:\tmp\test"
 
-    date = "2017/04/03"
-    to_date = "2017/04/03"
+    date = "2017/05/01"
+    to_date = "2017/05/01"
 
-    downloader = SummaryDownloader(tgt_dir, date, to_date, workers=1)
+    downloader = SummaryDownloader(tgt_dir, date, to_date, workers=8)
     downloader.run()
