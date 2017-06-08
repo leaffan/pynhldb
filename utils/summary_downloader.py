@@ -50,27 +50,38 @@ class SummaryDownloader(MultiFileDownloader):
         self.game_dates = list(
             rrule(DAILY, dtstart=self.date, until=self.to_date))
 
+        # TODO: rename modification timestamp container
         # preparing connection to dumped dictionary of modification timestamps
-        self.mod_pkl = os.path.join(tgt_dir, '_modified_hash.pkl')
+        self.mod_timestamp_src = os.path.join(tgt_dir, '_mod_timestamps.json')
         # loading dictionary of previously downloaded summaries (if available)
-        if os.path.isfile(self.mod_pkl):
-            self.modified_dict = json.loads(open(self.mod_pkl).read())
+        if os.path.isfile(self.mod_timestamp_src):
+            self.mod_timestamps = json.loads(
+                open(self.mod_timestamp_src).read())
         else:
-            self.modified_dict = dict()
+            self.mod_timestamps = dict()
 
         if workers:
             self.MAX_DOWNLOAD_WORKERS = workers
 
     def get_tgt_dir(self):
+        """
+        Returns target directory according to current date.
+        """
         return os.path.join(self.tgt_dir, self.current_date.strftime("%Y-%m"))
 
     def get_zip_name(self):
+        """
+        Returns file name of zipped downloads for current date.
+        """
         return "%04d-%02d-%02d" % (
             self.current_date.year,
             self.current_date.month,
             self.current_date.day)
 
     def get_zip_path(self):
+        """
+        Returns path to file of zipped downloaded files for current date.
+        """
         return os.path.join(
             self.get_tgt_dir(), ".".join((self.get_zip_name(), 'zip')))
 
@@ -151,8 +162,8 @@ class SummaryDownloader(MultiFileDownloader):
         ):
             # if data has been downloaded before, retrieve last
             # modification timestamp
-            if url in self.modified_dict and self.modified_dict[url]:
-                return self.modified_dict[url]
+            if url in self.mod_timestamps and self.mod_timestamps[url]:
+                return self.mod_timestamps[url]
 
         return ""
 
@@ -204,7 +215,7 @@ class SummaryDownloader(MultiFileDownloader):
             sys.stdout.write("+")
             sys.stdout.flush()
             # updating modification timestamp in corresponding dictionary
-            self.modified_dict[url] = req.headers.get('Last-Modified')
+            self.mod_timestamps[url] = req.headers.get('Last-Modified')
             # returning downloaded and adjusted html data
             return self.adjust_html_response(req)
 
@@ -236,7 +247,7 @@ class SummaryDownloader(MultiFileDownloader):
                 sys.stdout.write("+")
                 sys.stdout.flush()
                 # updating modification timestamp in corresponding dictionary
-                self.modified_dict[url] = str(act_time_stamp)
+                self.mod_timestamps[url] = str(act_time_stamp)
                 # returning json data as prettily formatted string
                 return json.dumps(json_data, indent=2)
 
@@ -255,7 +266,7 @@ class SummaryDownloader(MultiFileDownloader):
             print()
             self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
-        json.dump(self.modified_dict, open(self.mod_pkl, 'w'))
+        json.dump(self.mod_timestamps, open(self.mod_timestamp_src, 'w'))
 
     def adjust_html_response(self, response):
         """
