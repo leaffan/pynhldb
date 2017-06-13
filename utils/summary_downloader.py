@@ -12,6 +12,7 @@ from dateutil.parser import parse
 from dateutil.rrule import rrule, DAILY
 
 from .multi_downloader import MultiFileDownloader
+from .summary_data_injector import add_nhl_ids_to_content
 
 
 class SummaryDownloader(MultiFileDownloader):
@@ -216,8 +217,12 @@ class SummaryDownloader(MultiFileDownloader):
             sys.stdout.flush()
             # updating modification timestamp in corresponding dictionary
             self.mod_timestamps[url] = req.headers.get('Last-Modified')
-            # returning downloaded and adjusted html data
-            return self.adjust_html_response(req)
+            # adjusting html data
+            content = self.adjust_html_response(req)
+            if "ES" in url:
+                content = add_nhl_ids_to_content(url, content)
+
+            return content
 
     def download_json_content(self, url, tgt_path):
         """
