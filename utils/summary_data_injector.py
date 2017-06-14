@@ -21,7 +21,7 @@ def add_nhl_ids_to_content(url, content):
     Adds player ids used by nhl.com to each roster player on event summary
     to allow for a unique identification later on.
     """
-
+    # retrieving current season and game id from specified url
     season = int(os.path.dirname(url).split("/")[-1][:4])
     game_id = os.path.basename(url).split(".")[0][2:]
 
@@ -44,14 +44,14 @@ def add_nhl_ids_to_content(url, content):
         road_players, home_players = retrieve_player_ids_from_database(content)
 
     # finally adding retrieved player ids to recently downloaded game rosters
+    # parsing html content into document tree first
     doc = html.document_fromstring(content)
-
-    # retrieving all table cells that contain a player's number
-    rtds = get_table_cells(doc, 'preceding')
-    htds = get_table_cells(doc, 'following')
-    # inserting player id in span element behind player's numbers
-    insert_nhl_ids(rtds, road_players)
-    insert_nhl_ids(htds, home_players)
+    for players, sibling_type in zip(
+            [road_players, home_players], ['preceding', 'following']):
+        # retrieving all table cells that contain a player's number
+        tds = get_table_cells(doc, sibling_type)
+        # inserting player id in span element behind player's numbers
+        insert_nhl_ids(tds, players)
 
     return etree.tostring(
         doc, method='html', pretty_print=True, encoding='unicode')
@@ -62,21 +62,26 @@ def insert_nhl_ids(tds, players):
     Insert nhl ids for each player into the according team's html roster
     representation.
     """
-    # season = self.season
-    # using each table cell
+    # modifying each of the specified table cells
     for td in tds:
-        # retrieving jersey number from table cell
+        # retrieving player's jersey number from current table cell
         no = int(td.text_content())
-        # retrieving nhl player id from player dictionary
+        # trying to retrieve player id from player dictionary
         try:
             nhl_id = players[no]
+        # otherwise retrieving player id from database
         except KeyError:
-            pos, name = td.xpath("following-sibling::*//text()")[:2]
+            # retrieving player position and full name from current table cell
+            position, name = td.xpath("following-sibling::*//text()")[:2]
+            # splitting up full name into first and last name
             last_name, first_name = [x.strip() for x in name.split(",")]
-            plr = Player.find_by_name_position(first_name, last_name, pos)
-            nhl_id = plr.player_id
-            # TODO: find and create player if not found in database
-        # creating a span element with the attribute 'nhl_id'
+            # finding player by first and last name as well as position in db
+            nhl_id = retrieve_player_id(last_name, first_name, position)
+
+        # TODO: find player on website and create it if not found in database
+
+        # creating a span element using the attribute 'nhl_id' with the
+        # current player's id as value
         span = etree.Element("span", nhl_id=str(nhl_id))
         # inserting newly created span element into the document tree
         td.insert(0, span)
@@ -87,13 +92,19 @@ def get_table_cells(doc, sibling_type):
     Get table cells from specified parsed html document using the given colspan
     value and sibling type.
     """
+    # retrieving all table cells above or below a table cell spanning the whole
+    # table width
     tds = doc.xpath(
         "//tr/td[@colspan='22' or @colspan='25']/parent::*/" +
         "%s-sibling::*/td[@align='center' and @class='lborder" % sibling_type +
         " + bborder + rborder']")
 
+    # making sure no additional goaltender summary table cells are among
+    # the ones retrieved above by adding them to a dictionary using the
+    # jersey numbers as keys
     distinct_table_cells = {int(td.xpath("text()").pop()): td for td in tds}
 
+    # returning the dicionary values, i.e. unique table cells
     return list(distinct_table_cells.values())
 
 
@@ -143,7 +154,8 @@ def retrieve_player_ids_from_summary(summary):
             players_for_team['skaters'] + players_for_team['goalies'])
         # retrieving ids of scratched players
         scratches_ids = set(players_for_team['scratches'])
-        # deriving ids of all players dressed for current game
+        # deriving ids of all players dressed for current game by removing
+        # scratched players from all players
         dressed_ids = list(all_player_ids.difference(scratches_ids))
 
         team_player_no_dict = dict()
@@ -219,14 +231,18 @@ def convert_names_numbers_to_players(names, numbers):
         number = int(numbers.pop(0).xpath("text()")[0])
 
         # retrieving nhl id from database
-        nhl_id = retrieve_nhl_id(last_name, first_name, position)
+        nhl_id = retrieve_player_id(last_name, first_name, position)
 
         players[number] = nhl_id
 
     return players
 
 
-def retrieve_nhl_id(last_name, first_name, position):
+def retrieve_player_id(last_name, first_name, position):
+    """
+    Retrieve player id from database for player specified by first and name ascii
+    well as position.
+    """
 
     plr = Player.find_by_name(first_name, last_name)
 
@@ -242,4 +258,4 @@ def retrieve_nhl_id(last_name, first_name, position):
             "%s %s (%s)" % (first_name, last_name, position))
         return 0
     else:
-        return plr.nhl_id
+        return plr.player_id
