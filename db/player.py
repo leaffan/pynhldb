@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 
 from .common import Base, session_scope
 
@@ -66,9 +66,9 @@ class Player(Base):
             try:
                 player = session.query(Player).filter(
                     and_(
-                        Player.first_name == first_name,
-                        Player.last_name == last_name,
-                        Player.position == position
+                        func.lower(Player.first_name) == first_name.lower(),
+                        func.lower(Player.last_name) == last_name.lower(),
+                        func.lower(Player.position) == position.lower()
                     )
                 ).one()
             except:
@@ -94,6 +94,9 @@ class Player(Base):
             except:
                 player = None
             return player
+
+    # TODO:
+    # find method using position and alternate names
 
     def __str__(self):
         return "[%d] %s" % (self.player_id, self.name)
