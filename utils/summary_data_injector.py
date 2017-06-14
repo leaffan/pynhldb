@@ -6,7 +6,7 @@ import json
 import logging
 
 import requests
-from lxml import html
+from lxml import html, etree
 
 from db.player import Player
 
@@ -45,63 +45,56 @@ def add_nhl_ids_to_content(url, content):
 
     # finally adding retrieved player ids to recently downloaded game rosters
     doc = html.document_fromstring(content)
+
     # retrieving all table cells that contain a player's number
-    rtds = get_table_cells(doc, 25, 'preceding')
-    htds = get_table_cells(doc, 25, 'following')
-    # rtds = doc.xpath(
-    #     "//tr/td[@colspan='25']/parent::*/preceding-sibling::*/td" +
-    #     "[@align='center' and @class='lborder + bborder + rborder']")
-    # htds = doc.xpath(
-    #     "//tr/td[@colspan='25']/parent::*/following-sibling::*/td" +
-    #     "[@align='center' and @class='lborder + bborder + rborder']")
+    rtds = get_table_cells(doc, 'preceding')
+    htds = get_table_cells(doc, 'following')
+    # inserting player id in span element behind player's numbers
+    insert_nhl_ids(rtds, road_players)
+    insert_nhl_ids(htds, home_players)
 
-    logger.debug(
-        "Number of road/home players found: %d/%d" % (len(rtds), len(htds)))
-
-    if not rtds or not htds:
-        logger.debug(
-            "Couldn't retrieve team rosters by standard" +
-            "method, trying alternative method")
-        rtds = get_table_cells(doc, 22, 'preceding')
-        htds = get_table_cells(doc, 22, 'following')
-
-        # rtds = doc.xpath("//tr/td[@colspan='22']/parent::*/preceding-sibl
-        # ing::*/td[@align='center' and @class='lborder + bborder + rborder']")
-        # htds = doc.xpath("//tr/td[@colspan='22']/parent::*/following-sibl
-        # ing::*/td[@align='center' and @class='lborder + bborder + rborder']")
-        logger.debug(
-            "Number of road/home players found via" +
-            "alternative: %d/%d" % (len(rtds), len(htds)))
-
-    # TODO: re-analyze what is done here
-    for a in [rtds, htds]:
-        if len(a) > 20:
-            seen_numbers = list()
-            tds_to_remove = list()
-            for td in reversed(a):
-                no = int(td.xpath("text()").pop())
-                if no in seen_numbers:
-                    logger.debug(
-                        "Will remove table cell element from retrieved" +
-                        "player numbers (game id: %s, raw_data: %s)" % (
-                            full_game_id,
-                            ", ".join(
-                                td.xpath("following-sibling::td/text()"))))
-                    tds_to_remove.append(td)
-                    continue
-                seen_numbers.append(no)
-            else:
-                [a.remove(tdr) for tdr in tds_to_remove]
+    return etree.tostring(
+        doc, method='html', pretty_print=True, encoding='unicode')
 
 
-def get_table_cells(doc, colspan, sibling_type):
+def insert_nhl_ids(tds, players):
+    """
+    Insert nhl ids for each player into the according team's html roster
+    representation.
+    """
+    # season = self.season
+    # using each table cell
+    for td in tds:
+        # retrieving jersey number from table cell
+        no = int(td.text_content())
+        # retrieving nhl player id from player dictionary
+        try:
+            nhl_id = players[no]
+        except KeyError:
+            pos, name = td.xpath("following-sibling::*//text()")[:2]
+            last_name, first_name = [x.strip() for x in name.split(",")]
+            plr = Player.find_by_name_position(first_name, last_name, pos)
+            nhl_id = plr.player_id
+            # TODO: find and create player if not found in database
+        # creating a span element with the attribute 'nhl_id'
+        span = etree.Element("span", nhl_id=str(nhl_id))
+        # inserting newly created span element into the document tree
+        td.insert(0, span)
+
+
+def get_table_cells(doc, sibling_type):
     """
     Get table cells from specified parsed html document using the given colspan
     value and sibling type.
     """
-    return doc.xpath(
-        "//tr/td[@colspan='%d']/parent::*/%s-sib" % (colspan, sibling_type) +
-        "ling::*/td[@align='center' and @class='lborder + bborder + rborder']")
+    tds = doc.xpath(
+        "//tr/td[@colspan='22' or @colspan='25']/parent::*/" +
+        "%s-sibling::*/td[@align='center' and @class='lborder" % sibling_type +
+        " + bborder + rborder']")
+
+    distinct_table_cells = {int(td.xpath("text()").pop()): td for td in tds}
+
+    return list(distinct_table_cells.values())
 
 
 def retrieve_player_ids_from_database(content):
@@ -113,6 +106,7 @@ def retrieve_player_ids_from_database(content):
     game_report = html.document_fromstring(content)
 
     # retrieving player numbers and names from the game report raw data
+    # TODO: check xpath expressions for general validity
     away_nos = game_report.xpath(
         "//tr/td[@colspan='25']/parent::*/preceding-sibling::*/td" +
         "[@align='center' and @class='lborder + bborder + rborder']")
