@@ -7,12 +7,12 @@ import json
 from urllib.parse import urlsplit
 
 import requests
-from lxml import html, etree
 from dateutil.parser import parse
 from dateutil.rrule import rrule, DAILY
 
 from .multi_downloader import MultiFileDownloader
 from .summary_data_injector import add_nhl_ids_to_content
+from utils import adjust_html_response
 
 
 class SummaryDownloader(MultiFileDownloader):
@@ -34,8 +34,6 @@ class SummaryDownloader(MultiFileDownloader):
     REPORT_TYPES = ['GS', 'ES', 'FC', 'PL', 'TV', 'TH', 'RO', 'SS', 'SO']
     GAME_TYPES = ['P', 'R']
 
-    MAX_DOWNLOAD_WORKERS = 8
-
     def __init__(
             self, tgt_dir, date, to_date='', zip_summaries=True, workers=0):
         # constructing base class instance
@@ -51,7 +49,6 @@ class SummaryDownloader(MultiFileDownloader):
         self.game_dates = list(
             rrule(DAILY, dtstart=self.date, until=self.to_date))
 
-        # TODO: rename modification timestamp container
         # preparing connection to dumped dictionary of modification timestamps
         self.mod_timestamp_src = os.path.join(tgt_dir, '_mod_timestamps.json')
         # loading dictionary of previously downloaded summaries (if available)
@@ -60,9 +57,6 @@ class SummaryDownloader(MultiFileDownloader):
                 open(self.mod_timestamp_src).read())
         else:
             self.mod_timestamps = dict()
-
-        if workers:
-            self.MAX_DOWNLOAD_WORKERS = workers
 
     def get_tgt_dir(self):
         """
@@ -92,11 +86,6 @@ class SummaryDownloader(MultiFileDownloader):
         """
         # making sure that the list of files to download is empty
         self.files_to_download = list()
-        # retrieving current season
-        self.season = (
-            self.current_date.year if
-            self.current_date.month > 6 else
-            self.current_date.year - 1)
         # preparing formatted date string as necessary for scoreboard retrieval
         fmt_date = "%d-%02d-%02d" % (
             self.current_date.year,
@@ -121,6 +110,7 @@ class SummaryDownloader(MultiFileDownloader):
         """
         files_to_download = list()
         for date in json_scoreboard['dates']:
+            # retrieving basic game data from json contents
             for game in date['games']:
                 season = game['season']
                 full_game_id = game['gamePk']
@@ -130,9 +120,10 @@ class SummaryDownloader(MultiFileDownloader):
                 # skipping game unless it's a regular season or playoff game
                 if game_type not in self.GAME_TYPES:
                     continue
+                # constructing urls to individual game report pages
                 for rt in self.REPORT_TYPES:
                     # only adding shootout report to files to be downloaded
-                    # if the current game has had a shootout
+                    # if the current game ended in a shootout
                     if rt == 'SO' and not game['linescore']['hasShootout']:
                         continue
                     htmlreport_url = "".join((
@@ -143,6 +134,8 @@ class SummaryDownloader(MultiFileDownloader):
                         str(game_id),
                         ".HTM"))
                     files_to_download.append((htmlreport_url, None))
+                # setting upd json game feed url and adding it to list of
+                # files to be downloaded
                 feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(
                     full_game_id)
                 files_to_download.append(
@@ -186,8 +179,6 @@ class SummaryDownloader(MultiFileDownloader):
         if content:
             # writing downloaded content to target path
             open(tgt_path, 'w').write(content)
-            # adding target path to list of downloaded files
-            # self.downloaded_files.append(tgt_path)
             return tgt_path
 
     def download_html_content(self, url, tgt_path):
@@ -206,6 +197,7 @@ class SummaryDownloader(MultiFileDownloader):
             headers['If-Modified-Since'] = mod_time_stamp
         req = requests.get(url, headers=headers)
 
+        # if server responds with code for no modification
         if req.status_code == 304:
             # TODO: proper logging
             sys.stdout.write(".")
@@ -218,7 +210,7 @@ class SummaryDownloader(MultiFileDownloader):
             # updating modification timestamp in corresponding dictionary
             self.mod_timestamps[url] = req.headers.get('Last-Modified')
             # adjusting html data
-            content = self.adjust_html_response(req)
+            content = adjust_html_response(req)
             if "ES" in url:
                 content = add_nhl_ids_to_content(url, content)
 
@@ -242,6 +234,8 @@ class SummaryDownloader(MultiFileDownloader):
             # retrieving time stamp for downloaded data
             act_time_stamp = parse(
                 json_data['metaData']['timeStamp'].replace("_", " "))
+            # comparing time stamp of last modification of json data with
+            # previously saved timestamp
             if act_time_stamp == mod_time_stamp:
                 # TODO: proper logging
                 sys.stdout.write(".")
@@ -272,27 +266,3 @@ class SummaryDownloader(MultiFileDownloader):
             self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
         json.dump(self.mod_timestamps, open(self.mod_timestamp_src, 'w'))
-
-    def adjust_html_response(self, response):
-        """
-        Applies some modifications to the html source of the given HTTP
-        response in order to alleviate later handling of the data.
-        """
-        # converting to document tree
-        doc = html.document_fromstring(response.text)
-
-        # stripping all script elements in order to remove javascripts
-        etree.strip_elements(doc, "script")
-        # stripping arbitraty xmlfile tag
-        etree.strip_tags(doc, "xmlfile")
-
-        # creating element to hold timestamp of last modification
-        last_modified_element = etree.Element('p', id='last_modified')
-        last_modified_element.text = response.headers.get('Last-Modified')
-
-        # adding timestamp to document tree
-        body = doc.xpath("body").pop(0)
-        body.append(last_modified_element)
-
-        # returning document tree dumped as string
-        return etree.tostring(doc, method='html', encoding='unicode')
