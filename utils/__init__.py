@@ -9,6 +9,8 @@ import re
 from configparser import NoOptionError, NoSectionError
 from datetime import timedelta
 
+from lxml import html, etree
+
 
 def ordinal(n):
     return "%d%s" % (n, "tsnrhtdd"[(n/10 % 10 != 1)*(n % 10 < 4)*n % 10::4])
@@ -44,6 +46,32 @@ def reverse_num_situation(num_situation):
         return 'PP'
     else:
         return num_situation
+
+
+# request response function
+def adjust_html_response(response):
+    """
+    Applies some modifications to the html source of the given HTTP
+    response in order to alleviate later handling of the data.
+    """
+    # converting to document tree
+    doc = html.document_fromstring(response.text)
+
+    # stripping all script elements in order to remove javascripts
+    etree.strip_elements(doc, "script")
+    # stripping arbitraty xmlfile tag
+    etree.strip_tags(doc, "xmlfile")
+
+    # creating element to hold timestamp of last modification
+    last_modified_element = etree.Element('p', id='last_modified')
+    last_modified_element.text = response.headers.get('Last-Modified')
+
+    # adding timestamp to document tree
+    body = doc.xpath("body").pop(0)
+    body.append(last_modified_element)
+
+    # returning document tree dumped as string
+    return etree.tostring(doc, method='html', encoding='unicode')
 
 
 # conversion functions
