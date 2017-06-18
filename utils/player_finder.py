@@ -3,6 +3,7 @@
 
 import logging
 from types import StringType
+from urllib.parse import urlparse
 
 import requests
 from lxml import html
@@ -17,6 +18,9 @@ class PlayerFinder():
     # url prefixes to retrieve current player rosters
     NHL_SITE_PREFIX = "https://www.nhl.com"
     NHL_SITE_ROSTER_SUFFIX = "roster"
+    # url prefixes to retrieve current in-the-system player information
+    TEAM_SITE_PREFIX = "http://%s.nhl.com"
+    TEAM_SITE_ROSTER_SUFFIX = "/club/roster.htm?type=prospect"
 
     def __init__(self):
         pass
@@ -42,6 +46,8 @@ class PlayerFinder():
             players = self.get_roster_players(team_url)
         elif src == 'system':
             players = self.get_system_players(self.curr_team)
+        
+        return players
 
     def get_roster_players(self, url):
         """
@@ -49,8 +55,8 @@ class PlayerFinder():
         corresponding player already exists in database and creates it
         otherwise.
         """
-        r = requests.get(url)
-        doc = html.fromstring(r.text)
+        req = requests.get(url)
+        doc = html.fromstring(req.text)
 
         # retrieving player page urls, and player first and last names
         # from roster page
@@ -107,5 +113,41 @@ class PlayerFinder():
                             position, self.curr_team)
 
                     players.append(plr)
+
+        return players
+
+    def get_system_players(self, team):
+        """
+        Retrieves player data from team's in the system, i.e. prospects, page.
+        """
+        # preparing url to team's prospects page
+        team_url_component = self.curr_team.short_name.lower().replace(" ", "")
+        team_site_prefix = self.TEAM_SITE_PREFIX.replace(
+            "%s", team_url_component)
+        team_system_url = "".join((
+            team_site_prefix, self.TEAM_SITE_ROSTER_SUFFIX))
+
+        # retrieving prospects page
+        req = requests.get(team_system_url)
+        doc = html.fromstring(req.text)
+
+        # retrieving player names and player page urls
+        # player_names = doc.xpath(
+        #     "//tr[contains('rwEven|rwOdd', @class)]/td[2]/nobr/a/text()")
+        urls = [team_site_prefix + a for a in doc.xpath(
+            "//tr[contains('rwEven|rwOdd', @class)]/td[2]/nobr/a/@href")]
+
+        players = list()
+
+        for url in urls:
+            # retrieving nhl id from player page url
+            plr_id = int(urlparse(url).query.split("=")[-1])
+            # trying to find player in database
+            plr = Player.find_by_id(plr_id)
+            # creating player if not already in database
+            if plr is None:
+                plr = self.search_player_by_nhl_id(plr_id)
+
+            players.append(plr)
 
         return players
