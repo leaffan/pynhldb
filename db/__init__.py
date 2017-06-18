@@ -4,9 +4,12 @@
 from .common import session_scope
 
 
-def commit_db_item(db_item):
+def commit_db_item(db_item, add=False):
     with session_scope() as session:
-        session.merge(db_item)
+        if add:
+            session.add(db_item)
+        else:
+            session.merge(db_item)
         session.commit()
 
 
