@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import json
 import logging
 from types import StringType
 from urllib.parse import urlparse
@@ -8,6 +9,7 @@ from urllib.parse import urlparse
 import requests
 from lxml import html
 
+from db import commit_db_item
 from db.player import Player
 from db.team import Team
 
@@ -21,6 +23,8 @@ class PlayerFinder():
     # url prefixes to retrieve current in-the-system player information
     TEAM_SITE_PREFIX = "http://%s.nhl.com"
     TEAM_SITE_ROSTER_SUFFIX = "/club/roster.htm?type=prospect"
+    # url prefix for json structure with player information
+    PEOPLE_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
 
     def __init__(self):
         pass
@@ -46,7 +50,7 @@ class PlayerFinder():
             players = self.get_roster_players(team_url)
         elif src == 'system':
             players = self.get_system_players(self.curr_team)
-        
+
         return players
 
     def get_roster_players(self, url):
@@ -146,8 +150,50 @@ class PlayerFinder():
             plr = Player.find_by_id(plr_id)
             # creating player if not already in database
             if plr is None:
-                plr = self.search_player_by_nhl_id(plr_id)
+                plr = self.search_player_by_id(plr_id)
 
             players.append(plr)
 
         return players
+
+    def search_player_by_id(self, plr_id):
+        """
+        Searches a player in database and on nhl.com using the official id.
+        """
+        plr = Player.find_by_id(plr_id)
+
+        if plr is None:
+            url = "".join((self.PEOPLE_SITE_PREFIX, str(plr_id)))
+            req = requests.get(url, params={
+                'expand': 'person.stats',
+                'stats': 'yearByYear,yearByYearPlayoffs'})
+            plr_json = json.loads(req.text)
+
+            if len(plr_json['people']):
+                person = plr_json['people'][0]
+                last_name = person['lastName']
+                first_name = person['firstName']
+                position = person['primaryPosition']['code']
+
+                plr = self.create_player(
+                    plr_id, last_name, first_name, position)
+
+        return plr
+
+    def create_player(
+            self, plr_id, last_name, first_name, position, team="",
+            alternate_last_names=[], alternate_first_names=[],
+            alternate_positions=[]):
+            """
+            Create a new player in database using the specified data.
+            """
+            # initiliazing player object
+            plr = Player(
+                    plr_id, last_name, first_name, position,
+                    alternate_last_names=alternate_last_names,
+                    alternate_first_names=alternate_first_names,
+                    alternate_positions=alternate_positions)
+
+            commit_db_item(plr, True)
+
+            return Player.find_by_id(plr_id)
