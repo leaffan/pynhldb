@@ -6,6 +6,7 @@ import argparse
 from setup.create_teams import migrate_teams
 from setup.create_divisions import create_divisions
 from setup.create_players import migrate_players
+from setup.create_players import search_players
 from setup.create_player_data import create_player_seasons
 from setup.create_player_data import create_player_data
 from setup.create_player_data import create_player_contracts
@@ -23,7 +24,8 @@ if __name__ == '__main__':
         description='Setup script for NHL database creation.')
     parser.add_argument(
         'steps', metavar='setup_steps', help='Setup steps to execute.',
-        choices=['a', 'c', 't', 'd', 'p', 'ps', 'pd', 'cf', 'cft', 'dft'])
+        choices=[
+            'a', 'c', 't', 'd', 'p', 'pf', 'ps', 'pd', 'cf', 'cft', 'dft'])
 
     args = parser.parse_args()
     setup_steps = args.steps
@@ -37,6 +39,9 @@ if __name__ == '__main__':
     # migrating players from json file to database
     if setup_steps in ['p', 'a']:
         migrate_players()
+    # finding players
+    if setup_steps in ['pf', 'a']:
+        search_players('roster')
     # retrieving player season statistics for all players in database
     if setup_steps in ['ps', 'a']:
         create_player_seasons()
