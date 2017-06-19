@@ -143,7 +143,7 @@ def retrieve_player_ids_from_summary(summary):
     provided by NHL stats API.
     """
     # setting up dictionary object to contain separate dictionaries with
-    # jersey numbers as keys and player ids as values from 
+    # jersey numbers as keys and player ids as values from
     player_nos_by_team = dict()
 
     for home_away_type in ['home', 'away']:
@@ -240,7 +240,7 @@ def convert_names_numbers_to_players(names, numbers):
 
 def retrieve_player_id(last_name, first_name, position):
     """
-    Retrieve player id from database for player specified by first and name ascii
+    Retrieve player id from database for player specified by first and name as
     well as position.
     """
 
