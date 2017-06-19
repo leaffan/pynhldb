@@ -3,7 +3,7 @@
 
 from .common import Base, session_scope
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.sql.expression import func
 
 
@@ -71,6 +71,25 @@ class Team(Base):
             except:
                 t = None
             return t
+
+    @classmethod
+    def find_teams_for_season(cls, season=None):
+        with session_scope() as session:
+            if season is None:
+                teams = session.query(Team).filter(
+                    Team.last_year_of_play.is_(None)
+                ).all()
+            else:
+                teams = session.query(Team).filter(
+                    and_(
+                        Team.first_year_of_play <= season,
+                        or_(
+                            Team.last_year_of_play > season,
+                            Team.last_year_of_play.is_(None)
+                        )
+                    )
+                ).all()
+            return teams
 
     def __str__(self):
         return self.name
