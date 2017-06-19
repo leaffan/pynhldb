@@ -3,7 +3,6 @@
 
 import json
 import logging
-from types import StringType
 from urllib.parse import urlparse
 
 import requests
@@ -34,13 +33,13 @@ class PlayerFinder():
         Finds players currently on roster/in system for specified team.
         """
         # creating class wide variable to hold current team
-        if type(team) is StringType:
+        if type(team) is str:
             team = Team.find(team)
         self.curr_team = team
 
         print("+ Searching %s players for %s" % (src, team))
 
-        team_url_component = self.curr_team.short_name.lower().replace(" ", "")
+        team_url_component = self.curr_team.team_name.lower().replace(" ", "")
         team_url = "/".join((
             self.NHL_SITE_PREFIX,
             team_url_component,
@@ -92,7 +91,7 @@ class PlayerFinder():
         heights = doc.xpath(
             "//td[@class='height-col fixed-width-font']/span[2]/text()")
         # player weights (in lbs.)
-        weights = [int(x) if unicode(x).isdigit() else 0 for x in doc.xpath(
+        weights = [int(x) if x.isdigit() else 0 for x in doc.xpath(
             "//td[@class='weight-col fixed-width-font']/text()")]
         # player dates of birth
         dobs = doc.xpath("//td[@class='birthdate-col']/span[2]/text()")
@@ -188,6 +187,7 @@ class PlayerFinder():
             Create a new player in database using the specified data.
             """
             # initiliazing player object
+            # TODO: remove alternate options (if necessary)
             plr = Player(
                     plr_id, last_name, first_name, position,
                     alternate_last_names=alternate_last_names,
