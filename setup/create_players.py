@@ -6,6 +6,8 @@ import json
 
 from db import commit_db_item
 from db.player import Player
+from db.team import Team
+from utils.player_finder import PlayerFinder
 
 
 def migrate_players(plr_src_file=None):
@@ -39,3 +41,14 @@ def migrate_players(plr_src_file=None):
         print("Working on %s" % plr)
 
         commit_db_item(plr)
+
+
+def search_players(src_type):
+
+    plr_f = PlayerFinder()
+
+    current_teams = Team.find_teams_for_season()
+    for team in sorted(current_teams)[:]:
+        team_players = plr_f.find_players_for_team(team, src_type)
+        print(sorted(team_players))
+
