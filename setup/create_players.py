@@ -4,10 +4,15 @@
 import os
 import json
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from db import commit_db_item
 from db.player import Player
 from db.team import Team
 from utils.player_finder import PlayerFinder
+from utils.player_data_retriever import PlayerDataRetriever
+
+MAX_WORKERS = 8
 
 
 def migrate_players(plr_src_file=None):
@@ -46,9 +51,23 @@ def migrate_players(plr_src_file=None):
 def search_players(src_type):
 
     plr_f = PlayerFinder()
+    plr_r = PlayerDataRetriever()
 
     current_teams = Team.find_teams_for_season()
-    for team in sorted(current_teams)[:]:
+    for team in sorted(current_teams)[:10]:
         team_players = plr_f.find_players_for_team(team, src_type)
-        print(sorted(team_players))
 
+        # using concurrent threads to speed up the retrieval of single player
+        # season statistics
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as threads:
+            future_tasks = {
+                threads.submit(
+                    plr_r.retrieve_player_seasons,
+                    plr.player_id): plr for plr in team_players}
+            for future in as_completed(future_tasks):
+                try:
+                    # TODO: think of something to do with the result here
+                    data = future.result()
+                except Exception as e:
+                    print
+                    print("Conccurrent task generated an exception: %s" % e)
