@@ -131,7 +131,7 @@ class PlayerDataRetriever():
         Creates or updates a database item.
         """
         plr = Player.find_by_id(new_item.player_id)
-        cls_name = new_item.__class__.__human_readable__.lower()
+        cls_name = new_item.__class__.HUMAN_READABLE
 
         with session_scope() as session:
             if not db_item or db_item is None:
