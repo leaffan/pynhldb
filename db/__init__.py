@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import logging
+
 from .common import session_scope
+
+logger = logging.getLogger()
 
 
 def commit_db_item(db_item, add=False):
@@ -20,7 +24,7 @@ def create_or_update_db_item(db_item, new_item):
     with session_scope() as session:
         # if database item exists
         if db_item is not None:
-            # returning if database item is unchanged 
+            # returning if database item is unchanged
             if db_item == new_item:
                 return
             # updating database item otherwise
@@ -31,3 +35,27 @@ def create_or_update_db_item(db_item, new_item):
         else:
             session.add(new_item)
         session.commit()
+
+
+def create_or_update_db_item_alternate(db_item, new_item):
+    """
+    Creates or updates a database item.
+    """
+    cls_name = new_item.__class__.HUMAN_READABLE
+
+    with session_scope() as session:
+        if db_item is not None:
+            if db_item != new_item:
+                logger.debug("\t+ Updating %s item" % cls_name)
+                db_item.update(new_item)
+                return_item = session.merge(db_item)
+            else:
+                return_item = db_item
+        else:
+            logger.debug("\t+ Adding %s item" % cls_name)
+            session.add(new_item)
+            return_item = new_item
+
+        session.commit()
+
+    return return_item
