@@ -9,6 +9,8 @@ class PlayerDataItem(Base):
     __tablename__ = 'player_data'
     __autoload__ = True
 
+    HUMAN_READABLE = 'player dataset'
+
     STANDARD_ATTRS = [
         'height_imperial', 'height_metric',
         'weight_imperial', 'weight_metric',

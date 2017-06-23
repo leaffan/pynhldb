@@ -14,6 +14,8 @@ class Miss(Base, SpecificEvent):
     __tablename__ = 'misses'
     __autoload__ = True
 
+    HUMAN_READABLE = 'miss'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "goalie_team_id", "goalie_id",
         "shot_type", "miss_type", "distance", "penalty_shot"

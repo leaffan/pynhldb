@@ -12,7 +12,8 @@ from .team import Team
 class GoalieSeason(Base):
     __tablename__ = 'goalie_seasons'
     __autoload__ = True
-    __human_readable__ = 'goalie season'
+
+    HUMAN_READABLE = 'goalie season'
 
     # statistics items mapped from original json struct to database attributes
     JSON_DB_MAPPING = {

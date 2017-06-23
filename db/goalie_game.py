@@ -10,6 +10,8 @@ class GoalieGame(Base):
     __tablename__ = 'goalie_games'
     __autoload__ = True
 
+    HUMAN_READABLE = 'goalie game'
+
     STANDARD_ATTRS = [
         "no", "shots_against", "goals_against", "saves", "en_goals",
         "toi_overall", "toi_pp", "toi_sh", "toi_ev", "win", "loss", "otl",

@@ -14,6 +14,8 @@ class Shot(Base, SpecificEvent):
     __tablename__ = 'shots'
     __autoload__ = True
 
+    HUMAN_READABLE = 'shot'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "goalie_team_id", "goalie_id",
         "shot_type", "distance", "scored", "penalty_shot"

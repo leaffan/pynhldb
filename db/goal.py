@@ -14,6 +14,8 @@ class Goal(Base, SpecificEvent):
     __tablename__ = 'goals'
     __autoload__ = True
 
+    HUMAN_READABLE = 'goal'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "goal_against_team_id", "shot_id",
         "assist_1", "assist_2", "in_game_cnt", "in_game_team_cnt",

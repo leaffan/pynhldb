@@ -14,6 +14,8 @@ class Takeaway(Base, SpecificEvent):
     __tablename__ = 'takeaways'
     __autoload__ = True
 
+    HUMAN_READABLE = 'takeaway'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "taken_from_team_id"
     ]

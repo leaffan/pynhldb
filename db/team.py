@@ -11,6 +11,8 @@ class Team(Base):
     __tablename__ = 'teams'
     __autoload__ = True
 
+    HUMAN_READABLE = 'team'
+
     def __init__(self, team_data):
         self.team_id = team_data.get('id')
         self.franchise_id = team_data.get('franchise')['franchiseId']

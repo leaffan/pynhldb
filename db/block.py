@@ -14,6 +14,8 @@ class Block(Base, SpecificEvent):
     __tablename__ = 'blocks'
     __autoload__ = True
 
+    HUMAN_READABLE = 'block'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "shot_type",
         "blocked_team_id", "blocked_player_id"

@@ -10,6 +10,8 @@ class Event(Base):
     __tablename__ = 'events'
     __autoload__ = True
 
+    HUMAN_READABLE = 'event'
+
     STANDARD_ATTRS = [
         "game_id", "in_game_event_cnt", "type", "period", "time",
         "road_on_ice", "home_on_ice", "road_score", "home_score", "x", "y",

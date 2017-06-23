@@ -10,6 +10,8 @@ class Shift(Base):
     __tablename__ = 'shifts'
     __autoload__ = True
 
+    HUMAN_READABLE = 'shift'
+
     STANDARD_ATTRS = [
         "in_game_shift_cnt", "period", "start", "end", "duration"
     ]

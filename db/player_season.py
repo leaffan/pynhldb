@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 class PlayerSeason(Base):
     __tablename__ = 'player_seasons'
     __autoload__ = True
-    __human_readable__ = 'player season'
+
+    HUMAN_READABLE = 'player season'
 
     # statistics items mapped from original json struct to database attributes
     JSON_DB_MAPPING = {

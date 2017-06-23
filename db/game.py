@@ -11,6 +11,8 @@ class Game(Base):
     __tablename__ = 'games'
     __autoload__ = True
 
+    HUMAN_READABLE = 'game'
+
     STANDARD_ATTRS = [
         "attendance", "data_last_modified", "date", "end",
         "home_game_count", "home_overall_game_count", "home_score",

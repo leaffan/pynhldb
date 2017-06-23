@@ -10,6 +10,8 @@ class PlayerDraft(Base):
     __tablename__ = 'player_drafts'
     __autoload__ = True
 
+    HUMAN_READABLE = 'player draft'
+
     def __init__(self, player_id, team_id, year, round, overall, dft_type='e'):
             self.player_id = player_id
             self.team_id = team_id

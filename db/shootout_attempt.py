@@ -13,6 +13,8 @@ class ShootoutAttempt(Base, SpecificEvent):
     __tablename__ = 'shootout_attempts'
     __autoload__ = True
 
+    HUMAN_READABLE = 'shootout attempt'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "goalie_team_id", "goalie_id",
         "attempt_type", "shot_type", "miss_type", "distance", "on_goal",

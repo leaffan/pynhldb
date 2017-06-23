@@ -14,6 +14,8 @@ class Faceoff(Base, SpecificEvent):
     __tablename__ = 'faceoffs'
     __autoload__ = True
 
+    HUMAN_READABLE = 'faceoff'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "faceoff_lost_team_id",
         "faceoff_lost_player_id", "faceoff_lost_zone"

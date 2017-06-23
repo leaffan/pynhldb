@@ -13,6 +13,8 @@ class ShotAttempt(Base, SpecificEvent):
     __tablename__ = 'shot_attempts'
     __autoload__ = True
 
+    HUMAN_READABLE = 'shot attempt'
+
     STANDARD_ATTRS = [
         "game_id", "team_id", "event_id", "player_id", "shot_attempt_type",
         "plus_minus", "num_situation", "plr_situation", "actual", "score_diff"

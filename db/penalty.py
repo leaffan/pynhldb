@@ -14,6 +14,8 @@ class Penalty(Base, SpecificEvent):
     __tablename__ = 'penalties'
     __autoload__ = True
 
+    HUMAN_READABLE = 'penalty'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "drawn_team_id",
         "drawn_player_id", "served_player_id", "infraction", "pim"

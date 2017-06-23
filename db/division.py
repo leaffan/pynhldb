@@ -11,6 +11,8 @@ class Division(Base):
     __tablename__ = 'divisions'
     __autoload__ = True
 
+    HUMAN_READABLE = 'division'
+
     def __init__(self, name, season, teams, conference=None):
         self.division_name = name
         self.season = season

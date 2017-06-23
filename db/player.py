@@ -10,6 +10,8 @@ class Player(Base):
     __tablename__ = 'players'
     __autoload__ = True
 
+    HUMAN_READABLE = 'player'
+
     ALTERNATE_VALUE_KEYWORDS = [
         'alternate_last_names',
         'alternate_first_names',

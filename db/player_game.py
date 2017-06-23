@@ -11,6 +11,8 @@ class PlayerGame(Base):
     __tablename__ = 'player_games'
     __autoload__ = True
 
+    HUMAN_READABLE = 'player game'
+
     STANDARD_ATTRS = [
         "position", "no", "goals", "assists", "primary_assists",
         "secondary_assists", "points", "plus_minus", "penalties", "pim",

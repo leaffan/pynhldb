@@ -14,6 +14,8 @@ class Hit(Base, SpecificEvent):
     __tablename__ = 'hits'
     __autoload__ = True
 
+    HUMAN_READABLE = 'miss'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone",
         "hit_taken_team_id", "hit_taken_player_id",

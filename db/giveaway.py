@@ -14,6 +14,8 @@ class Giveaway(Base, SpecificEvent):
     __tablename__ = 'giveaways'
     __autoload__ = True
 
+    HUMAN_READABLE = 'giveaway'
+
     STANDARD_ATTRS = [
         "team_id", "player_id", "zone", "given_to_team_id"
     ]

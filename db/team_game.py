@@ -11,6 +11,8 @@ class TeamGame(Base):
     __tablename__ = 'team_games'
     __autoload__ = True
 
+    HUMAN_READABLE = 'team game'
+
     STANDARD_ATTRS = [
         "score", "score_against", "goals_for_1st", "goals_against_1st",
         "goals_for_2nd", "goals_against_2nd", "goals_for_3rd",
