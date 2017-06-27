@@ -26,9 +26,13 @@ if __name__ == '__main__':
         'steps', metavar='setup_steps', help='Setup steps to execute.',
         choices=[
             'a', 'c', 't', 'd', 'p', 'pf', 'ps', 'pd', 'cf', 'cft', 'dft'])
-
+    parser.add_argument(
+        '--roster_src', dest='roster_src', action='store', default='roster',
+        choices=['roster', 'system'], help='source type for player search')
     args = parser.parse_args()
     setup_steps = args.steps
+
+    print(args.roster_src)
 
     # migrating teams from json file to database
     if setup_steps in ['t', 'a']:
@@ -41,7 +45,7 @@ if __name__ == '__main__':
         migrate_players()
     # finding players
     if setup_steps in ['pf', 'a']:
-        search_players('roster')
+        search_players(args.roster_src)
     # retrieving player season statistics for all players in database
     if setup_steps in ['ps', 'a']:
         create_player_seasons()
