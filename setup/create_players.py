@@ -54,7 +54,7 @@ def search_players(src_type):
     plr_r = PlayerDataRetriever()
 
     current_teams = Team.find_teams_for_season()
-    for team in sorted(current_teams)[:10]:
+    for team in sorted(current_teams)[:]:
         team_players = plr_f.find_players_for_team(team, src_type)
 
         # using concurrent threads to speed up the retrieval of single player
