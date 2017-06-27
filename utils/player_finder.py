@@ -124,7 +124,7 @@ class PlayerFinder():
         Retrieves player data from team's in the system, i.e. prospects, page.
         """
         # preparing url to team's prospects page
-        team_url_component = self.curr_team.short_name.lower().replace(" ", "")
+        team_url_component = self.curr_team.team_name.lower().replace(" ", "")
         team_site_prefix = self.TEAM_SITE_PREFIX.replace(
             "%s", team_url_component)
         team_system_url = "".join((
