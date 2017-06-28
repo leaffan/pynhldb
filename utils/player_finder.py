@@ -16,14 +16,19 @@ logger = logging.getLogger(__name__)
 
 
 class PlayerFinder():
-    # url prefixes to retrieve current player rosters
+    # url components to retrieve current player rosters
     NHL_SITE_PREFIX = "https://www.nhl.com"
     NHL_SITE_ROSTER_SUFFIX = "roster"
-    # url prefixes to retrieve current in-the-system player information
+    # url components to retrieve current in-the-system player information
     TEAM_SITE_PREFIX = "http://%s.nhl.com"
     TEAM_SITE_ROSTER_SUFFIX = "/club/roster.htm?type=prospect"
     # url prefix for json structure with player information
     PEOPLE_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
+    # url components for json structure with player name search suggestions
+    SUGGEST_SITE_PREFIX = (
+        "http://suggest.svc.nhl.com/svc/suggest/v1/minplayers/")
+    # maximum number of suggestions
+    SUGGEST_SITE_SUFFIX = "/99999"
 
     def __init__(self):
         pass
@@ -193,6 +198,30 @@ class PlayerFinder():
 
         return players
 
+    def get_players_by_suggestions(self, first_name, last_name, **kwargs):
+        """
+        Retrieves all players suggested nhl.com after being provided with the
+        specified items.
+        """
+        url = "".join((
+            self.SUGGEST_SITE_PREFIX,
+            last_name.lower(),
+            self.SUGGEST_SITE_SUFFIX))
+        r = requests.get(url)
+        suggestions_json = json.loads(r.text)
+
+        suggested_players = list()
+
+        for suggestion in suggestions_json['suggestions']:
+            tokens = suggestion.split("|")
+            (sug_id, sug_last_name, sug_first_name, sug_dob, sug_pos) = (
+                tokens[0], tokens[1], tokens[2], tokens[10], tokens[12]
+            )
+            suggested_players.append((
+                sug_id, sug_pos, sug_last_name, sug_first_name, sug_dob))
+
+        return suggested_players
+
     def search_player_by_id(self, plr_id):
         """
         Searches a player in database and on nhl.com using the official id.
@@ -243,6 +272,7 @@ class PlayerFinder():
         if src_type == 'roster':
             # preparing url to team's roster page
             team_url_component = team.team_name.lower().replace(" ", "")
+            # creating url like 'https://www.nhl.com/ducks/roster'
             team_url = "/".join((
                 self.NHL_SITE_PREFIX,
                 team_url_component,
@@ -252,6 +282,8 @@ class PlayerFinder():
             team_url_component = team.team_name.lower().replace(" ", "")
             team_site_prefix = self.TEAM_SITE_PREFIX.replace(
                 "%s", team_url_component)
+            # creating url like
+            # 'http://ducks.ice.nhl.com/club/roster.htm?type=prospect'
             team_url = "".join((
                 team_site_prefix,
                 self.TEAM_SITE_ROSTER_SUFFIX))
@@ -259,6 +291,6 @@ class PlayerFinder():
         try:
             req = requests.get(team_url)
         except requests.exceptions.ConnectionError:
-            #TODO: returning empty document tree
+            # TODO: returning empty document tree
             return None
         return html.fromstring(req.text)
