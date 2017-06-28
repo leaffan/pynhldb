@@ -35,31 +35,106 @@ class PlayerFinder():
         # creating class wide variable to hold current team
         if type(team) is str:
             team = Team.find(team)
-        self.curr_team = team
 
         print("+ Searching %s players for %s" % (src, team))
 
-        team_url_component = self.curr_team.team_name.lower().replace(" ", "")
-        team_url = "/".join((
-            self.NHL_SITE_PREFIX,
-            team_url_component,
-            self.NHL_SITE_ROSTER_SUFFIX))
-
         if src == 'roster':
-            players = self.get_roster_players(team_url)
+            players = self.get_roster_players(team)
         elif src == 'system':
-            players = self.get_system_players(self.curr_team)
+            players = self.get_system_players(team)
 
         return players
 
-    def get_roster_players(self, url):
+    def get_roster_players(self, team):
+        """
+        Retrieves basic player information from team roster page. Checks
+        whether corresponding player already exists in database and creates it
+        otherwise.
+        """
+        # setting up empty list of players
+        players = list()
+
+        # getting html document with team's roster
+        doc = self.get_html_document(team, 'roster')
+
+        # retrieving player page urls, and players' first and last names
+        # from roster page
+        urls = doc.xpath("//td[@class='name-col']/a[@href]/@href")
+        first_names = doc.xpath(
+            "//td[@class='name-col']/a/div/span[@class='name-col__item " +
+            "name-col__firstName']/text()")
+        # using filter to get rid of empty strings after stripping string
+        # elements
+        # using replace to get rid of asterisk indicating players on injury
+        # reserve
+        last_names = filter(
+            None, [
+                x.replace("*", "").strip() if x else None for x in doc.xpath(
+                    "//td[@class='name-col']/a/div/span[@class='name-" +
+                    "col__item name-col__lastName']/text()")])
+        # retrieving players' positions
+        positions = [x[:1] for x in doc.xpath(
+            "//td[@class='position-col fixed-width-font']/text()")]
+
+        for (first_name, last_name, url, position) in zip(
+                first_names, last_names, urls, positions):
+                    # retrieving nhl id from player page url
+                    plr_id = int(url.split("-")[-1])
+
+                    # trying to find player in database
+                    plr = Player.find_by_id(plr_id)
+                    # creating player if not already in database
+                    if plr is None:
+                        plr = self.create_player(
+                            plr_id, last_name, first_name, position)
+
+                    players.append(plr)
+
+        return players
+
+    def get_system_players(self, team):
+        """
+        Retrieves player data from team's in the system, i.e. prospects, page.
+        """
+        # setting up empty list of players
+        players = list()
+
+        # getting html document with team's prospect system
+        doc = self.get_html_document(team, 'system')
+
+        # returning empty list if no system page could be found
+        if doc is None:
+            return players
+
+        # setting up list with urls to individual player pages
+        urls = [
+            self.TEAM_SITE_PREFIX % team.team_name.lower().replace(
+                " ", "") + a for a in doc.xpath(
+                    "//tr[contains('rwEven|rwOdd', @class)" +
+                    "]/td[2]/nobr/a/@href")]
+
+        for url in urls:
+            # retrieving nhl id from player page url
+            plr_id = int(urlparse(url).query.split("=")[-1])
+            # trying to find player in database
+            plr = Player.find_by_id(plr_id)
+            # creating player if not already in database
+            if plr is None:
+                plr = self.search_player_by_id(plr_id)
+
+            players.append(plr)
+
+        return players
+
+    def get_roster_players_with_data(self, team):
+        # TODO: find usage for this function
         """
         Retrieves player data from team roster page. Checks whether
         corresponding player already exists in database and creates it
         otherwise.
         """
-        req = requests.get(url)
-        doc = html.fromstring(req.text)
+        # getting html document with team's roster
+        doc = self.get_html_document(team, 'roster')
 
         # retrieving player page urls, and player first and last names
         # from roster page
@@ -67,7 +142,7 @@ class PlayerFinder():
         first_names = doc.xpath(
             "//td[@class='name-col']/a/div/span[@class='name-col__item " +
             "name-col__firstName']/text()")
-        # using filter to get rid of empty strings after stripping string 
+        # using filter to get rid of empty strings after stripping string
         # elements
         # using replace to get rid of asterisk indicating players on injury
         # reserve
@@ -112,46 +187,9 @@ class PlayerFinder():
                     # creating player if not already in database
                     if plr is None:
                         plr = self.create_player(
-                            plr_id, last_name, first_name,
-                            position, self.curr_team)
+                            plr_id, last_name, first_name, position)
 
                     players.append(plr)
-
-        return players
-
-    def get_system_players(self, team):
-        """
-        Retrieves player data from team's in the system, i.e. prospects, page.
-        """
-        # preparing url to team's prospects page
-        team_url_component = self.curr_team.team_name.lower().replace(" ", "")
-        team_site_prefix = self.TEAM_SITE_PREFIX.replace(
-            "%s", team_url_component)
-        team_system_url = "".join((
-            team_site_prefix, self.TEAM_SITE_ROSTER_SUFFIX))
-
-        # retrieving prospects page
-        req = requests.get(team_system_url)
-        doc = html.fromstring(req.text)
-
-        # retrieving player names and player page urls
-        # player_names = doc.xpath(
-        #     "//tr[contains('rwEven|rwOdd', @class)]/td[2]/nobr/a/text()")
-        urls = [team_site_prefix + a for a in doc.xpath(
-            "//tr[contains('rwEven|rwOdd', @class)]/td[2]/nobr/a/@href")]
-
-        players = list()
-
-        for url in urls:
-            # retrieving nhl id from player page url
-            plr_id = int(urlparse(url).query.split("=")[-1])
-            # trying to find player in database
-            plr = Player.find_by_id(plr_id)
-            # creating player if not already in database
-            if plr is None:
-                plr = self.search_player_by_id(plr_id)
-
-            players.append(plr)
 
         return players
 
@@ -180,20 +218,47 @@ class PlayerFinder():
         return plr
 
     def create_player(
-            self, plr_id, last_name, first_name, position, team="",
+            self, plr_id, last_name, first_name, position,
             alternate_last_names=[], alternate_first_names=[],
             alternate_positions=[]):
-            """
-            Create a new player in database using the specified data.
-            """
-            # initiliazing player object
-            # TODO: remove alternate options (if necessary)
-            plr = Player(
-                    plr_id, last_name, first_name, position,
-                    alternate_last_names=alternate_last_names,
-                    alternate_first_names=alternate_first_names,
-                    alternate_positions=alternate_positions)
+        """
+        Creates a new player in database using the specified data.
+        """
+        # initiliazing player object
+        # TODO: remove alternate options (if necessary)
+        plr = Player(
+                plr_id, last_name, first_name, position,
+                alternate_last_names=alternate_last_names,
+                alternate_first_names=alternate_first_names,
+                alternate_positions=alternate_positions)
 
-            commit_db_item(plr, True)
+        commit_db_item(plr, True)
 
-            return Player.find_by_id(plr_id)
+        return Player.find_by_id(plr_id)
+
+    def get_html_document(self, team, src_type):
+        """
+        Gets html data for team roster or in-the-system pages.
+        """
+        if src_type == 'roster':
+            # preparing url to team's roster page
+            team_url_component = team.team_name.lower().replace(" ", "")
+            team_url = "/".join((
+                self.NHL_SITE_PREFIX,
+                team_url_component,
+                self.NHL_SITE_ROSTER_SUFFIX))
+        elif src_type == 'system':
+            # preparing url to team's prospects page
+            team_url_component = team.team_name.lower().replace(" ", "")
+            team_site_prefix = self.TEAM_SITE_PREFIX.replace(
+                "%s", team_url_component)
+            team_url = "".join((
+                team_site_prefix,
+                self.TEAM_SITE_ROSTER_SUFFIX))
+
+        try:
+            req = requests.get(team_url)
+        except requests.exceptions.ConnectionError:
+            #TODO: returning empty document tree
+            return None
+        return html.fromstring(req.text)
