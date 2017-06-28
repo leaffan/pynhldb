@@ -32,8 +32,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     setup_steps = args.steps
 
-    print(args.roster_src)
-
     # migrating teams from json file to database
     if setup_steps in ['t', 'a']:
         migrate_teams()
