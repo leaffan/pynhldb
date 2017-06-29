@@ -3,6 +3,7 @@
 
 from urllib.parse import urlparse
 from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
 
@@ -14,7 +15,8 @@ from utils import remove_non_ascii_chars
 BASE_URL = "http://www.eliteprospects.com"
 # url template for draft overview pages at eliteprospects.com
 DRAFT_URL_TEMPLATE = "draft.php?year=%d"
-
+# maximum worker count
+MAX_WORKERS = 8
 # named tuple to contain basic player information
 Player = namedtuple('Player', 'first_name last_name date_of_birth')
 
@@ -25,35 +27,50 @@ def retrieve_drafted_players_with_dobs(draft_year):
     player pages in the specified list.
     """
     # retrieving links to pages of all drafted players first
-    player_links = retrieve_drafted_player_links(draft_year)
+    player_urls = retrieve_drafted_player_links(draft_year)
     # setting up target list
     players_with_dobs = list()
 
-    i = 0
-    for url in player_links[:]:
-        i += 1
-        req = requests.get(url)
-        print("+ Working on url %d of %d (%s)" % (i, len(player_links), url))
-        doc = html.fromstring(req.text)
-
-        # retrieving birthdate url that contains all necessary information in
-        # granular form, i.e. <a href="birthdate.php?Birthdate=1998-04-19&amp;
-        # Firstname=Patrik&amp;Lastname=Laine">1998-04-19</a>
-        dob_url = doc.xpath("//a[starts-with(@href, 'birthdate')]/@href")
-        if not dob_url:
-            continue
-        dob_url = dob_url.pop(0)
-        # retrieving player information from retrieved url
-        dob, first_name, last_name = get_player_details_from_url(dob_url)
-
-        # adding current player to list dictionary of players w/ date of births
-        players_with_dobs.append(
-            Player(
-                remove_non_ascii_chars(first_name),
-                remove_non_ascii_chars(last_name),
-                dob))
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as threads:
+        future_tasks = {
+            threads.submit(
+                get_player_with_dob, url): url for url in player_urls[:20]}
+        for future in as_completed(future_tasks):
+            try:
+                # TODO: think of something to do with the result here
+                result = future.result()
+                if result is not None:
+                    players_with_dobs.append(result)
+            except Exception as e:
+                print
+                print("Conccurrent task generated an exception: %s" % e)
 
     return players_with_dobs
+
+
+def get_player_with_dob(url):
+    """
+    Retrieves single player along with date of birth.
+    """
+    req = requests.get(url)
+    print("+ Working on url %s" % url)
+    doc = html.fromstring(req.text)
+
+    # retrieving birthdate url that contains all necessary information in
+    # granular form, i.e. <a href="birthdate.php?Birthdate=1998-04-19&amp;
+    # Firstname=Patrik&amp;Lastname=Laine">1998-04-19</a>
+    dob_url = doc.xpath("//a[starts-with(@href, 'birthdate')]/@href")
+    if not dob_url:
+        return
+    dob_url = dob_url.pop(0)
+    # retrieving player information from retrieved url
+    dob, first_name, last_name = get_player_details_from_url(dob_url)
+
+    # adding current player to list dictionary of players w/ date of births
+    return Player(
+        remove_non_ascii_chars(first_name),
+        remove_non_ascii_chars(last_name),
+        dob)
 
 
 def retrieve_drafted_player_links(draft_year):
