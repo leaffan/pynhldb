@@ -3,7 +3,7 @@
 
 from urllib.parse import urlparse
 from collections import namedtuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import requests
 
@@ -16,7 +16,7 @@ BASE_URL = "http://www.eliteprospects.com"
 # url template for draft overview pages at eliteprospects.com
 DRAFT_URL_TEMPLATE = "draft.php?year=%d"
 # maximum worker count
-MAX_WORKERS = 8
+MAX_WORKERS = 4
 # named tuple to contain basic player information
 Player = namedtuple('Player', 'first_name last_name date_of_birth')
 
@@ -31,10 +31,10 @@ def retrieve_drafted_players_with_dobs(draft_year):
     # setting up target list
     players_with_dobs = list()
 
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as threads:
+    with ProcessPoolExecutor(max_workers=MAX_WORKERS) as processes:
         future_tasks = {
-            threads.submit(
-                get_player_with_dob, url): url for url in player_urls[:20]}
+            processes.submit(
+                get_player_with_dob, url): url for url in player_urls[:60]}
         for future in as_completed(future_tasks):
             try:
                 # TODO: think of something to do with the result here
@@ -53,7 +53,7 @@ def get_player_with_dob(url):
     Retrieves single player along with date of birth.
     """
     req = requests.get(url)
-    print("+ Working on url %s" % url)
+    print("+ Retrieving player information from %s" % url)
     doc = html.fromstring(req.text)
 
     # retrieving birthdate url that contains all necessary information in
@@ -81,6 +81,9 @@ def retrieve_drafted_player_links(draft_year):
     url = "/".join((BASE_URL, DRAFT_URL_TEMPLATE % draft_year))
     req = requests.get(url)
     doc = html.fromstring(req.text)
+
+    print(
+        "+ Retrieving urls to pages of each player drafted in %d" % draft_year)
 
     # stub links to player pages are present at the specified position in
     # the main table
