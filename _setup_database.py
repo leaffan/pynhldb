@@ -47,7 +47,7 @@ if __name__ == '__main__':
     if setup_steps in ['pf', 'a']:
         search_players(args.roster_src)
     if setup_steps in ['pc', 'a']:
-        create_players(list())
+        create_players(2017)
     # retrieving player season statistics for all players in database
     if setup_steps in ['ps', 'a']:
         create_player_seasons()
