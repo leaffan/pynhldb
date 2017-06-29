@@ -7,6 +7,7 @@ from setup.create_teams import migrate_teams
 from setup.create_divisions import create_divisions
 from setup.create_players import migrate_players
 from setup.create_players import search_players
+from setup.create_players import create_players
 from setup.create_player_data import create_player_seasons
 from setup.create_player_data import create_player_data
 from setup.create_player_data import create_player_contracts
@@ -25,7 +26,8 @@ if __name__ == '__main__':
     parser.add_argument(
         'steps', metavar='setup_steps', help='Setup steps to execute.',
         choices=[
-            'a', 'c', 't', 'd', 'p', 'pf', 'ps', 'pd', 'cf', 'cft', 'dft'])
+            'a', 'c', 't', 'd', 'p', 'pf', 'pc',
+            'ps', 'pd', 'cf', 'cft', 'dft'])
     parser.add_argument(
         '--roster_src', dest='roster_src', action='store', default='roster',
         choices=['roster', 'system'], help='source type for player search')
@@ -44,6 +46,8 @@ if __name__ == '__main__':
     # finding players
     if setup_steps in ['pf', 'a']:
         search_players(args.roster_src)
+    if setup_steps in ['pc', 'a']:
+        create_players(list())
     # retrieving player season statistics for all players in database
     if setup_steps in ['ps', 'a']:
         create_player_seasons()
