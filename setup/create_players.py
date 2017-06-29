@@ -83,7 +83,7 @@ def search_players(src_type):
 
 def create_players(draft_year):
     """
-    Uses specified player data to create player items in database.
+    Uses specified draft year to create database items for each drafted player.
     """
     # retrieving suggestions from nhl.com for all retrieved drafted players
     suggested_plrs = get_suggestions_for_drafted_players(draft_year)
@@ -96,11 +96,14 @@ def create_players(draft_year):
         # checking if player already exists
         plr = Player.find_by_id(plr_id)
 
+        # if yes, announcing a player item's existence
+        if plr is not None:
+            print("+ %s already existing in database" % plr)
         # otherwise creating it
-        if plr is None:
+        else:
             plr = Player(plr_id, last_name, first_name, position)
-            print("db", plr)
-            # commit_db_item(plr)
+            commit_db_item(plr)
+            print("+ %s created" % Player.find_by_id(plr_id))
 
 
 def get_suggestions_for_drafted_players(draft_year):
@@ -111,18 +114,33 @@ def get_suggestions_for_drafted_players(draft_year):
     # retrieving players (with date of births) drafted in specified year
     drafted_players = retrieve_drafted_players_with_dobs(draft_year)
 
+    print(
+        "+ Basic information retrieved for " +
+        "%d players drafted in %d" % (len(drafted_players), draft_year))
+
     pfr = PlayerFinder()
     suggested_players = list()
 
     for drafted_plr in drafted_players:
-        print(drafted_plr.first_name, drafted_plr.last_name)
         suggestions = pfr.get_suggested_players(
             drafted_plr.last_name, drafted_plr.first_name)
+        if not suggestions:
+            print(
+                "+ No suggestion found " +
+                "for %s %s. " % (
+                    drafted_plr.first_name, drafted_plr.last_name) +
+                "Trying last name only.")
+            suggestions = pfr.get_suggested_players(drafted_plr.last_name)
         if len(suggestions) == 1:
             suggested_players.append(suggestions.pop())
         else:
             print(
-                "More than one suggestion found" +
-                "for %s %s" % drafted_plr.first_name, drafted_plr.last_name)
+                "+ %d suggestions found " % len(suggestions) +
+                "for %s %s" % (drafted_plr.first_name, drafted_plr.last_name))
+            for suggestion in suggestions:
+                suggested_dob = suggestion[-1]
+                if suggested_dob == drafted_plr.date_of_birth:
+                    suggested_players.append(suggestion)
+                    break
 
     return suggested_players
