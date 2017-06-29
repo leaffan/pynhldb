@@ -198,17 +198,22 @@ class PlayerFinder():
 
         return players
 
-    def get_players_by_suggestions(self, first_name, last_name, **kwargs):
+    def get_suggested_players(self, last_name, first_name=''):
         """
-        Retrieves all players suggested nhl.com after being provided with the
-        specified items.
+        Retrieves all players suggested nhl.com after being provided with a
+        last name and an optional first name.
         """
+        if first_name:
+            name = " ".join((first_name, last_name))
+        else:
+            name = last_name
+
         url = "".join((
             self.SUGGEST_SITE_PREFIX,
-            last_name.lower(),
+            name.lower(),
             self.SUGGEST_SITE_SUFFIX))
-        r = requests.get(url)
-        suggestions_json = json.loads(r.text)
+        req = requests.get(url)
+        suggestions_json = json.loads(req.text)
 
         suggested_players = list()
 
