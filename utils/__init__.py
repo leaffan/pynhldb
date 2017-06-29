@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import configparser
-import logging
-import logging.handlers
 import os
 import re
+import configparser
+import unicodedata
+import logging
+import logging.handlers
 from configparser import NoOptionError, NoSectionError
 from datetime import timedelta
 
@@ -72,6 +73,17 @@ def adjust_html_response(response):
 
     # returning document tree dumped as string
     return etree.tostring(doc, method='html', encoding='unicode')
+
+
+# unicode function
+def remove_non_ascii_chars(s):
+    """
+    Removes non-ascii characters from specified (unicode) string.
+    Basically following an example from http://bit.ly/2umENUv.
+    """
+    nfkd_form = unicodedata.normalize('NFKD', s)
+    return "".join([
+        char for char in nfkd_form if not unicodedata.combining(char)])
 
 
 # conversion functions
