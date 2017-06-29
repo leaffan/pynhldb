@@ -5,15 +5,16 @@ from db.player import Player
 
 
 def test_constructor():
-    plr = Player(99, "Gretzky", "Wayne", "C", alternate_last_names=['Bruce'])
-    assert plr.player_id == 99
-    assert plr.first_name == "Wayne"
-    assert plr.last_name == "Gretzky"
-    assert plr.name == "Wayne Gretzky"
+    plr = Player(
+        8467353, "Antropov", "Nik", "C", alternate_first_names=['Nikolai'])
+    assert plr.player_id == 8467353
+    assert plr.first_name == "Nik"
+    assert plr.last_name == "Antropov"
+    assert plr.name == "Nik Antropov"
     assert plr.position == "C"
-    assert plr.alternate_last_names == ['Bruce']
-    assert hasattr(plr, "alternate_first_names") is True
-    assert plr.alternate_first_names is None
+    assert plr.alternate_first_names == ['Nikolai']
+    assert hasattr(plr, "alternate_last_names") is True
+    assert plr.alternate_last_names is None
 
 
 def test_find_by_id():
