@@ -11,12 +11,15 @@ from db.player import Player
 from db.team import Team
 from utils.player_finder import PlayerFinder
 from utils.player_data_retriever import PlayerDataRetriever
+from utils.eliteprospects_utils import retrieve_drafted_players_with_dobs
 
 MAX_WORKERS = 8
 
 
 def migrate_players(plr_src_file=None):
-
+    """
+    Migrates players from specified JSON file to currently connected database.
+    """
     if not plr_src_file:
         plr_src_file = os.path.join(
             os.path.dirname(__file__), 'nhl_players.json')
@@ -49,7 +52,12 @@ def migrate_players(plr_src_file=None):
 
 
 def search_players(src_type):
-
+    """
+    Searches (and optionally creates) players that are listed either on the 
+    each team's official roster page (source type 'roster') or on its *in-the-
+    system* page (source type 'sytem'). Finally retrieves career regular season
+    and playoff statistics for each player.
+    """
     plr_f = PlayerFinder()
     plr_r = PlayerDataRetriever()
 
@@ -71,3 +79,50 @@ def search_players(src_type):
                 except Exception as e:
                     print
                     print("Conccurrent task generated an exception: %s" % e)
+
+
+def create_players(draft_year):
+    """
+    Uses specified player data to create player items in database.
+    """
+    # retrieving suggestions from nhl.com for all retrieved drafted players
+    suggested_plrs = get_suggestions_for_drafted_players(draft_year)
+
+    for suggested_plr in suggested_plrs:
+        # exploding tuple
+        # TODO: use named tuple
+        plr_id, position, last_name, first_name, dob = suggested_plr
+
+        # checking if player already exists
+        plr = Player.find_by_id(plr_id)
+
+        # otherwise creating it
+        if plr is None:
+            plr = Player(plr_id, last_name, first_name, position)
+            print("db", plr)
+            # commit_db_item(plr)
+
+
+def get_suggestions_for_drafted_players(draft_year):
+    """
+    Retrieves player id suggestions from nhl.com for all players drafted in
+    specified year.
+    """
+    # retrieving players (with date of births) drafted in specified year
+    drafted_players = retrieve_drafted_players_with_dobs(draft_year)
+
+    pfr = PlayerFinder()
+    suggested_players = list()
+
+    for drafted_plr in drafted_players:
+        print(drafted_plr.first_name, drafted_plr.last_name)
+        suggestions = pfr.get_suggested_players(
+            drafted_plr.last_name, drafted_plr.first_name)
+        if len(suggestions) == 1:
+            suggested_players.append(suggestions.pop())
+        else:
+            print(
+                "More than one suggestion found" +
+                "for %s %s" % drafted_plr.first_name, drafted_plr.last_name)
+
+    return suggested_players
