@@ -6,11 +6,12 @@ import itertools
 
 import requests
 from lxml import html
+from dateutil.parser import parse
 
 from db.common import session_scope
 from db.team import Team
 from db.player import Player
-
+from db.player_data_item import PlayerDataItem
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +54,13 @@ def retrieve_capfriendly_ids(team_id):
             plr = Player.find_by_name_position(
                 first_name, last_name, primary_position)
         if plr and plr.capfriendly_id is None:
-            print(first_name, last_name, plr, player_link.split("/")[-1])
+            print(
+                "+ Ambigious capfriendly id for player:", first_name,
+                last_name, plr, player_link.split("/")[-1])
         if plr is None:
-            print("\t", first_name, last_name, player_link.split("/")[-1])
+            print(
+                "+ No player for capfriendly id:", first_name,
+                last_name, player_link.split("/")[-1])
 
 
 def retrieve_capfriendly_id(player_id):
@@ -64,6 +69,7 @@ def retrieve_capfriendly_id(player_id):
     specified id.
     """
     plr = Player.find_by_id(player_id)
+    pdi = PlayerDataItem.find_by_player_id(player_id)
 
     if plr.capfriendly_id is not None:
         logger.info(
@@ -82,15 +88,23 @@ def retrieve_capfriendly_id(player_id):
         url = "".join((CAPFRIENDLY_PLAYER_PREFIX, query_id))
         req = requests.get(url)
         doc = html.fromstring(req.text)
+        # retrieving player name from capfriendly page
         page_header = doc.xpath("//h1/text()").pop(0).strip()
+        # retrieving player's date of birth from capfriendly page
+        page_dob = doc.xpath(
+            "//span[@class='l pld_l']/ancestor::div/text()")[0].strip()
+        page_dob = parse(page_dob).date()
+        # comparing names
         if page_header == potential_capfriendly_id.upper():
-            capfriendly_id_found = True
-            logger.info(
-                "+ Found capfriendly id for %s: %s" % (plr.name, query_id))
-            plr.capfriendly_id = query_id
-            with session_scope() as session:
-                session.merge(plr)
-                session.commit()
+            # comparing date of births
+            if page_dob == pdi.date_of_birth:
+                capfriendly_id_found = True
+                logger.info(
+                    "+ Found capfriendly id for %s: %s" % (plr.name, query_id))
+                plr.capfriendly_id = query_id
+                with session_scope() as session:
+                    session.merge(plr)
+                    session.commit()
 
     if not capfriendly_id_found:
         logger.warn("+ No capfriendly id found for %s" % plr.name)
