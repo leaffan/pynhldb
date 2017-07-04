@@ -29,6 +29,8 @@ class Player(Base):
                 self.set_keyword_argument(keyword, kwargs[keyword])
 
     def set_keyword_argument(self, keyword, value):
+        if not value:
+            value = None
         if value is not None and type(value) is not list:
             value = [value]
         setattr(self, keyword, value)
