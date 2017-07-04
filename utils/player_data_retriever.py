@@ -2,13 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import itertools
 import threading
 import re
 
 import requests
 from dateutil import parser
-from lxml import html
 
 from db.common import session_scope
 from db.team import Team
@@ -24,8 +22,6 @@ logger = logging.getLogger(__name__)
 class PlayerDataRetriever():
 
     NHL_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
-    CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
-    CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
 
     # input player data json keys
     JSON_KEY_FIRST_NAME = "firstName"
@@ -127,6 +123,7 @@ class PlayerDataRetriever():
         self.create_or_update_database_item(plr_data_item, plr_data_item_db)
 
     def create_or_update_database_item(self, new_item, db_item):
+        # TODO: switch to usage of application-wide utility method
         """
         Creates or updates a database item.
         """
@@ -285,100 +282,3 @@ class PlayerDataRetriever():
                 plr_data_dict['current_team'] = person['currentTeam']['name']
 
         return plr_data_dict
-
-    def collect_potential_capfriendly_ids(self, plr):
-        """
-        Compiles all potential combinations of player first and last names
-        to find a potential capfriendly id.
-        """
-        # listing all of players' potential first names
-        first_names = [plr.first_name]
-        if plr.alternate_first_names:
-            first_names += plr.alternate_first_names
-        first_names = list(map(str.lower, first_names))
-
-        # listing all of players' potential last names
-        last_names = [plr.last_name]
-        if plr.alternate_last_names:
-            last_names += plr.alternate_last_names
-        last_names = list(map(str.lower, last_names))
-
-        return list(map(" ".join, itertools.product(first_names, last_names)))
-
-    def retrieve_capfriendly_ids(self, team_id):
-        """
-        Retrieves ids from capfriendly.com for all players of the team with
-        the specified id
-        """
-        team = Team.find_by_id(team_id)
-
-        logger.info(
-            "+ Retrieving capfriendly ids for all players of the %s" % team)
-
-        url = "".join((
-            self.CAPFRIENDLY_TEAM_PREFIX,
-            team.team_name.replace(" ", "").lower()))
-
-        r = requests.get(url)
-        doc = html.fromstring(r.text)
-
-        player_name_trs = doc.xpath("//tr[@class='even c' or @class='odd c']")
-
-        for tr in player_name_trs:
-            player_name = tr.xpath("td/a/text()").pop(0)
-            player_link = tr.xpath("td/a/@href").pop(0)
-            player_position = tr.xpath("td[3]/span/text()")
-            if player_position:
-                player_position = player_position.pop(0)
-            else:
-                player_position = ''
-
-            last_name, first_name = player_name.split(", ")
-            plr = Player.find_by_name_extended(first_name, last_name)
-            if plr is None and player_position:
-                primary_position = player_position.split(", ")[0][0]
-                plr = Player.find_by_name_position(
-                    first_name, last_name, primary_position)
-            if plr and plr.capfriendly_id is None:
-                print(first_name, last_name, plr, player_link.split("/")[-1])
-            if plr is None:
-                print("\t", first_name, last_name, player_link.split("/")[-1])
-
-    def retrieve_capfriendly_id(self, player_id):
-        """
-        Retrieves an id from capfriendly.com for the player with the
-        specified id.
-        """
-        plr = Player.find_by_id(player_id)
-
-        if plr.capfriendly_id is not None:
-            logger.info(
-                "+ Existing capfriendly id for %s: %s" % (
-                    plr.name, plr.capfriendly_id))
-            return plr.capfriendly_id
-
-        # compiling all potential capfriendly ids from the player's name(s)
-        potential_capfriendly_ids = self.collect_potential_capfriendly_ids(plr)
-
-        capfriendly_id_found = False
-
-        while potential_capfriendly_ids and not capfriendly_id_found:
-            potential_capfriendly_id = potential_capfriendly_ids.pop(0)
-            query_id = potential_capfriendly_id.replace(" ", "-")
-            url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, query_id))
-            r = requests.get(url)
-            doc = html.fromstring(r.text)
-            page_header = doc.xpath("//h1/text()").pop(0).strip()
-            if page_header == potential_capfriendly_id.upper():
-                capfriendly_id_found = True
-                logger.info(
-                    "+ Found capfriendly id for %s: %s" % (plr.name, query_id))
-                plr.capfriendly_id = query_id
-                with session_scope() as session:
-                    session.merge(plr)
-                    session.commit()
-
-        if not capfriendly_id_found:
-            logger.warn("+ No capfriendly id found for %s" % plr.name)
-
-        return plr.capfriendly_id
