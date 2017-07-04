@@ -115,7 +115,7 @@ class PlayerDataRetriever():
 
         logger.info("+ Retrieving player data for %s" % plr.name)
 
-        plr_data_dict = self.retrieve_raw_season_data(player_id)
+        plr_data_dict = self.retrieve_raw_player_data(player_id)
 
         plr_data_item = PlayerDataItem(player_id, plr_data_dict)
         plr_data_item_db = PlayerDataItem.find_by_player_id(player_id)
