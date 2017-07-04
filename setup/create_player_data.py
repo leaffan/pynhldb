@@ -3,6 +3,7 @@
 
 import logging
 import concurrent.futures
+from datetime import date
 
 from sqlalchemy import and_
 
@@ -142,7 +143,7 @@ def create_capfriendly_ids_by_team():
         teams = session.query(Team).filter(
             and_(
                 Team.last_year_of_play.is_(None),
-                Team.first_year_of_play < 2017
+                Team.first_year_of_play <= date.today().year
             )
         ).all()
 
