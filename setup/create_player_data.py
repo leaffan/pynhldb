@@ -4,12 +4,17 @@
 import logging
 import concurrent.futures
 
+from sqlalchemy import and_
+
 from db.common import session_scope
 from db.player import Player
 from db.team import Team
 from utils.player_data_retriever import PlayerDataRetriever
 from utils.player_contract_retriever import PlayerContractRetriever
 from utils.player_draft_retriever import PlayerDraftRetriever
+from utils.capfriendly_utils import retrieve_capfriendly_ids
+from utils.capfriendly_utils import retrieve_capfriendly_id
+
 
 logger = logging.getLogger(__name__)
 
@@ -113,16 +118,13 @@ def create_capfriendly_ids():
     """
     Creates capfriendly id attributes for players in database.
     """
-    data_retriever = PlayerDataRetriever()
-
     with session_scope() as session:
         players = session.query(Player).all()[:]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
         future_tasks = {
             threads.submit(
-                data_retriever.retrieve_capfriendly_id,
-                player.player_id
+                retrieve_capfriendly_id, player.player_id
             ): player for player in sorted(players)
         }
         for future in concurrent.futures.as_completed(future_tasks):
@@ -136,10 +138,6 @@ def create_capfriendly_ids_by_team():
     """
     Creates capfriendly id attributes for all players of each team in database.
     """
-    data_retriever = PlayerDataRetriever()
-
-    from sqlalchemy import and_
-
     with session_scope() as session:
         teams = session.query(Team).filter(
             and_(
@@ -151,8 +149,7 @@ def create_capfriendly_ids_by_team():
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
         future_tasks = {
             threads.submit(
-                data_retriever.retrieve_capfriendly_ids,
-                team.team_id
+                retrieve_capfriendly_ids, team.team_id
             ): team for team in sorted(teams)[:]
         }
         for future in concurrent.futures.as_completed(future_tasks):
