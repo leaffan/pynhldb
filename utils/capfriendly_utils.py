@@ -12,6 +12,7 @@ from db.common import session_scope
 from db.team import Team
 from db.player import Player
 from db.player_data_item import PlayerDataItem
+from utils import remove_non_ascii_chars
 
 logger = logging.getLogger(__name__)
 
@@ -40,27 +41,18 @@ def retrieve_capfriendly_ids(team_id):
 
     for tr in player_name_trs:
         player_name = tr.xpath("td/a/text()").pop(0)
-        player_link = tr.xpath("td/a/@href").pop(0)
-        player_position = tr.xpath("td[3]/span/text()")
-        if player_position:
-            player_position = player_position.pop(0)
-        else:
-            player_position = ''
+        capfriendly_id = tr.xpath("td/a/@href").pop(0).split("/")[-1]
 
         last_name, first_name = player_name.split(", ")
         plr = Player.find_by_name_extended(first_name, last_name)
-        if plr is None and player_position:
-            primary_position = player_position.split(", ")[0][0]
-            plr = Player.find_by_name_position(
-                first_name, last_name, primary_position)
         if plr and plr.capfriendly_id is None:
             print(
-                "+ Ambigious capfriendly id for player:", first_name,
-                last_name, plr, player_link.split("/")[-1])
+                "+ Found capfriendly id for %s: %s" % (plr, capfriendly_id))
+            add_capfriendly_id_to_player(plr, capfriendly_id)
         if plr is None:
             print(
-                "+ No player for capfriendly id:", first_name,
-                last_name, player_link.split("/")[-1])
+                "+ No player for capfriendly id: %s (%s %s)" % (
+                    capfriendly_id, first_name, last_name))
 
 
 def retrieve_capfriendly_id(player_id):
@@ -79,35 +71,36 @@ def retrieve_capfriendly_id(player_id):
 
     # compiling all potential capfriendly ids from the player's name(s)
     potential_capfriendly_ids = collect_potential_capfriendly_ids(plr)
-
     capfriendly_id_found = False
 
     while potential_capfriendly_ids and not capfriendly_id_found:
         potential_capfriendly_id = potential_capfriendly_ids.pop(0)
+        # creating actual capfriendly id used in url query
         query_id = potential_capfriendly_id.replace(" ", "-")
         url = "".join((CAPFRIENDLY_PLAYER_PREFIX, query_id))
         req = requests.get(url)
         doc = html.fromstring(req.text)
-        # retrieving player name from capfriendly page
+        # retrieving page title (i.e. player name) from capfriendly page
         page_header = doc.xpath("//h1/text()").pop(0).strip().replace(".", "")
+        # removing non-ascii characters from page title
+        page_header = remove_non_ascii_chars(page_header)
         # retrieving player's date of birth from capfriendly page
         page_dob = doc.xpath(
             "//span[@class='l pld_l']/ancestor::div/text()")[0].strip()
         page_dob = parse(page_dob).date()
-        # comparing names
+
+        # comparing page title and actual name
         if page_header == potential_capfriendly_id.upper().replace(".", ""):
             # comparing date of births
             if page_dob == pdi.date_of_birth:
                 capfriendly_id_found = True
-                # removing dots from query id to create actual capfriendly id
+                # removing dots from id used in query to create
+                # actual capfriendly id
                 found_capfriendly_id = query_id.replace(".", "")
                 logger.info(
                     "+ Found capfriendly id for %s: %s" % (
                         plr.name, found_capfriendly_id))
-                plr.capfriendly_id = found_capfriendly_id
-                with session_scope() as session:
-                    session.merge(plr)
-                    session.commit()
+                add_capfriendly_id_to_player(plr, found_capfriendly_id)
 
     if not capfriendly_id_found:
         logger.warn("+ No capfriendly id found for %s" % plr.name)
@@ -118,18 +111,34 @@ def retrieve_capfriendly_id(player_id):
 def collect_potential_capfriendly_ids(plr):
     """
     Compiles all potential combinations of player first and last names
-    to find a potential capfriendly id.
+    to find a potential capfriendly id. Removes non-ascii characters from
+    resulting strings to allow for usage in urls.
     """
     # listing all of players' potential first names
     first_names = [plr.first_name]
     if plr.alternate_first_names:
         first_names += plr.alternate_first_names
-    first_names = list(map(str.lower, first_names))
+    # removing non-ascii characters from all collected first names
+    first_names = [remove_non_ascii_chars(s) for s in first_names]
+    first_names = set(map(str.lower, first_names))
 
     # listing all of players' potential last names
     last_names = [plr.last_name]
     if plr.alternate_last_names:
         last_names += plr.alternate_last_names
-    last_names = list(map(str.lower, last_names))
+    # removing non-ascii characters from all collected last names
+    last_names = [remove_non_ascii_chars(s) for s in last_names]
+    last_names = set(map(str.lower, last_names))
 
+    # returning all potential combinations of players' first and last names
     return list(map(" ".join, itertools.product(first_names, last_names)))
+
+
+def add_capfriendly_id_to_player(plr, capfriendly_id):
+    """
+    Adds specified capfriendly id to given player item.
+    """
+    plr.capfriendly_id = capfriendly_id
+    with session_scope() as session:
+        session.merge(plr)
+        session.commit()
