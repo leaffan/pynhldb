@@ -79,11 +79,30 @@ def adjust_html_response(response):
 def remove_non_ascii_chars(s):
     """
     Removes non-ascii characters from specified (unicode) string.
-    Basically following an example from http://bit.ly/2umENUv.
+    Basically following examples from http://bit.ly/2umENUv and
+    http://bit.ly/2sFScdQ.
     """
+    # latin-1 characters that don't have a unicode decomposition
+    CHAR_REPLACE = {
+        0xc6: u"AE",  # LATIN CAPITAL LETTER AE
+        0xd0: u"D",   # LATIN CAPITAL LETTER ETH
+        0xd8: u"O",   # LATIN CAPITAL LETTER O WITH STROKE
+        0xde: u"Th",  # LATIN CAPITAL LETTER THORN
+        0xdf: u"ss",  # LATIN SMALL LETTER SHARP S
+        0xe6: u"ae",  # LATIN SMALL LETTER AE
+        0xf0: u"d",   # LATIN SMALL LETTER ETH
+        0xf8: u"o",   # LATIN SMALL LETTER O WITH STROKE
+        0xfe: u"th",  # LATIN SMALL LETTER THORN
+        }
+
     nfkd_form = unicodedata.normalize('NFKD', s)
-    return "".join([
-        char for char in nfkd_form if not unicodedata.combining(char)])
+    # decomposing unicode string
+    decomposed = "".join(
+        [char for char in nfkd_form if not unicodedata.combining(char)])
+    # replacing non-decomposable non-ascii characters
+    return "".join(
+        [CHAR_REPLACE[ord(char)] if ord(
+            char) in CHAR_REPLACE else char for char in decomposed])
 
 
 # conversion functions
