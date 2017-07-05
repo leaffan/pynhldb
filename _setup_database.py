@@ -7,7 +7,7 @@ from setup.create_teams import migrate_teams
 from setup.create_divisions import create_divisions
 from setup.create_players import migrate_players
 from setup.create_players import search_players
-from setup.create_players import create_players
+from setup.create_players import create_players_for_draft_year
 from setup.create_player_data import create_player_seasons
 from setup.create_player_data import create_player_data
 from setup.create_player_data import create_player_contracts
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     if setup_steps in ['pf', 'a']:
         search_players(args.roster_src)
     if setup_steps in ['pc', 'a']:
-        create_players(2017)
+        create_players_for_draft_year(2017)
     # retrieving player season statistics for all players in database
     if setup_steps in ['ps', 'a']:
         create_player_seasons()
