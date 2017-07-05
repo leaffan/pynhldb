@@ -81,7 +81,7 @@ def search_players(src_type):
                     print("Conccurrent task generated an exception: %s" % e)
 
 
-def create_players(draft_year):
+def create_players_for_draft_year(draft_year):
     """
     Uses specified draft year to create database items for each drafted player.
     """
@@ -91,7 +91,10 @@ def create_players(draft_year):
     for suggested_plr in suggested_plrs:
         # exploding tuple
         # TODO: use named tuple
-        plr_id, position, last_name, first_name, dob = suggested_plr
+        (
+            plr_id, position, last_name,
+            first_name, dob, alt_last_name
+        ) = suggested_plr
 
         # checking if player already exists
         plr = Player.find_by_id(plr_id)
@@ -101,7 +104,9 @@ def create_players(draft_year):
             print("+ %s already existing in database" % plr)
         # otherwise creating it
         else:
-            plr = Player(plr_id, last_name, first_name, position)
+            plr = Player(
+                plr_id, last_name, first_name,
+                position, alternate_last_names=alt_last_name)
             commit_db_item(plr)
             print("+ %s created" % Player.find_by_id(plr_id))
 
@@ -111,7 +116,8 @@ def get_suggestions_for_drafted_players(draft_year):
     Retrieves player id suggestions from nhl.com for all players drafted in
     specified year.
     """
-    # retrieving players (with date of births) drafted in specified year
+    # retrieving players (with date of births and alternate last names) drafted
+    # in specified year
     drafted_players = retrieve_drafted_players_with_dobs(draft_year)
 
     print(
@@ -122,8 +128,10 @@ def get_suggestions_for_drafted_players(draft_year):
     suggested_players = list()
 
     for drafted_plr in drafted_players:
+        # trying to find suggestions by using both first and last name
         suggestions = pfr.get_suggested_players(
             drafted_plr.last_name, drafted_plr.first_name)
+        # otherwise trying to find suggestions for last name only
         if not suggestions:
             print(
                 "+ No suggestion found " +
@@ -131,16 +139,31 @@ def get_suggestions_for_drafted_players(draft_year):
                     drafted_plr.first_name, drafted_plr.last_name) +
                 "Trying last name only.")
             suggestions = pfr.get_suggested_players(drafted_plr.last_name)
+        # otherwise trying to find suggestions for alternate
+        # last name (if applicable)
+        if not suggestions and drafted_plr.alt_last_name:
+            print(
+                "+ No suggestion found for %s. " % drafted_plr.last_name +
+                "Trying alternate last names.")
+            suggestions = pfr.get_suggested_players(drafted_plr.alt_last_name)
         if len(suggestions) == 1:
-            suggested_players.append(suggestions.pop())
+            suggestion = suggestions.pop()
+        # if multiple suggestions were found
         else:
             print(
                 "+ %d suggestions found " % len(suggestions) +
                 "for %s %s" % (drafted_plr.first_name, drafted_plr.last_name))
+            # finding out the exact suggestion by comparing dates of birth
             for suggestion in suggestions:
                 suggested_dob = suggestion[-1]
                 if suggested_dob == drafted_plr.date_of_birth:
-                    suggested_players.append(suggestion)
                     break
+
+        if drafted_plr.alt_last_name:
+            suggestion = suggestion + (drafted_plr.last_name,)
+        else:
+            suggestion = suggestion + ('',)
+
+        suggested_players.append(suggestion)
 
     return suggested_players
