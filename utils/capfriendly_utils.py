@@ -89,19 +89,22 @@ def retrieve_capfriendly_id(player_id):
         req = requests.get(url)
         doc = html.fromstring(req.text)
         # retrieving player name from capfriendly page
-        page_header = doc.xpath("//h1/text()").pop(0).strip()
+        page_header = doc.xpath("//h1/text()").pop(0).strip().replace(".", "")
         # retrieving player's date of birth from capfriendly page
         page_dob = doc.xpath(
             "//span[@class='l pld_l']/ancestor::div/text()")[0].strip()
         page_dob = parse(page_dob).date()
         # comparing names
-        if page_header == potential_capfriendly_id.upper():
+        if page_header == potential_capfriendly_id.upper().replace(".", ""):
             # comparing date of births
             if page_dob == pdi.date_of_birth:
                 capfriendly_id_found = True
+                # removing dots from query id to create actual capfriendly id
+                found_capfriendly_id = query_id.replace(".", "")
                 logger.info(
-                    "+ Found capfriendly id for %s: %s" % (plr.name, query_id))
-                plr.capfriendly_id = query_id
+                    "+ Found capfriendly id for %s: %s" % (
+                        plr.name, found_capfriendly_id))
+                plr.capfriendly_id = found_capfriendly_id
                 with session_scope() as session:
                     session.merge(plr)
                     session.commit()
