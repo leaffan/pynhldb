@@ -18,13 +18,14 @@ DRAFT_URL_TEMPLATE = "draft.php?year=%d"
 # maximum worker count
 MAX_WORKERS = 4
 # named tuple to contain basic player information
-Player = namedtuple('Player', 'first_name last_name date_of_birth')
+Player = namedtuple(
+    'Player', 'first_name last_name date_of_birth alt_last_name')
 
 
 def retrieve_drafted_players_with_dobs(draft_year):
     """
-    Retrieves basic player data (first name, last name, date of birth) from all
-    player pages in the specified list.
+    Retrieves basic player data (first name, last name, date of birth,
+    alternate last name) from all player pages in the specified list.
     """
     # retrieving links to pages of all drafted players first
     player_urls = retrieve_drafted_player_links(draft_year)
@@ -34,7 +35,7 @@ def retrieve_drafted_players_with_dobs(draft_year):
     with ProcessPoolExecutor(max_workers=MAX_WORKERS) as processes:
         future_tasks = {
             processes.submit(
-                get_player_with_dob, url): url for url in player_urls[:60]}
+                get_player_with_dob, url): url for url in player_urls[:]}
         for future in as_completed(future_tasks):
             try:
                 # TODO: think of something to do with the result here
@@ -66,11 +67,25 @@ def get_player_with_dob(url):
     # retrieving player information from retrieved url
     dob, first_name, last_name = get_player_details_from_url(dob_url)
 
+    # retrieving alternate last name (if applicable)
+    alt_last_name = ''
+    aka = doc.xpath("//font[starts-with(text(), 'a.k.a.')]/text()")
+    if aka:
+        aka = aka.pop(0).replace("a.k.a.", "").replace('"', "").strip()
+        # retrieving all available alternate names
+        akas = [a.strip() for a in aka.split(",")]
+        akas = [a.replace(first_name, "").strip() for a in akas]
+        # using only first alternate last name
+        # TODO: use all alternate names
+        aka = akas[0]
+        if aka != last_name:
+            alt_last_name = aka
+
     # adding current player to list dictionary of players w/ date of births
     return Player(
         remove_non_ascii_chars(first_name),
         remove_non_ascii_chars(last_name),
-        dob)
+        dob, alt_last_name)
 
 
 def retrieve_drafted_player_links(draft_year):
