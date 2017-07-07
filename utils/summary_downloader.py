@@ -62,7 +62,8 @@ class SummaryDownloader(MultiFileDownloader):
         """
         Returns target directory according to current date.
         """
-        return os.path.join(self.tgt_dir, self.current_date.strftime("%Y-%m"))
+        return os.path.join(
+            self.base_tgt_dir, self.current_date.strftime("%Y-%m"))
 
     def get_zip_name(self):
         """

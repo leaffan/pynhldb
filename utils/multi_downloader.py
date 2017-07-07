@@ -29,7 +29,7 @@ class MultiFileDownloader():
                     "Couldn't create target directory '%s', using " % tgt_dir +
                     "system temporary directory %s instead" % self.TMP_DIR)
                 tgt_dir = self.TMP_DIR
-        self.tgt_dir = tgt_dir
+        self.base_tgt_dir = tgt_dir
         self.files_to_download = list()
         self.downloaded_files = list()
         # self.rejected_urls = list()
@@ -59,7 +59,7 @@ class MultiFileDownloader():
         self.downloaded_files = list()
 
         if tgt_dir is None:
-            tgt_dir = self.tgt_dir
+            tgt_dir = self.base_tgt_dir
         if not os.path.isdir(tgt_dir):
             os.makedirs(tgt_dir)
         if files_to_download is None:
@@ -120,7 +120,7 @@ class MultiFileDownloader():
 
         # setting up zip file location
         zip_file = "".join((zip_name, ".zip"))
-        zip_path = os.path.join(self.tgt_dir, sub_dir, zip_file)
+        zip_path = os.path.join(self.base_tgt_dir, sub_dir, zip_file)
         print("+ Zipping downloaded files to %s..." % zip_path)
 
         files_in_zip, files_in_zip_info = self.analyze_zip_file(zip_path)
