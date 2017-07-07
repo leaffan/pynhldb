@@ -263,6 +263,7 @@ class SummaryDownloader(MultiFileDownloader):
             self.zip_path = self.get_zip_path()
             self.download_files(self.get_tgt_dir())
             print()
-            self.zip_files(self.get_zip_name(), self.get_tgt_dir())
+            if self.zip_downloaded_files:
+                self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
         json.dump(self.mod_timestamps, open(self.mod_timestamp_src, 'w'))
