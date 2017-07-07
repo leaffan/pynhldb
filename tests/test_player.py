@@ -37,6 +37,16 @@ def test_find_by_name_extended():
     assert plr.player_id == 8478483
 
 
+def test_find_by_name_extended_caps():
+    plr = Player.find_by_name_extended("ANDREI", "VASILEVSKIY")
+    assert plr.player_id == 8476883
+
+
+def test_find_by_name_extended_caps_not_working_yet():
+    plr = Player.find_by_name_extended("TJ", "GALIARDI")
+    assert plr is None
+
+
 def test_name_property():
     plr = Player.find_by_id(8459457)
     assert plr.name == " ".join((plr.first_name, plr.last_name))
