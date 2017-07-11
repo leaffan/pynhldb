@@ -3,28 +3,30 @@
 
 import os
 import itertools
-import tempfile
 from zipfile import ZipFile
 
 from utils.summary_downloader import SummaryDownloader
 
 
-def test_download_unzipped():
+def test_download_unzipped(tmpdir):
 
-    base_tgt_dir, date, files = set_up_comparison_files()
+    date, files = set_up_comparison_files()
 
-    sdl = SummaryDownloader(base_tgt_dir, date, zip_summaries=False)
+    sdl = SummaryDownloader(
+        tmpdir.mkdir('sdl').strpath, date, zip_summaries=False)
     sdl.run()
     tgt_dir = sdl.get_tgt_dir()
 
     assert sorted(os.listdir(tgt_dir)) == sorted(files)
 
+    tmpdir.remove()
 
-def test_download_zipped():
 
-    tgt_dir, date, files = set_up_comparison_files()
+def test_download_zipped(tmpdir):
 
-    sdl = SummaryDownloader(tgt_dir, date)
+    date, files = set_up_comparison_files()
+
+    sdl = SummaryDownloader(tmpdir.mkdir('sdl').strpath, date)
     sdl.run()
     zip_path = sdl.get_zip_path()
 
@@ -32,10 +34,11 @@ def test_download_zipped():
 
     assert sorted(zip.namelist()) == sorted(files)
 
+    tmpdir.remove()
+
 
 def set_up_comparison_files():
 
-    tgt_dir = tempfile.mkdtemp(prefix='sdl_test_')
     date = "Oct 24, 2016"
     prefixes = ["ES", "FC", "GS", "PL", "RO", "SS", "TH", "TV"]
     game_ids = ["020081", "020082"]
@@ -49,4 +52,4 @@ def set_up_comparison_files():
     # adding shootout report for one of the games
     files.append("SO020082.HTM")
 
-    return tgt_dir, date, files
+    return date, files

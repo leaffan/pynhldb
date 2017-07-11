@@ -3,7 +3,6 @@
 
 import json
 from lxml import html
-import tempfile
 
 from utils.summary_downloader import SummaryDownloader
 from utils.data_handler import DataHandler
@@ -12,15 +11,14 @@ from parsers.game_parser import GameParser
 from parsers.roster_parser import RosterParser
 from parsers.event_parser import EventParser
 
-TMP_DIR = tempfile.mkdtemp(prefix='shot_test_')
 
-
-def test_shot():
+def test_shot(tmpdir):
 
     date = "Oct 12, 2016"
     game_id = "020001"
 
-    sdl = SummaryDownloader(TMP_DIR, date, zip_summaries=False)
+    sdl = SummaryDownloader(
+        tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
     sdl.run()
     dld_dir = sdl.get_tgt_dir()
 
@@ -37,6 +35,8 @@ def test_shot():
     assert shot.goalie_id == 8467950
     assert shot.goalie_team_id == 9
     assert not shot.scored
+
+    tmpdir.remove()
 
 
 def get_document(dir, game_id, prefix):
