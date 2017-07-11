@@ -90,8 +90,10 @@ class RosterParser():
             # replacing null strings with zeros
             contents = [[
                 s.replace('\xa0', '0') for s in item] for item in contents]
+
             # creating data dictionaries for each table row, e.g. player
             for tr, content in zip(trs, contents):
+                content = [c for c in content if c.strip()]
                 single_roster_line = dict()
                 # adding player id to single roster line
                 single_roster_line['plr_id'] = int(
