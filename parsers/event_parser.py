@@ -1036,13 +1036,13 @@ class EventParser():
                 "tr/td/table/tr/td/font/text()")]
             # retrieving positions of players on ice for current event
             pos_on_ice = [s for s in poi_data[key].xpath(
-                "tr/td/table/tr/td/text()") if s not in ['\r\n', '\n']]
+                "tr/td/table/tr/td/text()") if s.strip()]
             # checking whether as many numbers as positions have been retrieved
             if len(pos_on_ice) != len(nos_on_ice):
                 logger.warn(
-                    "Number of retrieved jersey numbers does not match" +
-                    "number of retrieved positions: game id %d, period %d" % (
-                        self.game.game_id, self.curr_period))
+                    "Number of retrieved jersey numbers does not match " +
+                    "number of retrieved positions: game id %d" % (
+                        self.game.game_id))
                 continue
             for no, pos in zip(nos_on_ice, pos_on_ice):
                 # retrieving actual player from rosters of current game
