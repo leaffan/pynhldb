@@ -1,21 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import json
-from lxml import html
-
 from utils.summary_downloader import SummaryDownloader
-from utils.data_handler import DataHandler
-from parsers.team_parser import TeamParser
-from parsers.game_parser import GameParser
-from parsers.roster_parser import RosterParser
-from parsers.event_parser import EventParser
+from test_event import get_event_parser
 
 
 def test_shot(tmpdir):
 
     date = "Oct 12, 2016"
     game_id = "020001"
+    event_idx = 7
 
     sdl = SummaryDownloader(
         tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
@@ -23,7 +17,7 @@ def test_shot(tmpdir):
     dld_dir = sdl.get_tgt_dir()
 
     ep = get_event_parser(dld_dir, game_id)
-    event = ep.get_event(ep.event_data[7])
+    event = ep.get_event(ep.event_data[event_idx])
     shot = ep.specify_event(event)
 
     assert shot.event_id == event.event_id
@@ -37,43 +31,3 @@ def test_shot(tmpdir):
     assert not shot.scored
 
     tmpdir.remove()
-
-
-def get_document(dir, game_id, prefix):
-    dh = DataHandler(dir)
-    return open(dh.get_game_data(game_id, prefix)[prefix]).read()
-
-
-def get_json_document(dir, game_id):
-    dh = DataHandler(dir)
-    return json.loads(open(dh.get_game_json_data(game_id)).read())
-
-
-def get_event_parser(dir, game_id):
-    """
-    Retrieves event parser for game with specified id from
-    data downloaded to directory also given.
-    """
-    # retrieving raw data
-    game_report_doc = html.fromstring(get_document(dir, game_id, 'GS'))
-    roster_report_doc = html.fromstring(get_document(dir, game_id, 'ES'))
-    play_by_play_report_doc = html.fromstring(
-        get_document(dir, game_id, 'PL'))
-    game_feed_json_doc = get_json_document(dir, game_id)
-
-    # using team parser to retrieve teams
-    tp = TeamParser(game_report_doc)
-    teams = tp.create_teams()
-    # using game parser to retrieve basic game information
-    gp = GameParser(game_id, game_report_doc)
-    game = gp.create_game(teams)
-    # using roster parser to retrieve team rosters
-    rp = RosterParser(roster_report_doc)
-    rosters = rp.create_roster(game, teams)
-
-    # using event parser to retrieve all raw events
-    ep = EventParser(play_by_play_report_doc, game_feed_json_doc)
-    ep.load_data()
-    (ep.game, ep.rosters) = (game, rosters)
-    ep.cache_plays_with_coordinates()
-    return ep
