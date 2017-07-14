@@ -50,6 +50,14 @@ def test_get_player_without_alternate_last_name():
     assert plr.date_of_birth == "1981-01-04"
     assert plr.alt_last_name == ""
 
+    # Nick Perbix aka. "Nicholas, Nicklaus Perbix"
+    url = "http://www.eliteprospects.com/player.php?player=380612"
+    plr = get_player_with_dob(url)
+    assert plr.first_name == "Nick"
+    assert plr.last_name == "Perbix"
+    assert plr.date_of_birth == "1998-06-15"
+    assert plr.alt_last_name == ""
+
 
 def test_get_player_with_alternate_last_name():
     # Nikita A. Popugayev a.k.a. "Nikita A. Popugaev"
@@ -75,3 +83,13 @@ def test_get_player_with_alternate_last_name():
     assert plr.last_name == "Marchessault"
     assert plr.date_of_birth == "1990-12-27"
     assert plr.alt_last_name == "Audy-Marchessault"
+
+
+def test_get_player_wrongly_encoded_last_name():
+    # Dominik Lakatos a.k.a. "Dominik Lakatoš"
+    url = "http://www.eliteprospects.com/player.php?player=195562"
+    plr = get_player_with_dob(url)
+    assert plr.first_name == "Dominik"
+    assert plr.last_name == "Lakatos"
+    assert plr.date_of_birth == "1997-04-08"
+    assert plr.alt_last_name == "Lakato\x9a"
