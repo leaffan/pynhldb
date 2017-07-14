@@ -55,6 +55,13 @@ def get_player_with_dob(url):
     """
     req = requests.get(url)
     print("+ Retrieving player information from %s" % url)
+    # NB: there's a problem with eliteprospects player pages: officially
+    # encoded in iso-8859-1 they at times contain plain unicode characters,
+    # e.g. for alternate names (see Dominik Lakatos/Lakatoš, url:
+    # http://www.eliteprospects.com/player.php?player=195562)
+    # this is obviously a data problem that couldn't have been solved within
+    # the context of this application yet, manual post-processing of alternate
+    # names may therefore be necessary
     doc = html.fromstring(req.text)
 
     # retrieving birthdate url that contains all necessary information in
@@ -82,15 +89,19 @@ def get_player_with_dob(url):
             tokens = aka_wo_first_name.split()
             # if known first name was actually removed, the rest is
             # the alternate last name
-            if aka != aka_wo_first_name:
-                tmp_alt_last_names.append(aka_wo_first_name)
+            # if we above just had a first name removed that was the short form
+            # of a longer one, i.e. Nicklaus Perbix - Nick => laus Perbix, the
+            # remaining part o/c does not represent an alternate last name
+            if aka != aka_wo_first_name and not aka_wo_first_name.endswith(
+                    last_name):
+                        tmp_alt_last_names.append(aka_wo_first_name)
             # if there's just one token after the split and first letters in
             # split result and original name match: this token is the alternate
             # last name
             elif len(tokens) == 1:
                 if tokens[0][0].lower() == last_name.lower()[0]:
                     tmp_alt_last_names.append(tokens[0])
-            # if there are two tokens after the splot: first one is alternate
+            # if there are two tokens after the split: first one is alternate
             # first, second one alternate last name
             elif len(tokens) == 2:
                 tmp_alt_last_names.append(tokens[-1])
@@ -99,7 +110,6 @@ def get_player_with_dob(url):
                 print(
                     "Unable to retrieve alternate last " +
                     "name for %s %s from: %s" % (first_name, last_name, aka))
-        print(tmp_alt_last_names)
         # using only first found alternate last name
         # TODO: use all alternate names
         if tmp_alt_last_names and tmp_alt_last_names[0] != last_name:
@@ -122,7 +132,8 @@ def retrieve_drafted_player_links(draft_year):
     doc = html.fromstring(req.text)
 
     print(
-        "+ Retrieving urls to pages of each player drafted in %d" % draft_year)
+        "+ Retrieving urls of Eliteprospects profiles " +
+        "for each player drafted in %d" % draft_year)
 
     # stub links to player pages are present at the specified position in
     # the main table
