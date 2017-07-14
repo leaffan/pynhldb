@@ -53,7 +53,7 @@ def migrate_players(plr_src_file=None):
 
 def search_players(src_type):
     """
-    Searches (and optionally creates) players that are listed either on the 
+    Searches (and optionally creates) players that are listed either on the
     each team's official roster page (source type 'roster') or on its *in-the-
     system* page (source type 'sytem'). Finally retrieves career regular season
     and playoff statistics for each player.
@@ -158,9 +158,13 @@ def get_suggestions_for_drafted_players(draft_year):
                 suggested_dob = suggestion[-1]
                 if suggested_dob == drafted_plr.date_of_birth:
                     break
+            else:
+                print("+ No matching date of birth found for %s %s" % (
+                    drafted_plr.first_name, drafted_plr.last_name))
+                continue
 
         if drafted_plr.alt_last_name:
-            suggestion = suggestion + (drafted_plr.last_name,)
+            suggestion = suggestion + (drafted_plr.alt_last_name,)
         else:
             suggestion = suggestion + ('',)
 
