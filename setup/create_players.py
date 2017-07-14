@@ -164,7 +164,10 @@ def get_suggestions_for_drafted_players(draft_year):
                 continue
 
         if drafted_plr.alt_last_name:
-            suggestion = suggestion + (drafted_plr.alt_last_name,)
+            if suggestion[2] == drafted_plr.last_name:
+                suggestion = suggestion + (drafted_plr.alt_last_name,)
+            else:
+                suggestion = suggestion + (drafted_plr.last_name,)
         else:
             suggestion = suggestion + ('',)
 
