@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from utils.summary_downloader import SummaryDownloader
-from test_event import get_event_parser
+from .test_event import get_event_parser
 
 
 def test_shot(tmpdir):
