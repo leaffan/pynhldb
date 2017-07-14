@@ -34,6 +34,8 @@ def test_download_zipped(tmpdir):
 
     assert sorted(zip.namelist()) == sorted(files)
 
+    zip.close()
+
     tmpdir.remove()
 
 
