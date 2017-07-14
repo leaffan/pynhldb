@@ -43,9 +43,10 @@ if __name__ == '__main__':
     # migrating players from json file to database
     if setup_steps in ['p', 'a']:
         migrate_players()
-    # finding players
+    # finding players on roster/system pages
     if setup_steps in ['pf', 'a']:
         search_players(args.roster_src)
+    # creating players from draft overview
     if setup_steps in ['pc', 'a']:
         create_players_for_draft_year(2017)
     # retrieving player season statistics for all players in database
