@@ -75,45 +75,7 @@ def get_player_with_dob(url):
     dob, first_name, last_name = get_player_details_from_url(dob_url)
 
     # retrieving alternate last name (if applicable)
-    alt_last_name = ''
-    aka_element = doc.xpath("//font[starts-with(text(), 'a.k.a.')]/text()")
-    if aka_element:
-        aka = aka_element.pop(0).replace("a.k.a.", "").replace('"', "").strip()
-        # retrieving all available alternate names
-        akas = [a.strip() for a in aka.split(",")]
-        tmp_alt_last_names = list()
-        for aka in akas:
-            # trying to remove already known first name
-            aka_wo_first_name = aka.replace(first_name, "").strip()
-            # splitting remaining alternate name
-            tokens = aka_wo_first_name.split()
-            # if known first name was actually removed, the rest is
-            # the alternate last name
-            # if we above just had a first name removed that was the short form
-            # of a longer one, i.e. Nicklaus Perbix - Nick => laus Perbix, the
-            # remaining part o/c does not represent an alternate last name
-            if aka != aka_wo_first_name and not aka_wo_first_name.endswith(
-                    last_name):
-                        tmp_alt_last_names.append(aka_wo_first_name)
-            # if there's just one token after the split and first letters in
-            # split result and original name match: this token is the alternate
-            # last name
-            elif len(tokens) == 1:
-                if tokens[0][0].lower() == last_name.lower()[0]:
-                    tmp_alt_last_names.append(tokens[0])
-            # if there are two tokens after the split: first one is alternate
-            # first, second one alternate last name
-            elif len(tokens) == 2:
-                tmp_alt_last_names.append(tokens[-1])
-            else:
-                # TODO: logger warning
-                print(
-                    "Unable to retrieve alternate last " +
-                    "name for %s %s from: %s" % (first_name, last_name, aka))
-        # using only first found alternate last name
-        # TODO: use all alternate names
-        if tmp_alt_last_names and tmp_alt_last_names[0] != last_name:
-            alt_last_name = tmp_alt_last_names[0]
+    alt_last_name = get_alternate_last_name(doc, first_name, last_name)
 
     # adding current player to list dictionary of players w/ date of births
     return Player(
@@ -153,3 +115,50 @@ def get_player_details_from_url(dob_url):
     dob, first_name, last_name = [
         comp.split("=")[-1] for comp in url_comps.query.split("&")]
     return dob, first_name, last_name
+
+
+def get_alternate_last_name(doc, first_name, last_name):
+    """
+    If applicable, retrieves alternate last name from specified player page
+    and given player's first and last names.
+    """
+    alt_last_name = ''
+    aka_element = doc.xpath("//font[starts-with(text(), 'a.k.a.')]/text()")
+    if aka_element:
+        aka = aka_element.pop(0).replace("a.k.a.", "").replace('"', "").strip()
+        # retrieving all available alternate names
+        akas = [a.strip() for a in aka.split(",")]
+        tmp_alt_last_names = list()
+        for aka in akas:
+            # trying to remove already known first name
+            aka_wo_first_name = aka.replace(first_name, "").strip()
+            # splitting remaining alternate name
+            tokens = aka_wo_first_name.split()
+            # if known first name was actually removed, the rest is
+            # the alternate last name
+            # if we above just had a first name removed that was the short form
+            # of a longer one, i.e. Nicklaus Perbix - Nick => laus Perbix, the
+            # remaining part o/c does not represent an alternate last name
+            if aka != aka_wo_first_name and not aka_wo_first_name[0].islower():
+                tmp_alt_last_names.append(aka_wo_first_name)
+            # if there's just one token after the split and first letters in
+            # split result and original name match: this token is the alternate
+            # last name
+            elif len(tokens) == 1:
+                if tokens[0][0].lower() == last_name.lower()[0]:
+                    tmp_alt_last_names.append(tokens[0])
+            # if there are two tokens after the split: first one is alternate
+            # first, second one alternate last name
+            elif len(tokens) == 2:
+                tmp_alt_last_names.append(tokens[-1])
+            else:
+                # TODO: logger warning
+                print(
+                    "Unable to retrieve alternate last " +
+                    "name for %s %s from: %s" % (first_name, last_name, aka))
+        # using only first found alternate last name
+        # TODO: use all alternate names
+        if tmp_alt_last_names and tmp_alt_last_names[0] != last_name:
+            alt_last_name = tmp_alt_last_names[0]
+
+    return alt_last_name
