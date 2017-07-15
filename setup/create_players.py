@@ -146,22 +146,21 @@ def get_suggestions_for_drafted_players(draft_year):
                 "+ No suggestion found for %s. " % drafted_plr.last_name +
                 "Trying alternate last names.")
             suggestions = pfr.get_suggested_players(drafted_plr.alt_last_name)
-        if len(suggestions) == 1:
-            suggestion = suggestions.pop()
-        # if multiple suggestions were found
-        else:
+
+        if len(suggestions) > 1:
             print(
                 "+ %d suggestions found " % len(suggestions) +
                 "for %s %s" % (drafted_plr.first_name, drafted_plr.last_name))
-            # finding out the exact suggestion by comparing dates of birth
-            for suggestion in suggestions:
-                suggested_dob = suggestion[-1]
-                if suggested_dob == drafted_plr.date_of_birth:
-                    break
-            else:
-                print("+ No matching date of birth found for %s %s" % (
-                    drafted_plr.first_name, drafted_plr.last_name))
-                continue
+
+        # finding out the exact suggestion by comparing dates of birth
+        for suggestion in suggestions:
+            suggested_dob = suggestion[-1]
+            if suggested_dob == drafted_plr.date_of_birth:
+                break
+        else:
+            print("+ No matching date of birth found for %s %s" % (
+                drafted_plr.first_name, drafted_plr.last_name))
+            continue
 
         if drafted_plr.alt_last_name:
             if suggestion[2] == drafted_plr.last_name:
