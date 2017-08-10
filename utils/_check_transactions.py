@@ -1,10 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 import re
 
 src = r"transactions_2015.txt"
 keywords_src = r"transaction_keywords.txt"
+
+parser = argparse.ArgumentParser(
+    description=(
+        'Checks hockey transaction protocols for unusual terms, ' +
+        'i.e. typos etc.'))
+parser.add_argument(
+    'source_file', metavar='source file',
+    help='Path to transaction protocol file.')
+args = parser.parse_args()
+src = args.source_file
 
 # abbreviations for month names
 months = [
@@ -31,7 +42,11 @@ keywords = [
 
 
 def find_unusual_terms(lines):
-
+    """
+    Finds unusual terms (possibly typos) in list of strings read from original
+    data set. Discriminates between lower (regular terms) and upper case
+    (player and team names).
+    """
     lowers = set()
     uppers = set()
 
@@ -48,14 +63,18 @@ def find_unusual_terms(lines):
             # ignoring tokens starting with a digit, e.g. *63rd*
             if token and token[0].isdigit():
                 continue
+            # converting token to lower case if this conversion has been
+            # activated in the previous loop (see below)
             if to_lower:
                 token = token.lower()
                 to_lower = False
-            # making sure each beginning of a singular transaction notice is
-            # converted to lower case, e.g. *Acquired* -> *acquired*
+            # making sure that (in the next loop) each beginning of a singular
+            # transaction notice is converted to lower case,
+            # e.g. *Acquired* -> *acquired*
             if token.endswith(":"):
                 to_lower = True
                 token = token[:-1]
+            # ignoring common hockey transaction keywords
             if token in keywords:
                 continue
             # adding upper case tokens to corresponding set
