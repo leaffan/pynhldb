@@ -367,7 +367,7 @@ class PlayerContractRetriever():
 
         # items 5 to 7 are performance bonus, nhl salary and minor
         # league salary
-        # TODO: adjust for split into base and total salary on capfriendly.com
+        # TODO adjust for split into base and total salary on capfriendly.com
         idx = 5
         for item in ['perf_bonus', 'nhl_salary', 'minors_salary']:
             ct_year_dict[item] = int(
