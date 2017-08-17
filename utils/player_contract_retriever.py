@@ -25,6 +25,7 @@ class PlayerContractRetriever():
     CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
     CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
     CAPFRIENDLY_CLAUSE_REGEX = re.compile("^\:\s")
+    CAPFRIENDLY_AMOUNT_REGEX = re.compile("\$|\-|,")
     CT_LENGTH_REGEX = re.compile("LENGTH\:\s(\d+)\sYEARS?")
 
     def __init__(self):
@@ -351,25 +352,26 @@ class PlayerContractRetriever():
         if tds[1].xpath("text()"):
             ct_year_dict['clause'] = tds[1].xpath("text()").pop(0)
 
-        # items 2 to 4 are cap hit, annual average value (aav) and signing
-        # bonus
+        # table cell items 2 through 5 represent cap hit, annual average value
+        # (aav) and performance as well as signing bonus
         idx = 2
-        for item in ['cap_hit', 'aav', 'sign_bonus']:
-            ct_year_dict[item] = int(
-                tds[idx].xpath("text()").pop(0)[1:].replace(",", ""))
+        for item in ['cap_hit', 'aav', 'perf_bonus', 'sign_bonus']:
+            raw_value = re.sub(
+                self.CAPFRIENDLY_AMOUNT_REGEX, "", tds[idx].xpath(
+                    "text()").pop(0))
+            if raw_value:
+                ct_year_dict[item] = int(raw_value)
             idx += 1
 
-        # if there are just six table cells, we're usually dealing with
-        # an entry-level contract slide
-        if len(tds) == 6:
-            ct_year_dict['note'] = tds[-1].xpath("text()").pop(0)
+        # checking last table cell for indication of an entry-level slide
+        if tds[-1].xpath("*/text()[contains(., 'ENTRY-LEVEL SLIDE')]"):
+            ct_year_dict['note'] = tds[-1].xpath("*/text()").pop(0)
             return ct_year_dict
 
-        # items 5 to 7 are performance bonus, nhl salary and minor
-        # league salary
-        # TODO adjust for split into base and total salary on capfriendly.com
-        idx = 5
-        for item in ['perf_bonus', 'nhl_salary', 'minors_salary']:
+        # otherwise last two table cell items represent total nhl salary and
+        # minor league salary
+        idx = -2
+        for item in ['nhl_salary', 'minors_salary']:
             ct_year_dict[item] = int(
                 tds[idx].xpath("text()").pop(0)[1:].replace(",", ""))
             idx += 1
