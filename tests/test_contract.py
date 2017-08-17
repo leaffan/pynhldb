@@ -65,6 +65,29 @@ def test_contract_year_creation():
             assert contract_year == contract_year_db
 
 
+def test_contract_year_creation_with_slide():
+
+    player_id = 8477939  # William Nylander
+
+    pcr = PlayerContractRetriever()
+    plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
+    
+    for plr_contract_dict in plr_contract_list:
+        contract_db = Contract.find(
+            player_id,
+            plr_contract_dict['start_season'],
+            plr_contract_dict['end_season'])
+
+        for contract_year_dict in plr_contract_dict['contract_years']:
+            contract_year = ContractYear(
+                player_id, contract_db.contract_id, contract_year_dict)
+            contract_year_db = ContractYear.find(
+                player_id, contract_db.contract_id,
+                contract_year_dict['season'])
+
+            assert contract_year == contract_year_db
+
+
 def test_find_contract_year():
 
     player_id = 8473579  # Nikolay Kulemin
