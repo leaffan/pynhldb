@@ -367,6 +367,7 @@ class PlayerContractRetriever():
 
         # items 5 to 7 are performance bonus, nhl salary and minor
         # league salary
+        # TODO: adjust for split into base and total salary on capfriendly.com
         idx = 5
         for item in ['perf_bonus', 'nhl_salary', 'minors_salary']:
             ct_year_dict[item] = int(
@@ -422,6 +423,7 @@ class PlayerContractRetriever():
             return None
 
     def create_or_update_database_item(self, new_item, db_item):
+        # TODO: switch to usage of application-wide utility method
         """
         Creates or updates a database item.
         """
