@@ -148,7 +148,7 @@ class PlayerContractRetriever():
                 "div/div[@class='l cont_t mb5']/text()")
             # retrieving raw contract notes
             ct_notes = element.xpath(
-                "following-sibling::div[@class='clause cntrct']/" +
+                "following-sibling::div[contains(@class, 'clause')]/" +
                 "descendant-or-self::*/text()")
             # retrieving table rows with raw contract years
             raw_ct_years_trs = element.xpath(
@@ -384,12 +384,15 @@ class PlayerContractRetriever():
         """
         contract_notes = list()
         for note in raw_contract_notes:
+            if note == "CONTRACT NOTE":
+                continue
             if note == "CLAUSE DETAILS":
                 continue
             if note == "CLAUSE SOURCE":
                 break
-            contract_notes.append(
-                re.sub(self.CAPFRIENDLY_CLAUSE_REGEX, "", note))
+            note = re.sub(self.CAPFRIENDLY_CLAUSE_REGEX, "", note)
+            if note:
+                contract_notes.append(note)
         return ", ".join(contract_notes)
 
     def get_contract_buyout_status(self, contract_dict):
