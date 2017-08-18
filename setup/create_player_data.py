@@ -76,7 +76,7 @@ def create_player_contracts():
     data_retriever = PlayerContractRetriever()
 
     with session_scope() as session:
-        players = session.query(Player).all()[:]
+        players = sorted(session.query(Player).all())[:]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
         future_tasks = {
