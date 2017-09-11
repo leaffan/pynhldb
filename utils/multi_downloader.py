@@ -20,7 +20,8 @@ class MultiFileDownloader():
     TMP_DIR = tempfile.gettempdir()
     WORKERS = 8
 
-    def __init__(self, tgt_dir, zip_downloaded_files=True, workers=0):
+    def __init__(
+            self, tgt_dir, zip_downloaded_files=True, workers=0, cleanup=True):
         if not os.path.isdir(tgt_dir):
             try:
                 os.makedirs(tgt_dir)
@@ -32,6 +33,7 @@ class MultiFileDownloader():
         self.base_tgt_dir = tgt_dir
         self.files_to_download = list()
         self.downloaded_files = list()
+        self.cleanup = cleanup
         # self.rejected_urls = list()
         self.zip_downloaded_files = zip_downloaded_files
 
@@ -130,7 +132,8 @@ class MultiFileDownloader():
 
         self.create_new_zip_file(zip_path, files_to_zip, files_in_zip_info)
 
-        self._clean_up_after_zip(files_in_zip, files_to_zip)
+        if self.cleanup:
+            self._clean_up_after_zip(files_in_zip, files_to_zip)
 
     def analyze_zip_file(self, zip_path):
         """

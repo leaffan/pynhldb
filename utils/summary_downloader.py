@@ -35,9 +35,11 @@ class SummaryDownloader(MultiFileDownloader):
     GAME_TYPES = ['P', 'R']
 
     def __init__(
-            self, tgt_dir, date, to_date='', zip_summaries=True, workers=0):
+            self, tgt_dir, date, to_date='',
+            zip_summaries=True, workers=0, cleanup=True):
         # constructing base class instance
-        super(self.__class__, self).__init__(tgt_dir, zip_summaries, workers)
+        super(self.__class__, self).__init__(
+            tgt_dir, zip_summaries, workers, cleanup)
         # parsing start date for summary retrieval
         self.date = parse(date)
         # retrieving end date for summary retrieval
