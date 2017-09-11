@@ -12,7 +12,8 @@ def test_block(tmpdir):
     event_idx = 5
 
     sdl = SummaryDownloader(
-        tmpdir.mkdir('block').strpath, date, zip_summaries=False)
+        tmpdir.mkdir('block').strpath, date,
+        zip_summaries=False, cleanup=False)
     sdl.run()
     dld_dir = sdl.get_tgt_dir()
 

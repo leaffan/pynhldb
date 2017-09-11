@@ -19,14 +19,15 @@ def test_download_unzipped(tmpdir):
 
     assert sorted(os.listdir(tgt_dir)) == sorted(files)
 
-    tmpdir.remove()
+    # deactivated due to performance reasons
+    # tmpdir.remove()
 
 
 def test_download_zipped(tmpdir):
 
     date, files = set_up_comparison_files()
 
-    sdl = SummaryDownloader(tmpdir.mkdir('sdl').strpath, date)
+    sdl = SummaryDownloader(tmpdir.mkdir('sdl').strpath, date, cleanup=False)
     sdl.run()
     zip_path = sdl.get_zip_path()
 
@@ -36,7 +37,8 @@ def test_download_zipped(tmpdir):
 
     zip.close()
 
-    tmpdir.remove()
+    # deactivated due to performance reasons
+    # tmpdir.remove()
 
 
 def set_up_comparison_files():
