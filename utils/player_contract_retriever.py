@@ -8,7 +8,7 @@ import requests
 from dateutil import parser
 from lxml import html
 
-from db import create_or_update_db_item
+# from db import create_or_update_db_item
 from db.common import session_scope
 from db.player import Player
 from db.team import Team
@@ -25,7 +25,7 @@ class PlayerContractRetriever():
     CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
     CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
     CAPFRIENDLY_CLAUSE_REGEX = re.compile("^\:\s")
-    CAPFRIENDLY_AMOUNT_REGEX = re.compile("\$|\-|,")
+    CAPFRIENDLY_AMOUNT_REGEX = re.compile("\$|\-|,|\u2013")
     CT_LENGTH_REGEX = re.compile("LENGTH\:\s(\d+)\sYEARS?")
 
     def __init__(self):
@@ -384,11 +384,14 @@ class PlayerContractRetriever():
         """
         contract_notes = list()
         for note in raw_contract_notes:
-            if note == "CONTRACT NOTE":
+            check_note = note.replace(":", "").strip().upper()
+            if check_note == "CONTRACT NOTE":
                 continue
-            if note == "CLAUSE DETAILS":
+            if check_note == "CLAUSE DETAILS":
                 continue
-            if note == "CLAUSE SOURCE":
+            if (
+                check_note == "CLAUSE SOURCE" or check_note.startswith(
+                    "CLAUSE SOURCE")):
                 break
             note = re.sub(self.CAPFRIENDLY_CLAUSE_REGEX, "", note)
             if note:
@@ -403,7 +406,7 @@ class PlayerContractRetriever():
         buyout_status = False
         # but some are, it's then marked in the contract notes
         if 'notes' in contract_dict:
-            if "Contract was bought out.".lower() in contract_dict['notes']:
+            if "Contract was bought out".lower() in contract_dict['notes']:
                 buyout_status = True
         return buyout_status
 
