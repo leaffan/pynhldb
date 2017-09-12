@@ -53,10 +53,11 @@ class PlayerContractRetriever():
         # creating or updating contract database item
         for plr_contract_dict in plr_contract_list:
             contract = Contract(player_id, plr_contract_dict)
-            contract_db = Contract.find(
+            contract_db = Contract.find_with_team(
                 player_id,
                 plr_contract_dict['start_season'],
-                plr_contract_dict['end_season'])
+                plr_contract_dict['end_season'],
+                plr_contract_dict['signing_team_id'])
 
             contract_db = self.create_or_update_database_item(
                 contract, contract_db)
@@ -392,7 +393,7 @@ class PlayerContractRetriever():
             if (
                 check_note == "CLAUSE SOURCE" or check_note.startswith(
                     "CLAUSE SOURCE")):
-                break
+                continue
             note = re.sub(self.CAPFRIENDLY_CLAUSE_REGEX, "", note)
             if note:
                 contract_notes.append(note)
