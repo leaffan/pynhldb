@@ -46,10 +46,6 @@ def is_matching_penalty_event(penalty, play):
     Checks whether the given play retrieved from json data matches with the
     specified (penalty) event.
     """
-    # print("\tid ", play['active'], penalty.player_id)
-    # print("\tpim ", play['pim'], penalty.pim)
-    # print("\tinfraction", play['infraction'], penalty.infraction.lower())
-
     # trying to match play and (team) penalty (i.e. not being given to a
     # certain player) using penalty minutes and sanctioned infraction
     if penalty.player_id is None:
