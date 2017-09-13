@@ -71,7 +71,7 @@ def test_contract_year_creation_with_slide():
 
     pcr = PlayerContractRetriever()
     plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
-    
+
     for plr_contract_dict in plr_contract_list:
         contract_db = Contract.find(
             player_id,
@@ -86,6 +86,23 @@ def test_contract_year_creation_with_slide():
                 contract_year_dict['season'])
 
             assert contract_year == contract_year_db
+
+
+def test_contract_expiration_due_to_no_qualifying_offer():
+
+    player_id = 8474570  # Cody Hodgson
+
+    pcr = PlayerContractRetriever()
+    plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
+
+    for plr_contract_dict in plr_contract_list:
+        contract = Contract(player_id, plr_contract_dict)
+        contract_db = Contract.find(
+            player_id,
+            plr_contract_dict['start_season'],
+            plr_contract_dict['end_season'])
+
+        assert contract == contract_db
 
 
 def test_find_contract_year():
