@@ -313,7 +313,7 @@ class PlayerContractRetriever():
             buyout_year_dict['cost'] = int(cost.strip()[1:].replace(",", ""))
             # retrieving buyout cap hit
             buyout_year_dict['cap_hit'] = int(
-                cap_hit.strip()[1:].replace(",", ""))
+                cap_hit.replace(",", "").replace("$", "").strip())
             buyout_years.append(buyout_year_dict)
 
         buyout_dict['buyout_years'] = buyout_years
