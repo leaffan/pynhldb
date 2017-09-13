@@ -90,7 +90,7 @@ def test_contract_year_creation_with_slide():
 
 def test_contract_expiration_due_to_no_qualifying_offer():
 
-    player_id = 8474570  # Cody Hodgson
+    player_id = 8476478  # Stuart Percy
 
     pcr = PlayerContractRetriever()
     plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
