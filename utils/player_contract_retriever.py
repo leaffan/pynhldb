@@ -27,7 +27,7 @@ class PlayerContractRetriever():
     CAPFRIENDLY_CLAUSE_REGEX = re.compile("^\:\s")
     CAPFRIENDLY_AMOUNT_REGEX = re.compile("\$|\-|,|\u2013")
     CT_LENGTH_REGEX = re.compile("LENGTH\:\s(\d+)\sYEARS?")
-    EXPIRY_STATUS_REGEX = re.compile("UFA|RFA")
+    EXPIRY_STATUS_REGEX = re.compile("(UFA \(NO QO\))|(RFA)|(UFA)")
 
     def __init__(self):
         pass
@@ -144,13 +144,19 @@ class PlayerContractRetriever():
             # retrieving raw contract length, expiry status and signing team
             # as list of text elements
             raw_length_exp_status_sign_team = element.xpath(
-                "div/div[@class='l cont_t mt4 mb2']/text()")
-            # retrieving raw contract length and expiry status from first two
-            # entries in previously created list
-            ct_length, exp_status = raw_length_exp_status_sign_team[:2]
+                "div/div[@class='l cont_t mt4 mb2']/" +
+                "descendant-or-self::*/text()")
+            # retrieving raw contract length from first entry in previously
+            # created list
+            ct_length = raw_length_exp_status_sign_team[0]
+            # retrieving expiry status from various entries in previously
+            # created list (dependant on potential additional information)
+            if len(raw_length_exp_status_sign_team) == 3:
+                exp_status = raw_length_exp_status_sign_team[1]
+            else:
+                exp_status = "".join(raw_length_exp_status_sign_team[1:4])
             # retrieving signing team separately from last entry in previously
-            # created list to account for potential additional information
-            # attached to expiry status
+            # created list
             sign_team = raw_length_exp_status_sign_team[-1]
             # retrieving raw contract value, cap hit percentatge, signing date
             # and source
@@ -175,7 +181,8 @@ class PlayerContractRetriever():
             # retrieving contract length
             contract_dict['length'] = int(
                 re.search(self.CT_LENGTH_REGEX, ct_length).group(1))
-            # retrieving player status after contract expires (RFA or UFA)
+            # retrieving player status after contract expires, e.g. RFA, UFA
+            # or UFA (NO QO)
             contract_dict['expiry_status'] = re.search(
                 self.EXPIRY_STATUS_REGEX, exp_status).group(0)
             # retrieving id of signing team
