@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
 CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
 
+LATEST_SIGNINGS_TEMPLATE = (
+    "http://www.capfriendly.com/ajax/new_additions_load_more?p=%d")
+
 
 def retrieve_capfriendly_ids(team_id):
     """
@@ -142,3 +145,27 @@ def add_capfriendly_id_to_player(plr, capfriendly_id):
     with session_scope() as session:
         session.merge(plr)
         session.commit()
+
+
+def retrieve_latest_signings(stop_threshold=5):
+    """
+    Retrieves latest player signings traversing the corresponding section on
+    capfriendly.com. Creates contract data items for each signing. Stops when
+    a given threshold of contracts is reached that already existedd
+    in the database.
+    """
+
+    url = LATEST_SIGNINGS_TEMPLATE % 1
+    r = requests.get(url)
+    doc = html.fromstring(r.json()['html'])
+
+    raw_signed_players = doc.xpath("tr/td/a[contains(@href, 'players')]/@href")
+
+    from player_contract_retriever import PlayerContractRetriever
+    pcr = PlayerContractRetriever()
+
+    for raw_signed_player in raw_signed_players[:2]:
+        capfriendly_id = raw_signed_player.split("/")[-1]
+
+        print(pcr.retrieve_raw_contract_data_by_capfriendly_id(capfriendly_id))
+
