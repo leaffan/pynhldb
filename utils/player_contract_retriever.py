@@ -118,20 +118,15 @@ class PlayerContractRetriever():
                 buyout_year, buyout_year_db)
         return buyout_db
 
-    def retrieve_raw_contract_data(self, player_id):
+    def retrieve_raw_contract_data_by_capfriendly_id(self, capfriendly_id):
         """
-        Retrieves raw contract information for player with specified id as a
-        list of dictionary objects.
+        Retrieves raw contract information for player with specified
+        capfriendly id as a list of dictionary objects.
         """
         # setting up list of contracts for current player
         contract_list = list()
 
-        plr = Player.find_by_id(player_id)
-        if plr.capfriendly_id is None:
-            logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
-            return contract_list
-
-        url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, plr.capfriendly_id))
+        url = "".join((self.CAPFRIENDLY_PLAYER_PREFIX, capfriendly_id))
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
@@ -215,6 +210,19 @@ class PlayerContractRetriever():
             contract_list.append(contract_dict)
 
         return contract_list
+
+    def retrieve_raw_contract_data(self, player_id):
+        """
+        Retrieves raw contract information for player with specified database
+        id as a list of dictionary objects.
+        """
+        plr = Player.find_by_id(player_id)
+        if plr.capfriendly_id is None:
+            logger.warn("+ Unable to retrieve contract data for %s" % plr.name)
+            return list()
+
+        return self.retrieve_raw_contract_data_by_capfriendly_id(
+            plr.capfriendly_id)
 
     def retrieve_raw_historical_salary_data(self, player_id):
         """
