@@ -51,6 +51,17 @@ class Player(Base):
             return player
 
     @classmethod
+    def find_by_capfriendly_id(self, capfriendly_id):
+        with session_scope() as session:
+            try:
+                player = session.query(Player).filter(
+                    Player.capfriendly_id == capfriendly_id
+                ).one()
+            except:
+                player = None
+            return player
+
+    @classmethod
     def find_by_name(self, first_name, last_name):
         with session_scope() as session:
             try:
