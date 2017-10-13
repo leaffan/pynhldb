@@ -47,6 +47,11 @@ def retrieve_capfriendly_ids(team_id):
         player_name = tr.xpath("td/a/text()").pop(0)
         capfriendly_id = tr.xpath("td/a/@href").pop(0).split("/")[-1]
 
+        # trying to find player by capfriendly id first
+        plr = Player.find_by_capfriendly_id(capfriendly_id)
+        if plr:
+            continue
+
         last_name, first_name = player_name.split(", ")
         plr = Player.find_by_name_extended(first_name, last_name)
         if plr and plr.capfriendly_id is None:
@@ -55,7 +60,7 @@ def retrieve_capfriendly_ids(team_id):
             add_capfriendly_id_to_player(plr, capfriendly_id)
         if plr is None:
             print(
-                "+ No player for capfriendly id: %s (%s %s)" % (
+                "+ No (unique) player for capfriendly id: %s (%s %s)" % (
                     capfriendly_id, first_name, last_name))
 
 
