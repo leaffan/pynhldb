@@ -176,12 +176,14 @@ class SummaryDownloader(MultiFileDownloader):
         # downloading data according to actual content type
         if url.lower().endswith('.htm'):
             content = self.download_html_content(url, tgt_path)
+            write_type = 'wb'
         else:
             content = self.download_json_content(url, tgt_path)
+            write_type = 'w'
 
         if content:
             # writing downloaded content to target path
-            open(tgt_path, 'w').write(content)
+            open(tgt_path, write_type).write(content)
             return tgt_path
 
     def download_html_content(self, url, tgt_path):
