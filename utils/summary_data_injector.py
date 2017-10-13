@@ -53,8 +53,7 @@ def add_nhl_ids_to_content(url, content):
         # inserting player id in span element behind player's numbers
         insert_nhl_ids(tds, players)
 
-    return etree.tostring(
-        doc, method='html', pretty_print=True, encoding='unicode')
+    return etree.tostring(doc, method='html', pretty_print=True)
 
 
 def insert_nhl_ids(tds, players):

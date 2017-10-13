@@ -72,7 +72,7 @@ def adjust_html_response(response):
     body.append(last_modified_element)
 
     # returning document tree dumped as string
-    return etree.tostring(doc, method='html', encoding='unicode')
+    return etree.tostring(doc, method='html')
 
 
 # unicode function
