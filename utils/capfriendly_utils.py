@@ -11,6 +11,7 @@ from dateutil.parser import parse
 from db.common import session_scope
 from db.team import Team
 from db.player import Player
+from db.contract import Contract
 from db.player_data_item import PlayerDataItem
 from utils import remove_non_ascii_chars
 
@@ -161,11 +162,30 @@ def retrieve_latest_signings(stop_threshold=5):
 
     raw_signed_players = doc.xpath("tr/td/a[contains(@href, 'players')]/@href")
 
-    from player_contract_retriever import PlayerContractRetriever
+    from utils.player_contract_retriever import PlayerContractRetriever
     pcr = PlayerContractRetriever()
 
-    for raw_signed_player in raw_signed_players[:2]:
+    for raw_signed_player in raw_signed_players[:4]:
         capfriendly_id = raw_signed_player.split("/")[-1]
+        print(capfriendly_id)
 
-        print(pcr.retrieve_raw_contract_data_by_capfriendly_id(capfriendly_id))
+        plr = Player.find_by_capfriendly_id(capfriendly_id)
 
+        raw_contract_data = pcr.retrieve_raw_contract_data_by_capfriendly_id(
+            capfriendly_id)
+
+        most_recent_contract_raw_data = raw_contract_data[0]
+
+        contract = Contract(plr.player_id, most_recent_contract_raw_data)
+        contract_db = Contract.find_with_team(
+            plr.player_id,
+            most_recent_contract_raw_data['start_season'],
+            most_recent_contract_raw_data['end_season'],
+            most_recent_contract_raw_data['signing_team_id'])
+
+        if contract_db is None:
+            print("Contract not in database yet")
+        elif contract_db != contract:
+            print("Database contract needs to be updated")
+        elif contract_db == contract:
+            print("Contract already in database")
