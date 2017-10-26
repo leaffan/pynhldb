@@ -1113,13 +1113,14 @@ class EventParser():
             self.json_dict[(play_period, play_time, play_type)].append(
                 single_play_dict
             )
-        for ptp, pti, pty in sorted(self.json_dict.keys()):
-            if len(self.json_dict[(ptp, pti, pty)]) > 1:
-                print(self.game.game_id, ptp, pti, pty)
-                for entry in self.json_dict[(ptp, pti, pty)]:
-                    for key in entry:
-                        print("\t", key, ":", entry[key])
-                    print("-----")
+        # TODO: logging multiple events of same type at the same time
+        # for ptp, pti, pty in sorted(self.json_dict.keys()):
+        #     if len(self.json_dict[(ptp, pti, pty)]) > 1:
+        #         print(self.game.game_id, ptp, pti, pty)
+        #         for entry in self.json_dict[(ptp, pti, pty)]:
+        #             for key in entry:
+        #                 print("\t", key, ":", entry[key])
+        #             print("-----")
 
     def adjust_penalty_infraction(self, infraction, severity):
         """
