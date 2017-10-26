@@ -62,10 +62,15 @@ class MultiFileDownloader():
 
         if tgt_dir is None:
             tgt_dir = self.base_tgt_dir
-        if not os.path.isdir(tgt_dir):
-            os.makedirs(tgt_dir)
         if files_to_download is None:
             files_to_download = self.files_to_download
+
+        # bailing out if there are no files to be downloaded
+        if not files_to_download:
+            return
+
+        if not os.path.isdir(tgt_dir):
+            os.makedirs(tgt_dir)
 
         files_to_download = sorted(files_to_download)
 
