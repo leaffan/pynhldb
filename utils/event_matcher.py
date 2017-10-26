@@ -60,7 +60,7 @@ def is_matching_penalty_event(penalty, play):
         # trying to match play and penalty using participating players
         # (including the one drawing the penalty), penalty minutes and
         # sanctioned infraction
-        if play['active'] is not None and play['passive'] is not None:
+        if 'active' in play and 'passive' in play:
             if (
                 play['active'], play['passive'],
                 play['pim'], play['infraction']
@@ -72,7 +72,7 @@ def is_matching_penalty_event(penalty, play):
                 return True
         # trying to match play and penalty using participating player,
         # penalty minutes and sanctioned infraction
-        elif play['active'] is not None:
+        elif 'active' in play:
             if (
                 play['active'], play['pim'], play['infraction']
             ) == (
