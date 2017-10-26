@@ -216,26 +216,29 @@ class GameParser():
         """
         Retrieves the game's three star selections
         """
-        three_stars = self.raw_data.xpath(
+        three_stars_raw_data = self.raw_data.xpath(
             "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
-            "/tr/td/table/tr/td/table/tr/td[@align='left']/text()"
-        )[-3:]
-        stars_teams = self.raw_data.xpath(
-            "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
-            "/tr/td/table/tr/td/table/tr/td[@align='center']/text()"
-        )[1::3]
+            "/tr[2]/td[2]/table/tr/td/table/tr")
 
         i = 1
-        for star, star_team in zip(three_stars, stars_teams):
-            # retrieving player's number
-            no = int(star.split()[0])
-            # assuming star selection is from home team
-            key = 'home'
-            # otherwise adjusting key
-            if teams[star_team] == teams['road']:
-                key = 'road'
-            # adding star selection's player id to game data
-            setattr(game, "star_%d" % i, rosters[key][no].player_id)
+        # for every table row in raw data for three stars...
+        for tr in three_stars_raw_data:
+            # retrieving table cells from current row
+            tds = tr.xpath("td/text()")
+            # making sure we're looking at actual data (containing
+            # exactly four table cells)
+            if len(tds) == 4:
+                # retrieving team abbreviation and player's number and name
+                _, team_abbr, _, plr_number_name = tds
+                # converting player's number
+                no = int(plr_number_name.split()[0])
+                # assuming star selection is from home team
+                key = 'home'
+                # otherwise adjusting key
+                if teams[team_abbr] == teams['road']:
+                    key = 'road'
+                # adding star selection's player id to game data
+                setattr(game, "star_%d" % i, rosters[key][no].player_id)
             i += 1
 
         db_game = Game.find_by_id(game.game_id)
