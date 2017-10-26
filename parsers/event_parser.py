@@ -1007,7 +1007,7 @@ class EventParser():
             logger.warn(
                 "Couldn't retrieve zone from raw data: %s" % event.raw_data)
             if event.type in ['MISS', 'SHOT', 'GOAL']:
-                zone = 'Off.'
+                zone = 'Off'
             else:
                 zone = None
             logger.info("Set zone deliberately to %s" % zone)
