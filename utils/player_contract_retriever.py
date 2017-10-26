@@ -160,6 +160,8 @@ class PlayerContractRetriever():
             if len(raw_value_cap_hit_pct_date_source) == 5:
                 ct_value, _, cap_hit_pct, sign_date, ct_source = (
                     raw_value_cap_hit_pct_date_source)
+            # at times we're trying to retrieve basic contract data even w/o
+            # a verified source, e.g. for contracts signed very recently
             else:
                 ct_value, _, cap_hit_pct, sign_date = (
                     raw_value_cap_hit_pct_date_source
