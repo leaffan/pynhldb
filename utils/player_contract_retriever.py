@@ -153,10 +153,18 @@ class PlayerContractRetriever():
             # retrieving signing team separately from last entry in previously
             # created list
             sign_team = raw_length_exp_status_sign_team[-1]
-            # retrieving raw contract value, cap hit percentatge, signing date
+            # retrieving raw contract value, cap hit percentage, signing date
             # and source
-            ct_value, _, cap_hit_pct, sign_date, ct_source = element.xpath(
+            raw_value_cap_hit_pct_date_source = element.xpath(
                 "div/div[@class='l cont_t mb5']/text()")
+            if len(raw_value_cap_hit_pct_date_source) == 5:
+                ct_value, _, cap_hit_pct, sign_date, ct_source = (
+                    raw_value_cap_hit_pct_date_source)
+            else:
+                ct_value, _, cap_hit_pct, sign_date = (
+                    raw_value_cap_hit_pct_date_source
+                )
+                ct_source = ""
             # retrieving raw contract notes
             ct_notes = element.xpath(
                 "following-sibling::div[contains(@class, 'clause')]/" +
