@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Diagram Name: pynhldb - Database Design
--- Created on: 15.07.2017 04:10:51
--- Diagram Version: 
+-- Created on: 27.10.2017 14:03:37
+-- Diagram Version: 1.2
 -- =============================================================================
 CREATE SCHEMA "nhl";
 
@@ -1788,7 +1788,7 @@ CREATE TABLE "nhl"."shot_attempts" (
 	"shot_attempt_type" char(1) NOT NULL,
 	"plus_minus" int2,
 	"num_situation" char(2),
-	"plr_situation" char(5),
+	"plr_situation" varchar(5),
 	"actual" bool,
 	"score_diff" int2,
 	CONSTRAINT "type_check" CHECK(shot_attempt_type in ('S', 'M', 'B')),
