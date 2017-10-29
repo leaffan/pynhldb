@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Diagram Name: pynhldb - Database Design
--- Created on: 27.10.2017 14:03:37
--- Diagram Version: 1.2
+-- Created on: 29.10.2017 02:10:32
+-- Diagram Version: 1.4
 -- =============================================================================
 CREATE SCHEMA "nhl";
 
@@ -1583,7 +1583,9 @@ CREATE TABLE "nhl"."team_games" (
 	"goals_for_3rd" int2 NOT NULL DEFAULT 0,
 	"goals_against_3rd" int2 NOT NULL DEFAULT 0,
 	"goals_for" int2 NOT NULL DEFAULT 0,
+	"empty_net_goals_for" int2 NOT NULL DEFAULT 0,
 	"goals_against" int2 NOT NULL DEFAULT 0,
+	"empty_net_goals_against" int2 NOT NULL DEFAULT 0,
 	"win" int2 NOT NULL DEFAULT 0,
 	"regulation_win" int2 NOT NULL DEFAULT 0,
 	"overtime_win" int2 NOT NULL DEFAULT 0,
@@ -1654,7 +1656,11 @@ COMMENT ON COLUMN "nhl"."team_games"."goals_against_3rd" IS 'Goals allowed in 3r
 
 COMMENT ON COLUMN "nhl"."team_games"."goals_for" IS 'Goals scored overall';
 
+COMMENT ON COLUMN "nhl"."team_games"."empty_net_goals_for" IS 'Empty-net goals scored';
+
 COMMENT ON COLUMN "nhl"."team_games"."goals_against" IS 'Goals allowed overall';
+
+COMMENT ON COLUMN "nhl"."team_games"."empty_net_goals_against" IS 'Empty-net goals allowed';
 
 COMMENT ON COLUMN "nhl"."team_games"."win" IS 'Binary indicating a win';
 
