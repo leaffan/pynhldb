@@ -113,14 +113,13 @@ class PlayerFinder():
 
         # setting up list with urls to individual player pages
         urls = [
-            self.TEAM_SITE_PREFIX % team.team_name.lower().replace(
-                " ", "") + a for a in doc.xpath(
+            a for a in doc.xpath(
                     "//tr[contains('rwEven|rwOdd', @class)" +
                     "]/td[2]/nobr/a/@href")]
 
         for url in urls:
             # retrieving nhl id from player page url
-            plr_id = int(urlparse(url).query.split("=")[-1])
+            plr_id = int(urlparse(url).path.split("/")[-1])
             # trying to find player in database
             plr = Player.find_by_id(plr_id)
             # creating player if not already in database
