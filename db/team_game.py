@@ -24,7 +24,8 @@ class TeamGame(Base):
         "shots_for_1st", "shots_against_1st", "shots_for_2nd",
         "shots_against_2nd", "shots_for_3rd", "shots_against_3rd",
         "shots_for_ot", "shots_against_ot", "so_attempts", "so_goals",
-        "penalties", "pim", "points", "home_road_type"
+        "penalties", "pim", "points", "home_road_type",
+        "empty_net_goals_for", "empty_net_goals_against"
     ]
 
     def __init__(self, game_id, team_id, data_dict):

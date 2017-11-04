@@ -10,6 +10,7 @@ from dateutil import parser
 from db import create_or_update_db_item
 from db.common import session_scope
 from db.game import Game
+from db.team import Team
 from db.team_game import TeamGame
 from utils import (
     remove_null_strings, retrieve_season, str_to_timedelta, ordinal)
@@ -292,6 +293,10 @@ class GameParser():
                 ".//tr[@class='oddColor' or " +
                 "@class='evenColor']/td[%d]/text()" % i) for i in range(2, 6)]
 
+        # retrieving raw data for empty-net goals
+        en_goals_raw_data = gs_data.xpath(
+            "//td[@align='center' and contains(text(), '-EN')]")
+
         # retrieving raw powerplay opportunities and minutes
         pp_situations = gs_data.xpath(
             "//td[@class='sectionheading']")[3].xpath(
@@ -326,6 +331,9 @@ class GameParser():
             )
             team_game_data = self.retrieve_win_loss_types(
                 team_game_data, game.shootout_game, game.overtime_game)
+            # retrieving empty net goals for and against
+            team_game_data = self.retrieve_empty_net_goals(
+                key, team_game_data, en_goals_raw_data)
             # retrieving shootout information (if applicable)
             if self.raw_so_data is not None:
                 team_game_data = self.retrieve_shootout_attempts(
@@ -393,6 +401,29 @@ class GameParser():
         if 'shootout_loss' in team_game_data:
             points += team_game_data['shootout_loss']
         team_game_data['points'] = points
+
+        return team_game_data
+
+    def retrieve_empty_net_goals(self, key, team_game_data, en_goals_raw_data):
+        """
+        Retrieves empty-net goals for and against for current team in current
+        game.
+        """
+        # setting default values
+        team_game_data['empty_net_goals_for'] = 0
+        team_game_data['empty_net_goals_against'] = 0
+
+        # iterating over all table cells with empty net goal indication
+        for td in en_goals_raw_data:
+            # finding team that scored the empty net goal
+            en_goal_team_abbr = td.xpath(
+                "following-sibling::td[1]/text()").pop(0)
+            en_goal_team = Team.find_by_abbr(en_goal_team_abbr)
+            # setting empty net goal count accordingly
+            if en_goal_team.team_id == team_game_data['team_id']:
+                team_game_data['empty_net_goals_for'] += 1
+            else:
+                team_game_data['empty_net_goals_against'] += 1
 
         return team_game_data
 
