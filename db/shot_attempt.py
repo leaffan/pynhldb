@@ -31,8 +31,6 @@ class ShotAttempt(Base, SpecificEvent):
         else:
             if attr in ['actual']:
                 setattr(self, attr, False)
-            else:
-                setattr(self, attr, None)
 
     @classmethod
     def find_by_event_player_id(self, event_id, player_id):
