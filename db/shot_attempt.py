@@ -28,9 +28,6 @@ class ShotAttempt(Base, SpecificEvent):
         self.player_id = player_id
         for attr in data_dict:
             setattr(self, attr, data_dict[attr])
-        else:
-            if attr in ['actual']:
-                setattr(self, attr, False)
 
     @classmethod
     def find_by_event_player_id(self, event_id, player_id):
