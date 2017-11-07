@@ -429,6 +429,8 @@ class EventParser():
         shot_attempt_dict['plr_situation'] = shot_attempt_dict[
             'plr_situation'][::-1]
         shot_attempt_dict['plus_minus'] = -1
+        # re-setting player actually taking the shot attempt
+        shot_attempt_dict['actual'] = False
 
         for player_id in shot_attempt_dict['shot_attempt_against_player_ids']:
             new_shot_attempt = ShotAttempt(
