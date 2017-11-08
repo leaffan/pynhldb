@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 from collections import defaultdict
 
@@ -76,7 +78,8 @@ i = 1
 
 init()
 print()
-
+print(" + NHL Official Standings")
+print()
 
 print("  # %-22s %2s %2s %2s %2s %3s %3s %3s %3s" % (
     'Team', 'GP', 'W', 'L', 'OT', 'Pts', 'GF', 'GA', 'GD'))
@@ -106,6 +109,8 @@ for team_id in sorted(summary, key=lambda x: (
         fore, gd, Style.RESET_ALL))
     i += 1
 
+print()
+print(" + NHL Regulation Standings")
 print()
 i = 1
 
