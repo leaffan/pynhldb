@@ -50,6 +50,9 @@ for tg in team_games:
     # decreasing actual goals scored by one for an overtime win
     if tg.overtime_win:
         summary[tg.team_id]['gf'] -= 1
+    # decreasing actual goals allowed by one for an overtime loss
+    if tg.overtime_loss:
+        summary[tg.team_id]['ga'] -= 1
     # decreasing actual goal totals by empty-net goals for and against
     summary[tg.team_id]['gf'] -= tg.empty_net_goals_for
     summary[tg.team_id]['ga'] -= tg.empty_net_goals_against
