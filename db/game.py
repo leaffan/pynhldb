@@ -95,3 +95,9 @@ class Game(Base):
             road_team.name, self.road_score,
             home_team.name, self.home_score,
             self.date, self.game_id)
+
+    def short(self):
+        road_team = Team.find_by_id(self.road_team_id)
+        home_team = Team.find_by_id(self.home_team_id)
+        return "%s @ %s" % (
+            road_team.team_name, home_team.team_name)
