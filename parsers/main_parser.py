@@ -58,7 +58,7 @@ class MainParser():
             self.parsed_data[game_id]['game'],
             self.parsed_data[game_id]['teams']
         ) = self.create_game_and_teams(game_id)
-        # print(self.parsed_data[game_id]['game'])
+        print(self.parsed_data[game_id]['game'])
         # print(self.parsed_data[game_id]['teams'].keys())
 
         # parsing players participating in current game
@@ -66,12 +66,16 @@ class MainParser():
         # print(self.parsed_data[game_id]['rosters'].keys())
 
         # retrieving three star selections for game
-        # this has to be done here because roster information is necessary
+        # this needs to be conducted at this position because roster
+        # information is necessary to accomplish this task
+        # raw game summary data has to be provided here, too
+        # providing raw data within the scope of the game parser lead to
+        # threading problems (for reason so far not understood)
         self.gp.retrieve_three_stars(
             self.parsed_data[game_id]['game'],
             self.parsed_data[game_id]['teams'],
-            self.parsed_data[game_id]['rosters']
-        )
+            self.parsed_data[game_id]['rosters'],
+            self.read_on_demand(game_id, 'GS'))
 
         # parsing goalies participating in current game
         self.parsed_data[game_id]['goalies'] = self.create_goalies(game_id)
@@ -81,10 +85,14 @@ class MainParser():
         self.parsed_data[game_id]['shifts'] = self.create_shifts(game_id)
         # print(self.parsed_data[game_id]['shifts'].keys())
 
+        # parsing game events
         self.parsed_data[game_id]['events'] = self.create_events(game_id)
 
         # removing raw structured data from memory
         del self.raw_data[game_id]
+
+        return "+++ Finished parsing %s" % (
+            self.parsed_data[game_id]['game'].short())
 
     def create_events(self, game_id):
         """

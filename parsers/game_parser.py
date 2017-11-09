@@ -213,11 +213,11 @@ class GameParser():
 
         return overtime_game, shootout_game
 
-    def retrieve_three_stars(self, game, teams, rosters):
+    def retrieve_three_stars(self, game, teams, rosters, raw_data):
         """
         Retrieves the game's three star selections
         """
-        three_stars_raw_data = self.raw_data.xpath(
+        three_stars_raw_data = raw_data.xpath(
             "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
             "/tr[2]/td[2]/table/tr/td/table/tr")
 
@@ -236,10 +236,12 @@ class GameParser():
                 # assuming star selection is from home team
                 key = 'home'
                 # otherwise adjusting key
-                if teams[team_abbr] == teams['road']:
+                if team_abbr == teams['road'].orig_abbr:
                     key = 'road'
                 # adding star selection's player id to game data
-                setattr(game, "star_%d" % i, rosters[key][no].player_id)
+                if no in rosters[key]:
+                    setattr(
+                        game, "star_%d" % i, rosters[key][no].player_id)
             i += 1
 
         db_game = Game.find_by_id(game.game_id)
