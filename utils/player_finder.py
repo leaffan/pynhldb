@@ -22,6 +22,8 @@ class PlayerFinder():
     # url components to retrieve current in-the-system player information
     TEAM_SITE_PREFIX = "http://%s.nhl.com"
     TEAM_SITE_ROSTER_SUFFIX = "/club/roster.htm?type=prospect"
+    # url components to retrieve information about currently contracted players
+    CAPFRIENDLY_SITE_PREFIX = "https://www.capfriendly.com/teams/"
     # url prefix for json structure with player information
     PEOPLE_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
     # url components for json structure with player name search suggestions
@@ -47,6 +49,8 @@ class PlayerFinder():
             players = self.get_roster_players(team)
         elif src == 'system':
             players = self.get_system_players(team)
+        elif src == 'contracts':
+            players = self.get_contracted_players(team)
 
         return players
 
@@ -127,6 +131,49 @@ class PlayerFinder():
                 plr = self.search_player_by_id(plr_id)
 
             players.append(plr)
+
+        return players
+
+    def get_contracted_players(self, team):
+        """
+        Retrieves player data from team's capfriendly page.
+        """
+        # setting up empty list of players
+        players = list()
+
+        # getting html document with team's contracted players
+        doc = self.get_html_document(team, 'contracts')
+
+        # returning empty list if no system page could be found
+        if doc is None:
+            return players
+
+        # collecting player names and links to capfriendly pages for different
+        # player groups
+        cf_links = list()
+        cf_names = list()
+        for group in [
+                'FORWARDS', 'DEFENSE', 'GOALTENDERS', 'INJURED', 'NON-ROSTER']:
+                    cf_links += doc.xpath(
+                        "//table[@id='team']/tbody/tr[@class='column_head c'" +
+                        "]/td[contains(text(), '%s')]/parent::tr/" % group +
+                        "following-sibling::tr/td[1]/a/@href")
+                    cf_names += doc.xpath(
+                        "//table[@id='team']/tbody/tr[@class='column_head c'" +
+                        "]/td[contains(text(), '%s')]/parent::tr/" % group +
+                        "following-sibling::tr/td[1]/a/text()")
+
+        for lnk, name in zip(cf_links, cf_names):
+            # retrieving capfriendly id from player page link
+            cf_id = lnk.split("/")[-1]
+            # trying to find player in database
+            plr = Player.find_by_capfriendly_id(cf_id)
+            # trying to find player using suggestions
+            if plr is None:
+                last_name, first_name = name.split(", ")
+                suggested_players = self.get_suggested_players(
+                    last_name, first_name)
+                print(suggested_players)
 
         return players
 
@@ -216,7 +263,10 @@ class PlayerFinder():
 
         suggested_players = list()
 
+        print(url)
+
         for suggestion in suggestions_json['suggestions']:
+            print(suggestion)
             tokens = suggestion.split("|")
             (sug_id, sug_last_name, sug_first_name, sug_dob, sug_pos) = (
                 tokens[0], tokens[1], tokens[2], tokens[10], tokens[12]
@@ -271,7 +321,7 @@ class PlayerFinder():
 
     def get_html_document(self, team, src_type):
         """
-        Gets html data for team roster or in-the-system pages.
+        Gets html data for team roster, in-the-system or capfriendly pages.
         """
         if src_type == 'roster':
             # preparing url to team's roster page
@@ -291,6 +341,11 @@ class PlayerFinder():
             team_url = "".join((
                 team_site_prefix,
                 self.TEAM_SITE_ROSTER_SUFFIX))
+        elif src_type == 'contracts':
+            # preparing url to team's prospects page
+            team_url_component = team.team_name.lower().replace(" ", "")
+            team_url = "".join((
+                self.CAPFRIENDLY_SITE_PREFIX, team_url_component))
 
         try:
             req = requests.get(team_url)
