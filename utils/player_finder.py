@@ -173,7 +173,24 @@ class PlayerFinder():
                 last_name, first_name = name.split(", ")
                 suggested_players = self.get_suggested_players(
                     last_name, first_name)
-                print(suggested_players)
+                for suggested_player in suggested_players:
+                    (
+                        sugg_plr_id, sugg_pos,
+                        sugg_last_name, sugg_first_name, sugg_dob
+                    ) = (
+                        suggested_player
+                    )
+                    if (last_name, first_name) == (
+                            sugg_last_name, sugg_first_name):
+                        plr = Player.find_by_id(sugg_plr_id)
+                        if plr is None:
+                            plr = self.create_player(
+                                sugg_plr_id, last_name, first_name, sugg_pos)
+
+            if plr is None:
+                print("Unable to find player with name %s" % name)
+            else:
+                players.append(plr)
 
         return players
 
@@ -239,6 +256,7 @@ class PlayerFinder():
                     if plr is None:
                         plr = self.create_player(
                             plr_id, last_name, first_name, position)
+                        print("%s created..." % plr)
 
                     players.append(plr)
 
@@ -263,10 +281,7 @@ class PlayerFinder():
 
         suggested_players = list()
 
-        print(url)
-
         for suggestion in suggestions_json['suggestions']:
-            print(suggestion)
             tokens = suggestion.split("|")
             (sug_id, sug_last_name, sug_first_name, sug_dob, sug_pos) = (
                 tokens[0], tokens[1], tokens[2], tokens[10], tokens[12]
