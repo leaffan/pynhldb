@@ -30,7 +30,11 @@ if __name__ == '__main__':
             'ps', 'pd', 'cf', 'cft', 'dft'])
     parser.add_argument(
         '--roster_src', dest='roster_src', action='store', default='roster',
-        choices=['roster', 'system'], help='source type for player search')
+        choices=['roster', 'system', 'contracts'],
+        help='source type for player search')
+    parser.add_argument(
+        '--draft_year', dest='draft_year', action='store', default=2017,
+        help='draft year to retrieve players from')
     args = parser.parse_args()
     setup_steps = args.steps
 
@@ -48,7 +52,7 @@ if __name__ == '__main__':
         search_players(args.roster_src)
     # creating players from draft overview
     if setup_steps in ['pc', 'a']:
-        create_players_for_draft_year(2017)
+        create_players_for_draft_year(args.draft_year)
     # retrieving player season statistics for all players in database
     if setup_steps in ['ps', 'a']:
         create_player_seasons()
