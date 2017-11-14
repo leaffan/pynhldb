@@ -93,19 +93,25 @@ def retrieve_capfriendly_id(player_id):
         page_header = doc.xpath("//h1/text()").pop(0).strip().replace(".", "")
         # removing non-ascii characters from page title
         page_header = remove_non_ascii_chars(page_header)
+        if page_header == 'Player not found':
+            continue
         # retrieving player's date of birth from capfriendly page
         page_dob = doc.xpath(
             "//span[@class='l pld_l']/ancestor::div/text()")[0].strip()
         page_dob = parse(page_dob).date()
 
-        # comparing page title and actual name
-        if page_header == potential_capfriendly_id.upper().replace(".", ""):
+        # testing actual name (i.e. potential capfriendly id converted to
+        # upper case and stripped of *.* characters) contains page header
+        # (converted to upper)
+        if page_header.upper() in potential_capfriendly_id.upper().replace(
+                ".", ""):
             # comparing date of births
             if page_dob == pdi.date_of_birth:
                 capfriendly_id_found = True
                 # removing dots from id used in query to create
                 # actual capfriendly id
-                found_capfriendly_id = query_id.replace(".", "")
+                found_capfriendly_id = query_id.replace(
+                    ".", "").replace("'", "")
                 logger.info(
                     "+ Found capfriendly id for %s: %s" % (
                         plr.name, found_capfriendly_id))
@@ -133,6 +139,9 @@ def collect_potential_capfriendly_ids(plr):
 
     # listing all of players' potential last names
     last_names = [plr.last_name]
+    # extending list of last names to include an item equalling last name with
+    # a following '1' (usually done by capfriendly, too)
+    last_names.extend(["".join((plr.last_name, '1'))])
     if plr.alternate_last_names:
         last_names += plr.alternate_last_names
     # removing non-ascii characters from all collected last names
