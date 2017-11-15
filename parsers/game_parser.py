@@ -8,7 +8,6 @@ from datetime import datetime, time, timedelta
 from dateutil import parser
 
 from db import create_or_update_db_item
-from db.common import session_scope
 from db.game import Game
 from db.team import Team
 from db.team_game import TeamGame
