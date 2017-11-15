@@ -297,12 +297,16 @@ class GameParser():
         en_goals_raw_data = gs_data.xpath(
             "//td[@align='center' and contains(text(), '-EN')]")
 
-        # retrieving raw powerplay opportunities and minutes
+        # retrieving raw per-situation power play goals, chances and minutes
         pp_situations = gs_data.xpath(
             "//td[@class='sectionheading']")[3].xpath(
                 "parent::tr/following-sibling::tr")[0]
         pp_5v4, pp_5v3, pp_4v3 = [pp_situations.xpath(
             ".//tr[@class='oddColor']/td[%d]/text()" % i) for i in range(1, 4)]
+        # retrieving raw overall power play goals, chances and minutes
+        pp_overall = gs_data.xpath(
+            "//td[@class='bold' and contains(text(), 'Power Plays')]/" +
+            "parent::*/parent::td/following-sibling::td/text()")
 
         team_games = dict()
 
@@ -327,7 +331,7 @@ class GameParser():
                 by_period_pens, by_period_pims)
             # retrieving power play opportunities and times from raw data
             team_game_data = self.retrieve_power_plays(
-                key, team_game_data, [pp_5v4, pp_4v3, pp_5v3]
+                key, team_game_data, [pp_5v4, pp_4v3, pp_5v3], pp_overall
             )
             team_game_data = self.retrieve_win_loss_types(
                 team_game_data, game.shootout_game, game.overtime_game)
@@ -426,21 +430,24 @@ class GameParser():
 
         return team_game_data
 
-    def retrieve_power_plays(self, key, team_game_data, pp_raw_data):
+    def retrieve_power_plays(self, key, team_game_data, pp_data, pp_overall):
         """
         Analyzes power play raw data to yield database-ready information.
         """
-        # initial power play opportunities and time
-        team_game_data['pp_time_overall'] = str_to_timedelta("00:00")
-        team_game_data['pp_overall'] = 0
-        team_game_data['pp_goals_overall'] = 0
-
         # depending on which team is currently handled, a different component
         # of the raw data has to be used
         if key == 'road':
             pp_idx = 0
         else:
             pp_idx = -1
+        # retrieving overall power play goals, chances and minutes
+        pp_ovr_goals, pp_ovr_opps = [
+            int(x) for x in pp_overall[pp_idx].split("/")[0].split("-")]
+        pp_ovr_time = str_to_timedelta(pp_overall[pp_idx].split("/")[-1])
+
+        team_game_data['pp_time_overall'] = pp_ovr_time
+        team_game_data['pp_overall'] = pp_ovr_opps
+        team_game_data['pp_goals_overall'] = pp_ovr_goals
 
         # setting up lists of power play types and power play time types
         pp_types = ['pp_5v4', 'pp_5v3', 'pp_4v3']
@@ -449,7 +456,7 @@ class GameParser():
 
         # populating power play types with goals scored, opportunity count and
         # minutes played
-        for pp_raw in pp_raw_data:
+        for pp_raw in pp_data:
             try:
                 pp_goals, pp_opps = [
                     int(x) for x in pp_raw[pp_idx].split("/")[0].split("-")]
@@ -459,11 +466,8 @@ class GameParser():
                 pp_opps = 0
                 pp_time = str_to_timedelta("00:00")
             finally:
-                team_game_data['pp_overall'] += pp_opps
                 team_game_data[pp_types.pop(0)] = pp_opps
-                team_game_data['pp_time_overall'] += pp_time
                 team_game_data[pp_time_types.pop(0)] = pp_time
-                team_game_data['pp_goals_overall'] += pp_goals
                 team_game_data[pp_goal_types.pop(0)] = pp_goals
 
         return team_game_data
