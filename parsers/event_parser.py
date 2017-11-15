@@ -101,9 +101,10 @@ class EventParser():
         'Wrap-around', 'Slap', 'Deflected', 'Tip-In']
     MISS_TYPES = ['Hit Crossbar', 'Wide of Net', 'Over Net', 'Goalpost']
 
-    def __init__(self, raw_data, json_data):
+    def __init__(self, raw_data, json_data, raw_gs_data):
         self.raw_data = raw_data
         self.json_data = json_data
+        self.raw_gs_data = raw_gs_data
         # class-wide variables to hold current score for both home and road
         # team, increase accordingly if a goal was score
         self.score = defaultdict(int)
@@ -121,6 +122,9 @@ class EventParser():
         self.load_data()
         # caching plays with coordinates from json game summary
         self.cache_plays_with_coordinates()
+        # creating dictionary for all goals scored and the corresponding
+        # numerical situation
+        self.cache_goals()
 
         for event_data_item in self.event_data:
             # setting event item with basic information
@@ -692,6 +696,7 @@ class EventParser():
         """
         Retrieves or creates a goal event.
         """
+        self.check_adjust_event_num_situation(event)
         goal_data_dict = dict()
 
         # transferring attributes from shot the goal was scored on
@@ -1056,6 +1061,36 @@ class EventParser():
 
         return players_on_ice, goalies_on_ice
 
+    def cache_goals(self):
+        """
+        Caches goals, or better numerical situations in which goals are scored
+        for later comparison with event numerical situations retrieved from
+        play-by-play data.
+        """
+        self.cached_goals = dict()
+
+        periods = self.raw_gs_data.xpath(
+            "//td[contains(text(), 'Goal Scorer')]/parent::tr/" +
+            "following-sibling::tr/td[2]/text()")
+        times = self.raw_gs_data.xpath(
+            "//td[contains(text(), 'Goal Scorer')]/parent::tr/" +
+            "following-sibling::tr/td[3]/text()")
+        num_situations = self.raw_gs_data.xpath(
+            "//td[contains(text(), 'Goal Scorer')]/parent::tr/" +
+            "following-sibling::tr/td[4]/text()")
+
+        for period, time, num_situation in zip(periods, times, num_situations):
+            # converting regular season overtime to *fourth* period
+            if period == 'OT':
+                period = '4'
+            (
+                # using a tuple of period and time interval as key
+                self.cached_goals[(int(period), str_to_timedelta(time))]
+            ) = (
+                # using numerical situation of actual goal as value
+                num_situation.split("-")[0]
+            )
+
     def cache_plays_with_coordinates(self):
         """
         Caches plays from json game summary to be later used for linking with
@@ -1123,6 +1158,19 @@ class EventParser():
         #             for key in entry:
         #                 print("\t", key, ":", entry[key])
         #             print("-----")
+
+    def check_adjust_goal_num_situation(self, event):
+        """
+        Checks (and optionally adjusts) numerical situation of the specified
+        event by comparing with previously cached goal data. If the goal was
+        officially registered at a different numerical situation, the
+        according event is updated.
+        """
+        if (event.period, event.time) in self.cached_goals:
+            goal_num_situation = self.cached_goals[(event.period, event.time)]
+            if event.num_situation != goal_num_situation:
+                event.num_situation = goal_num_situation
+                commit_db_item(event)
 
     def adjust_penalty_infraction(self, infraction, severity):
         """

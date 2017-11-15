@@ -102,7 +102,9 @@ class MainParser():
         self.read_on_demand(game_id, 'PL')
         # setting up parser for event data
         ep = EventParser(
-            self.raw_data[game_id]['PL'], self.read_json_data(game_id))
+            self.raw_data[game_id]['PL'],
+            self.read_json_data(game_id),
+            self.raw_data[game_id]['GS'])
         # retrieving event information using previously retrieved game and
         # roster information
         ep.create_events(
