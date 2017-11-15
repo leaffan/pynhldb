@@ -696,7 +696,7 @@ class EventParser():
         """
         Retrieves or creates a goal event.
         """
-        self.check_adjust_event_num_situation(event)
+        self.check_adjust_goal_num_situation(event)
         goal_data_dict = dict()
 
         # transferring attributes from shot the goal was scored on
