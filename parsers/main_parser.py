@@ -127,13 +127,15 @@ class MainParser():
         # this information is only retrievable from GS type summaries
         self.gp = GameParser(
             game_id,
-            self.raw_data[game_id]['GS'],
-            self.read_on_demand(game_id, 'SO'))
+            self.raw_data[game_id]['GS'])
         # retrieving essential game information, i.e. venue, attendance, score
         # using previously parsed team information
         game = self.gp.create_game(teams)
-        # TODO: finish comment
-        self.gp.create_team_games(game, self.raw_data[game_id]['GS'])
+        # creating team/game item using raw game summary data and (if
+        # available) raw shootout summary data
+        self.gp.create_team_games(
+            game,
+            self.raw_data[game_id]['GS'], self.read_on_demand(game_id, 'SO'))
 
         return game, teams
 

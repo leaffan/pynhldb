@@ -34,10 +34,9 @@ class GameParser():
     # retrieving per period ordinal strings
     PER_PERIOD_ORDINALS = [ordinal(i) for i in range(1, 4)]
 
-    def __init__(self, game_id, raw_data, raw_so_data=None):
+    def __init__(self, game_id, raw_data):
         self.game_id = game_id
         self.raw_data = raw_data
-        self.raw_so_data = raw_so_data
 
     def create_game(self, teams):
         # loading and pre-processing raw data
@@ -281,7 +280,7 @@ class GameParser():
 
         return game_team_data
 
-    def create_team_games(self, game, gs_data):
+    def create_team_games(self, game, gs_data, so_data):
         """
         Retrieves team related information for the current game.
         """
@@ -336,11 +335,10 @@ class GameParser():
             team_game_data = self.retrieve_empty_net_goals(
                 key, team_game_data, en_goals_raw_data)
             # retrieving shootout information (if applicable)
-            if self.raw_so_data is not None:
+            if so_data is not None:
                 team_game_data = self.retrieve_shootout_attempts(
-                    team_game_data
+                    team_game_data, so_data
                 )
-
             # trying to retrieve team game item with same team and game
             # ids from database
             team_game_db = TeamGame.find(game.game_id, team_id)
@@ -547,7 +545,7 @@ class GameParser():
 
         return team_game_data
 
-    def retrieve_shootout_attempts(self, team_game_data):
+    def retrieve_shootout_attempts(self, team_game_data, raw_so_data):
         """
         Retrieves shootout attempts/goals for team involved in current game.
         """
@@ -560,7 +558,7 @@ class GameParser():
         xpath_expr = "//td[contains(text(), 'Shootout Summary')]/ancestor::"\
             "tr/following-sibling::tr[1]/td/table/tr[%d]/td/text()" % idx
         # applying xpath expression
-        so_data = self.raw_so_data.xpath(xpath_expr)
+        so_data = raw_so_data.xpath(xpath_expr)
 
         # retrieving number of goals scored in shootout
         team_game_data['so_goals'] = int(so_data[1])
