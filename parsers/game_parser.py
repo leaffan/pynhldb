@@ -436,6 +436,7 @@ class GameParser():
         # initial power play opportunities and time
         team_game_data['pp_time_overall'] = str_to_timedelta("00:00")
         team_game_data['pp_overall'] = 0
+        team_game_data['pp_goals_overall'] = 0
 
         # depending on which team is currently handled, a different component
         # of the raw data has to be used
@@ -447,14 +448,17 @@ class GameParser():
         # setting up lists of power play types and power play time types
         pp_types = ['pp_5v4', 'pp_5v3', 'pp_4v3']
         pp_time_types = ['pp_time_5v4', 'pp_time_5v3', 'pp_time_4v3']
+        pp_goal_types = ['pp_goals_5v4', 'pp_goals_5v3', 'pp_goals_4v3']
 
-        # populating power play types with opportunity count and minutes played
+        # populating power play types with goals scored, opportunity count and
+        # minutes played
         for pp_raw in pp_raw_data:
             try:
-                pp_opps = [int(x) for x in pp_raw[pp_idx].split("/")[0].split(
-                    "-")][-1]
+                pp_goals, pp_opps = [
+                    int(x) for x in pp_raw[pp_idx].split("/")[0].split("-")]
                 pp_time = str_to_timedelta(pp_raw[pp_idx].split("/")[-1])
             except:
+                pp_goals = 0
                 pp_opps = 0
                 pp_time = str_to_timedelta("00:00")
             finally:
@@ -462,6 +466,8 @@ class GameParser():
                 team_game_data[pp_types.pop(0)] = pp_opps
                 team_game_data['pp_time_overall'] += pp_time
                 team_game_data[pp_time_types.pop(0)] = pp_time
+                team_game_data['pp_goals_overall'] += pp_goals
+                team_game_data[pp_goal_types.pop(0)] = pp_goals
 
         return team_game_data
 

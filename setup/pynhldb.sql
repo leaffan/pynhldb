@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Diagram Name: pynhldb - Database Design
--- Created on: 29.10.2017 02:10:32
--- Diagram Version: 1.4
+-- Created on: 15.11.2017 11:41:08
+-- Diagram Version: 1.5
 -- =============================================================================
 CREATE SCHEMA "nhl";
 
@@ -1597,12 +1597,16 @@ CREATE TABLE "nhl"."team_games" (
 	"tie" int2 NOT NULL DEFAULT 0,
 	"pp_overall" int2 NOT NULL DEFAULT 0,
 	"pp_time_overall" interval(0),
+	"pp_goals_overall" int2 NOT NULL DEFAULT 0,
 	"pp_5v4" int2 NOT NULL DEFAULT 0,
 	"pp_time_5v4" interval(0),
+	"pp_goals_5v4" int2 NOT NULL DEFAULT 0,
 	"pp_4v3" int2 NOT NULL DEFAULT 0,
 	"pp_time_4v3" interval(0),
+	"pp_goals_4v3" int2 NOT NULL DEFAULT 0,
 	"pp_5v3" int2 NOT NULL DEFAULT 0,
 	"pp_time_5v3" interval(0),
+	"pp_goals_5v3" int2 NOT NULL DEFAULT 0,
 	"shots_for" int2 NOT NULL DEFAULT 0,
 	"shots_against" int2 NOT NULL DEFAULT 0,
 	"shots_for_1st" int2 NOT NULL DEFAULT 0,
@@ -1684,17 +1688,25 @@ COMMENT ON COLUMN "nhl"."team_games"."pp_overall" IS 'Power-play opportunities o
 
 COMMENT ON COLUMN "nhl"."team_games"."pp_time_overall" IS 'Power-play time overall';
 
+COMMENT ON COLUMN "nhl"."team_games"."pp_goals_overall" IS 'Power play goals overall';
+
 COMMENT ON COLUMN "nhl"."team_games"."pp_5v4" IS '5-on-4 power-play opportunities';
 
 COMMENT ON COLUMN "nhl"."team_games"."pp_time_5v4" IS '5-on-4 power-play time';
+
+COMMENT ON COLUMN "nhl"."team_games"."pp_goals_5v4" IS '5-on-4 power play goals';
 
 COMMENT ON COLUMN "nhl"."team_games"."pp_4v3" IS '4-on-3 power-play opportunities';
 
 COMMENT ON COLUMN "nhl"."team_games"."pp_time_4v3" IS '4-on-3 power-play time';
 
+COMMENT ON COLUMN "nhl"."team_games"."pp_goals_4v3" IS '4-on-3 power play goals';
+
 COMMENT ON COLUMN "nhl"."team_games"."pp_5v3" IS '5-on-3 power-play opportunities';
 
 COMMENT ON COLUMN "nhl"."team_games"."pp_time_5v3" IS '5-on-3 power-play time';
+
+COMMENT ON COLUMN "nhl"."team_games"."pp_goals_5v3" IS '5-on-3 power play goals';
 
 COMMENT ON COLUMN "nhl"."team_games"."shots_for" IS 'Shots on goal overall';
 
