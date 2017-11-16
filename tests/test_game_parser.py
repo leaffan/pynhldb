@@ -134,7 +134,7 @@ def test_bilingual():
 
 def prepare_game_parser(url):
     game_id = str(os.path.splitext(os.path.basename(url))[0][2:])
-    gp = GameParser(game_id, get_data(url), None)
+    gp = GameParser(game_id, get_data(url))
     gp.load_data()
 
     return gp

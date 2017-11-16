@@ -80,7 +80,8 @@ def get_event_parser(dir, game_id):
     rosters = rp.create_roster(game, teams)
 
     # using event parser to retrieve all raw events
-    ep = EventParser(play_by_play_report_doc, game_feed_json_doc)
+    ep = EventParser(
+        play_by_play_report_doc, game_feed_json_doc, game_report_doc)
     ep.load_data()
     (ep.game, ep.rosters) = (game, rosters)
     ep.cache_plays_with_coordinates()
