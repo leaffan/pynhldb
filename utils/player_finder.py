@@ -49,7 +49,7 @@ class PlayerFinder():
             players = self.get_roster_players(team)
         elif src == 'system':
             players = self.get_system_players(team)
-        elif src == 'contracts':
+        elif src == 'contract':
             players = self.get_contracted_players(team)
 
         return players
