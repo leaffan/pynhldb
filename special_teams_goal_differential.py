@@ -2,17 +2,20 @@
 # -*- coding: utf-8 -*-
 
 from collections import defaultdict
+from operator import attrgetter
 
 from sqlalchemy import cast, String, and_
 from colorama import Fore, init, Style
 
 from db.common import session_scope
+from db.team import Team
 from db.game import Game
+from db.team_game import TeamGame
 from db.event import Event
 from db.goal import Goal
-from db.team import Team
 
 season = 2017
+
 
 with session_scope() as session:
     # retrieving power play goals for specified season
@@ -35,6 +38,12 @@ with session_scope() as session:
         Team.first_year_of_play <= season,
         Team.last_year_of_play.is_(None)
     )).all()
+    team_games = session.query(
+        TeamGame).filter(cast(
+            TeamGame.game_id, String).like("%d02%%" % season)).all()
+    last_game_date = max(map(
+        attrgetter('date'),
+        session.query(Game).filter(Game.season == season).all()))
 
 special_teams_summary = dict()
 
@@ -68,14 +77,19 @@ for team in teams:
         special_teams_summary[team.team_id]['shgf'] -
         special_teams_summary[team.team_id]['shga'])
 
+for tg in team_games:
+    special_teams_summary[tg.team_id]['pp_opps'] += tg.pp_overall
+
+
 i = 1
 init()
 print()
-print(" + NHL Special Teams Goal Differential")
-print()
+print(
+    " + NHL Special Teams Goal Differential (%s)" % last_game_date.strftime(
+        "%b %d, %Y"))
 
-print("  # %-22s %4s %4s %4s %4s %4s" % (
-    'Team', 'PPGF', 'SHGF', 'PPGA', 'SHGA', 'STGD'))
+print("  # %-22s %4s %4s %4s %4s %4s %4s %4s" % (
+    'Team', 'PPGF', 'SHGF', 'PPGA', 'SHGA', 'PPO', 'PP%', 'STGD'))
 
 # sorting teams by goal differential
 for team_id in sorted(special_teams_summary, key=lambda x: (
@@ -97,11 +111,19 @@ for team_id in sorted(special_teams_summary, key=lambda x: (
         diff_str = "%3d" % 0
         fore = Fore.LIGHTYELLOW_EX
 
-    print("%3d %-22s %4d %4d %4d %4d  %s%s%s" % (
+    pp_pctg = round(
+        special_teams_summary[team.team_id]['ppgf'] /
+        special_teams_summary[team.team_id]['pp_opps'] * 100., 1
+    )
+    pp_pctg = "%2d.%d" % (int(pp_pctg), (pp_pctg - int(pp_pctg)) * 10)
+
+    print("%3d %-22s %4d %4d %4d %4d %4d %s  %s%s%s" % (
         i, team,
         special_teams_summary[team.team_id]['ppgf'],
         special_teams_summary[team.team_id]['shgf'],
         special_teams_summary[team.team_id]['ppga'],
         special_teams_summary[team.team_id]['shga'],
+        special_teams_summary[team.team_id]['pp_opps'],
+        pp_pctg,
         fore, diff_str, Style.RESET_ALL))
     i += 1
