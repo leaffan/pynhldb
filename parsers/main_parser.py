@@ -4,6 +4,8 @@
 import json
 import logging
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from lxml import html
 
 from utils.data_handler import DataHandler
@@ -30,7 +32,7 @@ class MainParser():
     #   SO ... shootout report
     REPORT_PREFIXES = ['ES', 'FC', 'GS', 'PL', 'RO', 'SS', 'TH', 'TV', 'SO']
 
-    def __init__(self, data_src):
+    def __init__(self, data_src, tgt_game_ids=None):
         # setting source for parsable raw data
         self.data_src = data_src
 
@@ -43,6 +45,36 @@ class MainParser():
         self.dh = DataHandler(self.data_src)
         # retrieving all game ids contained in data source
         self.game_ids = self.dh.find_games()
+        # setting list of target game ids, i.e. games to actually parse
+        if tgt_game_ids:
+            self.tgt_game_ids = list(
+                set(self.game_ids).intersection(tgt_game_ids))
+        else:
+            self.tgt_game_ids = self.game_ids
+
+    def parse_games_sequentially(self):
+        """
+        Parses multiple games in a sequential manner.
+        """
+        for game_id in self.tgt_game_ids:
+            self.parse_single_game(game_id)
+
+    def parse_games_simultaneously(self, max_workers=8):
+        """
+        Parses multiple games in a parallel manner.
+        """
+        with ThreadPoolExecutor(max_workers=max_workers) as threads:
+            future_tasks = {
+                threads.submit(
+                    self.parse_single_game,
+                    game_id): game_id for game_id in self.tgt_game_ids}
+            for future in as_completed(future_tasks):
+                try:
+                    # TODO: think of something to do with the result here
+                    data = future.result()
+                    print(data)
+                except Exception as e:
+                    pass
 
     def parse_single_game(self, game_id):
         """
@@ -52,7 +84,6 @@ class MainParser():
         # setting up dictionary for structured raw data
         self.raw_data[game_id] = dict()
         self.parsed_data[game_id] = dict()
-
         # parsing current basic game information and participating teams
         (
             self.parsed_data[game_id]['game'],
@@ -196,6 +227,9 @@ class MainParser():
             return shifts
 
     def read_json_data(self, game_id):
+        """
+        Reads gamefeed JSON data for game with specified id.
+        """
         json_file = self.dh.get_game_json_data(game_id)
         json_data = json.loads(open(json_file).read())
 
