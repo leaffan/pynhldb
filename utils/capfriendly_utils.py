@@ -54,10 +54,18 @@ def retrieve_capfriendly_ids(team_id):
 
         last_name, first_name = player_name.split(", ")
         plr = Player.find_by_name_extended(first_name, last_name)
+        # new capfriendly id
         if plr and plr.capfriendly_id is None:
             print(
                 "+ Found capfriendly id for %s: %s" % (plr, capfriendly_id))
             add_capfriendly_id_to_player(plr, capfriendly_id)
+        # updated capfriendly id
+        if plr and plr.capfriendly_id != capfriendly_id:
+            print(
+                "+ Found updated capfriendly id for %s: %s (was %s)" % (
+                    plr, capfriendly_id, plr.capfriendly_id))
+            add_capfriendly_id_to_player(plr, capfriendly_id)
+        # no unique player found
         if plr is None:
             print(
                 "+ No (unique) player for capfriendly id: %s (%s %s)" % (
