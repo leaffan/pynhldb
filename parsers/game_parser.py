@@ -314,11 +314,13 @@ class GameParser():
 
             # retrieving current team id based on current key
             team_id = getattr(game, "%s_team_id" % key)
+            team_against_id = getattr(game, "%s_team_id" % key_against)
 
             # setting team game data dictionary with basic information
             team_game_data = dict()
             team_game_data['home_road_type'] = key
             team_game_data['team_id'] = team_id
+            team_game_data['team_against_id'] = team_against_id
             team_game_data['score'] = getattr(game, "%s_score" % key)
             team_game_data['score_against'] = getattr(
                 game, "%s_score" % key_against)

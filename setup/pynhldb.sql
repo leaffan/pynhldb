@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Diagram Name: pynhldb - Database Design
--- Created on: 15.11.2017 11:41:08
--- Diagram Version: 1.5
+-- Created on: 16.11.2017 10:32:30
+-- Diagram Version: 1.6
 -- =============================================================================
 CREATE SCHEMA "nhl";
 
@@ -1573,6 +1573,7 @@ CREATE TABLE "nhl"."team_games" (
 	"team_game_id" int8 NOT NULL,
 	"game_id" int4,
 	"team_id" int4,
+	"team_against_id" int4,
 	"home_road_type" varchar(4),
 	"score" int2 NOT NULL DEFAULT 0,
 	"score_against" int2 NOT NULL DEFAULT 0,
@@ -1639,6 +1640,8 @@ COMMENT ON COLUMN "nhl"."team_games"."team_game_id" IS 'Unique team game ID as c
 COMMENT ON COLUMN "nhl"."team_games"."game_id" IS 'Related game ID';
 
 COMMENT ON COLUMN "nhl"."team_games"."team_id" IS 'Related team ID';
+
+COMMENT ON COLUMN "nhl"."team_games"."team_against_id" IS 'ID of the opponent team';
 
 COMMENT ON COLUMN "nhl"."team_games"."home_road_type" IS 'Code indicating home or road game';
 

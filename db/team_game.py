@@ -14,10 +14,12 @@ class TeamGame(Base):
     HUMAN_READABLE = 'team game'
 
     STANDARD_ATTRS = [
-        "score", "score_against", "goals_for_1st", "goals_against_1st",
-        "goals_for_2nd", "goals_against_2nd", "goals_for_3rd",
-        "goals_against_3rd", "goals_for", "goals_against", "win",
-        "regulation_win", "overtime_win", "shootout_win", "loss",
+        "team_against_id", "score", "score_against",
+        "goals_for_1st", "goals_against_1st",
+        "goals_for_2nd", "goals_against_2nd",
+        "goals_for_3rd", "goals_against_3rd",
+        "goals_for", "goals_against",
+        "win", "regulation_win", "overtime_win", "shootout_win", "loss",
         "regulation_loss", "overtime_loss", "shootout_loss", "tie",
         "pp_overall", "pp_time_overall", "pp_goals_overall",
         "pp_5v4", "pp_time_5v4", "pp_goals_5v4",
