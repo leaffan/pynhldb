@@ -79,17 +79,19 @@ for team in teams:
 
 for tg in team_games:
     special_teams_summary[tg.team_id]['pp_opps'] += tg.pp_overall
+    special_teams_summary[tg.team_against_id]['tsh'] += tg.pp_overall
 
 
 i = 1
 init()
 print()
 print(
-    " + NHL Special Teams Goal Differential (%s)" % last_game_date.strftime(
-        "%b %d, %Y"))
+    " + NHL Special Teams Goal Differential & Combined Percentage (%s)" % (
+        last_game_date.strftime("%b %d, %Y")))
 
-print("  # %-22s %4s %4s %4s %4s %4s %4s %4s" % (
-    'Team', 'PPGF', 'SHGF', 'PPGA', 'SHGA', 'PPO', 'PP%', 'STGD'))
+print("  # %-22s %4s %4s %4s %4s %4s %4s %4s %4s %5s %4s" % (
+    'Team', 'PPGF', 'SHGF', 'PPGA', 'SHGA',
+    'PPO', 'PP%', 'TSH', 'PK%', 'PP+PK', 'STGD'))
 
 # sorting teams by goal differential
 for team_id in sorted(special_teams_summary, key=lambda x: (
@@ -111,19 +113,28 @@ for team_id in sorted(special_teams_summary, key=lambda x: (
         diff_str = "%3d" % 0
         fore = Fore.LIGHTYELLOW_EX
 
-    pp_pctg = round(
+    pp_pctg = (
         special_teams_summary[team.team_id]['ppgf'] /
-        special_teams_summary[team.team_id]['pp_opps'] * 100., 1
+        special_teams_summary[team.team_id]['pp_opps'] * 100.
     )
-    pp_pctg = "%2d.%d" % (int(pp_pctg), (pp_pctg - int(pp_pctg)) * 10)
+    pp_pctgs = "{:4.1f}".format(pp_pctg)
 
-    print("%3d %-22s %4d %4d %4d %4d %4d %s  %s%s%s" % (
+    pk_pctg = 100 - (
+        special_teams_summary[team.team_id]['ppga'] /
+        special_teams_summary[team.team_id]['tsh'] * 100.
+    )
+    pk_pctgs = "{:4.1f}".format(pk_pctg)
+
+    pp_pk_pctg = pp_pctg + pk_pctg
+    pp_pk_pctgs = "{:5.1f}".format(pp_pk_pctg)
+
+    print("%3d %-22s %4d %4d %4d %4d %4d %s %4d %s %s  %s%s%s" % (
         i, team,
         special_teams_summary[team.team_id]['ppgf'],
         special_teams_summary[team.team_id]['shgf'],
         special_teams_summary[team.team_id]['ppga'],
         special_teams_summary[team.team_id]['shga'],
-        special_teams_summary[team.team_id]['pp_opps'],
-        pp_pctg,
+        special_teams_summary[team.team_id]['pp_opps'], pp_pctgs,
+        special_teams_summary[team.team_id]['tsh'], pk_pctgs, pp_pk_pctgs,
         fore, diff_str, Style.RESET_ALL))
     i += 1
