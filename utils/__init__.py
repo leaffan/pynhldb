@@ -144,6 +144,31 @@ def lbs_to_kg(lbs):
     return lbs * 0.453592
 
 
+def get_target_directory_from_config_file(cfg_src, section):
+    """
+    Gets download directory from specified section in
+    a configuration file.
+    """
+    cfg_parser = configparser.ConfigParser()
+    cfg_parser.read(cfg_src)
+
+    try:
+        tgt_dir = cfg_parser.get(section, 'tgt_dir')
+    except NoOptionError as e:
+        print(e)
+        return
+    except NoSectionError as e:
+        print(e)
+        return
+    except KeyError as e:
+        print(
+            "Unable to retrieve parameter '%s' "
+            "from configuration file." % e.args[0])
+        return
+
+    return tgt_dir
+
+
 # utility function for database connection
 def get_connection_string_from_config_file(cfg_src, section):
     """

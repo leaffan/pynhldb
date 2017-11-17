@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import argparse
 from datetime import datetime
 
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 
+from utils import get_target_directory_from_config_file
 from utils.summary_downloader import SummaryDownloader
 
 if __name__ == '__main__':
@@ -16,7 +18,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Download NHL game summary reports.')
     parser.add_argument(
-        '-d', '--tgt_dir', dest='tgt_dir', required=True,
+        '-d', '--tgt_dir', dest='tgt_dir', required=False,
         metavar='download target directory',
         help="Target directories for downloads")
     parser.add_argument(
@@ -31,9 +33,20 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # setting target dir and time interval of interest
-    tgt_dir = args.tgt_dir
+    # tgt_dir = args.tgt_dir
     from_date = args.from_date
     to_date = args.to_date
+
+    if args.tgt_dir is not None:
+        tgt_dir = args.tgt_dir
+    else:
+        cfg_src = os.path.join(os.path.dirname(__file__), r"_config.ini")
+        tgt_dir = get_target_directory_from_config_file(cfg_src, 'downloading')
+
+    if not os.path.isdir(tgt_dir):
+        print("+ Download target directory '%s' does not exist" % tgt_dir)
+        print("+ Update configuration or specify via -d/--tgt_dir option")
+        sys.exit()
 
     # setting first date to download summaries for if not specified
     if from_date is None:
