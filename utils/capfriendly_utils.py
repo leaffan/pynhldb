@@ -8,12 +8,15 @@ import requests
 from lxml import html
 from dateutil.parser import parse
 
+from db import commit_db_item
 from db.common import session_scope
 from db.team import Team
 from db.player import Player
 from db.contract import Contract
+from db.contract_year import ContractYear
 from db.player_data_item import PlayerDataItem
 from utils import remove_non_ascii_chars
+from utils.player_contract_retriever import PlayerContractRetriever
 
 logger = logging.getLogger(__name__)
 
@@ -170,44 +173,67 @@ def add_capfriendly_id_to_player(plr, capfriendly_id):
         session.commit()
 
 
-def retrieve_latest_signings(stop_threshold=5):
+def retrieve_latest_signings(max_existing_contracts_found=5):
     """
     Retrieves latest player signings traversing the corresponding section on
     capfriendly.com. Creates contract data items for each signing. Stops when
     a given threshold of contracts is reached that already existedd
     in the database.
     """
+    existing_contracts_found = 0
 
     url = LATEST_SIGNINGS_TEMPLATE % 1
     r = requests.get(url)
     doc = html.fromstring(r.json()['html'])
 
-    raw_signed_players = doc.xpath("tr/td/a[contains(@href, 'players')]/@href")
+    recently_signed_players = doc.xpath(
+        "tr/td/a[contains(@href, 'players')]/@href")
+    recent_signing_dates = [
+        parse(x).date() for x in doc.xpath("tr/td[5]/text()")]
+    recent_signings = zip(recently_signed_players, recent_signing_dates)
 
-    from utils.player_contract_retriever import PlayerContractRetriever
     pcr = PlayerContractRetriever()
 
-    for raw_signed_player in raw_signed_players[:4]:
-        capfriendly_id = raw_signed_player.split("/")[-1]
-        print(capfriendly_id)
-
+    for recent_signee, recent_signing_date in recent_signings:
+        # retrieving capfriendly id and subsequentially corresponding player
+        capfriendly_id = recent_signee.split("/")[-1]
         plr = Player.find_by_capfriendly_id(capfriendly_id)
 
-        raw_contract_data = pcr.retrieve_raw_contract_data_by_capfriendly_id(
-            capfriendly_id)
+        if plr is None:
+            # TODO: create player if necessary
+            print("Contracted player not found in database")
+            continue
 
-        most_recent_contract_raw_data = raw_contract_data[0]
+        # trying to find existing contract signed on this date in database
+        contract_db = Contract.find_with_signing_date(
+            plr.player_id, recent_signing_date)
 
-        contract = Contract(plr.player_id, most_recent_contract_raw_data)
-        contract_db = Contract.find_with_team(
-            plr.player_id,
-            most_recent_contract_raw_data['start_season'],
-            most_recent_contract_raw_data['end_season'],
-            most_recent_contract_raw_data['signing_team_id'])
+        if contract_db is not None:
+            print("+ Contract for %s signed on %s already in database" % (
+                plr.name, recent_signing_date))
+            existing_contracts_found += 1
+        else:
+            print(
+                "+ Contract for %s signed on %s not found in database yet" % (
+                    plr.name, recent_signing_date))
+            # retrieving all contracts associated with current capfriendly id
+            raw_contract_list = (
+                pcr.retrieve_raw_contract_data_by_capfriendly_id(
+                    capfriendly_id))
 
-        if contract_db is None:
-            print("Contract not in database yet")
-        elif contract_db != contract:
-            print("Database contract needs to be updated")
-        elif contract_db == contract:
-            print("Contract already in database")
+            # finding contract signed on signing date in list of all contracts
+            # and creating it along with corresponding contract years
+            for raw_contract in raw_contract_list:
+                if raw_contract['signing_date'] == recent_signing_date:
+                    contract = Contract(plr.player_id, raw_contract)
+                    commit_db_item(contract)
+                    for raw_contract_year in raw_contract['contract_years']:
+                        contract_year = ContractYear(
+                            plr.player_id,
+                            contract.contract_id,
+                            raw_contract_year)
+                        commit_db_item(contract_year)
+                    break
+
+        if existing_contracts_found >= max_existing_contracts_found:
+            break

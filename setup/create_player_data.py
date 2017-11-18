@@ -15,6 +15,7 @@ from utils.player_contract_retriever import PlayerContractRetriever
 from utils.player_draft_retriever import PlayerDraftRetriever
 from utils.capfriendly_utils import retrieve_capfriendly_ids
 from utils.capfriendly_utils import retrieve_capfriendly_id
+from utils.capfriendly_utils import retrieve_latest_signings
 
 
 logger = logging.getLogger(__name__)
@@ -158,3 +159,11 @@ def create_capfriendly_ids_by_team():
                 pass
             except Exception as e:
                 print("Concurrent task generated an exception: %s" % e)
+
+
+def create_latest_contract_signings(max_existing_contracts_found=5):
+    """
+    Retrieves latest contract signings from capfriendly id and creates
+    according data items in the database.
+    """
+    retrieve_latest_signings(max_existing_contracts_found)
