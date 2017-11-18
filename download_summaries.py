@@ -20,7 +20,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-d', '--tgt_dir', dest='tgt_dir', required=False,
         metavar='download target directory',
-        help="Target directories for downloads")
+        help="Target directory for downloads")
     parser.add_argument(
         '-f', '--from', dest='from_date', required=False,
         metavar='first date to download summaries for',
@@ -32,17 +32,19 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # setting target dir and time interval of interest
-    # tgt_dir = args.tgt_dir
+    # setting time interval of interest from command line options
     from_date = args.from_date
     to_date = args.to_date
 
+    # setting target directory from command line options...
     if args.tgt_dir is not None:
         tgt_dir = args.tgt_dir
+    # ...or from configuration file
     else:
         cfg_src = os.path.join(os.path.dirname(__file__), r"_config.ini")
         tgt_dir = get_target_directory_from_config_file(cfg_src, 'downloading')
 
+    # bailing out if target directory doesn't exist
     if not os.path.isdir(tgt_dir):
         print("+ Download target directory '%s' does not exist" % tgt_dir)
         print("+ Update configuration or specify via -d/--tgt_dir option")
