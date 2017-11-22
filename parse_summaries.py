@@ -2,50 +2,89 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
+import argparse
+
+from dateutil.parser import parse
+from dateutil.relativedelta import relativedelta
 
 from parsers.main_parser import MainParser
 
 
 if __name__ == '__main__':
 
-    src = R"D:\nhl\official_and_json\_2015-16\2016-04\2016-04-10.zip"
-    # overtime game [021119]
-    src = R"D:\nhl\official_and_json\2016-17\2017-03\2017-03-26.zip"
-    # shootout games [021194, 021214, 021216, 021177]
-    src = R"D:\nhl\official_and_json\2016-17\2017-04\2017-04-06.zip"
-    src = R"D:\nhl\official_and_json\2016-17\2017-04\2017-04-03.zip"
-    # simultaneous blocks
-    src = R"D:\nhl\official_and_json\_2015-16\2015-10\2015-10-14.zip"
-    tgt_game_id = '020047'
-    # simultaneous hits
-    src = R"D:\nhl\official_and_json\_2015-16\2015-10\2015-10-10.zip"
-    tgt_game_id = '020030'
-    # simultaneous faceoffs??
-    # simultaneous giveaways
-    src = R"D:\nhl\official_and_json\_2015-16\2015-10\2015-10-08.zip"
-    tgt_game_id = '020007'
-    # simultaneous goals + misses in shootout
-    # ...
+    # retrieving arguments specified on command line
+    parser = argparse.ArgumentParser(
+        description='Parse previously downloaded NHL game summary reports.')
+    parser.add_argument(
+        '-d', '--src_dir', dest='src_dir', required=True,
+        metavar='summary data source directory',
+        help="Source directory for downloaded NHL game summary reports")
+    parser.add_argument(
+        '-f', '--from', dest='from_date', required=True,
+        metavar='first date to parse summaries for',
+        help="The first date summaries will be parsed for")
+    parser.add_argument(
+        '-t', '--to', dest='to_date', required=False,
+        metavar='last date to parse summaries for',
+        help="The last date summaries will be parsed for")
+    # TODO: make it a list
+    parser.add_argument(
+        '-g', '--games', dest='game_ids', required=False,
+        metavar='list of ids of games to parse',
+        help="Game ids representing games to parse summaries")
 
-    src = R"D:\nhl\official_and_json\2017-18\2017-11\2017-11-15.zip"
-    tgt_game_ids = ['020200']
+    args = parser.parse_args()
 
-    src = R"D:\nhl\official_and_json\2017-18\2017-10"
+    # setting source data directory from command line option
+    src_dir = args.src_dir
+    # setting time interval of interest from command line options
+    from_date = parse(args.from_date).date()
+    if args.to_date is not None:
+        to_date = parse(args.to_date).date()
+    else:
+        to_date = from_date
+    # setting game ids of interest from command line option
+    if args.game_ids is not None:
+        tgt_game_ids = args.tgt_game_ids
+    else:
+        tgt_game_ids = None
 
-    if os.path.isfile(src):
-        data_src = [src]
-    elif os.path.isdir(src):
-        data_src = [os.path.join(src, f) for f in os.listdir(src)]
+    print("+ Using source directory:", src_dir)
+    print("+ Parsing from date:", from_date)
+    print("+ Parsing to date:", to_date)
 
-    for f in data_src[:]:
-        if not os.path.splitext(f)[-1].lower().endswith(".zip"):
-            continue
-        print("+ Using data source '%s'" % f)
+    if to_date < from_date:
+        print("+ Second date needs to be later than first date")
+        sys.exit()
 
-        # mp = MainParser(src, tgt_game_ids)
-        mp = MainParser(f)
+    # finding all dates between first and second specified date
+    all_dates = set()
+    all_dates.add(from_date)
+    curr_date = from_date
 
-        # mp.parse_games_sequentially()
+    while curr_date != to_date:
+        curr_date = curr_date + relativedelta(days=1)
+        all_dates.add(curr_date)
+
+    print("+ Parsing summaries for the following dates:")
+    for date in sorted(all_dates):
+        print("\t+ %s" % date)
+
+    # TODO: find data source file for specified date(s)
+    src_files = list()
+
+    for root, dirs, files in os.walk(src_dir):
+        for file in files:
+            fname, ext = os.path.splitext(file)
+            if ext.lower().endswith(".zip"):
+                if parse(fname).date() in all_dates:
+                    print(os.path.join(root, file))
+                    src_files.append(os.path.join(root, file))
+
+    for file in src_files[:]:
+        print("+ Using data source '%s'" % file)
+
+        mp = MainParser(file, tgt_game_ids)
         mp.parse_games_simultaneously()
-
         mp.dispose()
