@@ -17,6 +17,7 @@ from db.contract_year import ContractYear
 from db.player_data_item import PlayerDataItem
 from utils import remove_non_ascii_chars
 from utils.player_contract_retriever import PlayerContractRetriever
+from utils.player_finder import PlayerFinder
 
 logger = logging.getLogger(__name__)
 
@@ -186,36 +187,67 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
     r = requests.get(url)
     doc = html.fromstring(r.json()['html'])
 
-    recently_signed_players = doc.xpath(
+    # retrieving links to pages of recently signed players
+    recently_signed_player_links = doc.xpath(
         "tr/td/a[contains(@href, 'players')]/@href")
+    # retrieving names of recently signed players
+    recently_signed_player_names = doc.xpath("tr/td/a/text()")
+    # retrieving signing dates of recently signed players
     recent_signing_dates = [
         parse(x).date() for x in doc.xpath("tr/td[5]/text()")]
-    recent_signings = zip(recently_signed_players, recent_signing_dates)
+    recent_signings = zip(
+        recently_signed_player_names,
+        recently_signed_player_links,
+        recent_signing_dates
+    )
 
     pcr = PlayerContractRetriever()
 
-    for recent_signee, recent_signing_date in recent_signings:
+    for signee, link, signing_date in recent_signings:
         # retrieving capfriendly id and subsequentially corresponding player
-        capfriendly_id = recent_signee.split("/")[-1]
+        capfriendly_id = link.split("/")[-1]
         plr = Player.find_by_capfriendly_id(capfriendly_id)
 
         if plr is None:
-            # TODO: create player if necessary
-            print("Contracted player not found in database")
-            continue
+            print("+ Contracted player (%s) not found in database" % signee)
+            pfr = PlayerFinder()
+            first_name, last_name = signee.split()
+            suggested_players = pfr.get_suggested_players(
+                last_name, first_name)
+            if len(suggested_players) == 1:
+                (
+                    nhl_id, pos,
+                    sugg_last_name, sugg_first_name,
+                    dob
+                ) = suggested_players.pop()
+                if (
+                    first_name, last_name
+                ) == (
+                    sugg_first_name, sugg_last_name
+                ):
+                    pfr.create_player(
+                        nhl_id, sugg_last_name, sugg_first_name,
+                        pos, capfriendly_id=capfriendly_id)
+                    plr = Player.find_by_capfriendly_id(capfriendly_id)
+                    print("+ Player %s created in database" % plr)
+                # TODO: error handling, date of birth checking
+                else:
+                    continue
+            else:
+                continue
 
         # trying to find existing contract signed on this date in database
         contract_db = Contract.find_with_signing_date(
-            plr.player_id, recent_signing_date)
+            plr.player_id, signing_date)
 
         if contract_db is not None:
             print("+ Contract for %s signed on %s already in database" % (
-                plr.name, recent_signing_date))
+                plr.name, signing_date))
             existing_contracts_found += 1
         else:
             print(
                 "+ Contract for %s signed on %s not found in database yet" % (
-                    plr.name, recent_signing_date))
+                    plr.name, signing_date))
             # retrieving all contracts associated with current capfriendly id
             raw_contract_list = (
                 pcr.retrieve_raw_contract_data_by_capfriendly_id(
@@ -224,7 +256,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
             # finding contract signed on signing date in list of all contracts
             # and creating it along with corresponding contract years
             for raw_contract in raw_contract_list:
-                if raw_contract['signing_date'] == recent_signing_date:
+                if raw_contract['signing_date'] == signing_date:
                     contract = Contract(plr.player_id, raw_contract)
                     commit_db_item(contract)
                     for raw_contract_year in raw_contract['contract_years']:
