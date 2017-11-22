@@ -318,7 +318,7 @@ class PlayerFinder():
     def create_player(
             self, plr_id, last_name, first_name, position,
             alternate_last_names=[], alternate_first_names=[],
-            alternate_positions=[]):
+            alternate_positions=[], capfriendly_id=None):
         """
         Creates a new player in database using the specified data.
         """
@@ -329,6 +329,8 @@ class PlayerFinder():
                 alternate_last_names=alternate_last_names,
                 alternate_first_names=alternate_first_names,
                 alternate_positions=alternate_positions)
+        if capfriendly_id:
+            plr.capfriendly_id = capfriendly_id
 
         commit_db_item(plr, True)
 
