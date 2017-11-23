@@ -204,6 +204,8 @@ class MultiFileDownloader():
         new_zip = ZipFile(zip_path, mode='w', compression=ZIP_DEFLATED)
 
         for f in files_to_zip:
+            if not os.path.isfile(f):
+                continue
             # retrieving modification date, either ...
             if os.path.basename(f) in files_in_zip_info:
                 # for an existing file
