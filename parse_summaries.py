@@ -32,7 +32,7 @@ if __name__ == '__main__':
         help="The last date summaries will be parsed for")
     # TODO: make it a list
     parser.add_argument(
-        '-g', '--games', dest='game_ids', required=False,
+        '-g', '--games', dest='tgt_game_ids', required=False,
         metavar='list of ids of games to parse',
         help="Game ids representing games to parse summaries")
 
@@ -47,8 +47,9 @@ if __name__ == '__main__':
     else:
         to_date = from_date
     # setting game ids of interest from command line option
-    if args.game_ids is not None:
-        tgt_game_ids = args.tgt_game_ids
+    if args.tgt_game_ids is not None:
+        tgt_game_ids = sorted(
+            [s.strip() for s in args.tgt_game_ids.split(",")])
     else:
         tgt_game_ids = None
 
@@ -89,4 +90,5 @@ if __name__ == '__main__':
 
         mp = MainParser(file, tgt_game_ids)
         mp.parse_games_simultaneously()
+        # mp.parse_games_sequentially()
         mp.dispose()
