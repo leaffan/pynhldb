@@ -239,6 +239,18 @@ class SummaryDownloader(MultiFileDownloader):
             # retrieving time stamp for downloaded data
             act_time_stamp = parse(
                 json_data['metaData']['timeStamp'].replace("_", " "))
+            # checking whether json data that is due to update an existing data
+            # set contains any play information at all and bailing out if that
+            # is not the case - by doing so we avoid overwriting existing
+            # *good* with *bad* data
+            play_data = json_data['liveData']['plays']['allPlays']
+            # print(tgt_path)
+            if mod_time_stamp and not play_data:
+                # print("No playdata found %s" % url)
+                # TODO: proper logging
+                sys.stdout.write("x")
+                sys.stdout.flush()
+                return
             # comparing time stamp of last modification of json data with
             # previously saved timestamp
             if act_time_stamp == mod_time_stamp:
