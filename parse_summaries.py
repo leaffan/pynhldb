@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import sys
 import argparse
 
@@ -10,6 +11,7 @@ from dateutil.relativedelta import relativedelta
 
 from parsers.main_parser import MainParser
 
+FILENAME_REGEX = re.compile("^\d{4}\-\d{2}\-\d{2}$")
 
 if __name__ == '__main__':
 
@@ -77,7 +79,7 @@ if __name__ == '__main__':
     for root, dirs, files in os.walk(src_dir):
         for file in files:
             fname, ext = os.path.splitext(file)
-            if ext.lower().endswith(".zip"):
+            if re.search(FILENAME_REGEX, fname):
                 if parse(fname).date() in all_dates:
                     print(os.path.join(root, file))
                     src_files.append(os.path.join(root, file))
