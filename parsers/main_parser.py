@@ -183,7 +183,8 @@ class MainParser():
         # team information
         rosters = rp.create_roster(
             self.parsed_data[game_id]['game'],
-            self.parsed_data[game_id]['teams'])
+            self.parsed_data[game_id]['teams'],
+            self.read_on_demand(game_id, 'RO'))
 
         return rosters
 

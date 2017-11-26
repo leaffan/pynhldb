@@ -19,7 +19,8 @@ class PlayerGame(Base):
         "toi_overall", "toi_pp", "toi_sh", "toi_ev", "avg_shift", "no_shifts",
         "shots_on_goal", "shots_blocked", "shots_missed", "hits",
         "giveaways", "takeaways", "blocks", "faceoffs_won", "faceoffs_lost",
-        "on_ice_shots_on_goal", "on_ice_shots_blocked", "on_ice_shots_missed"
+        "on_ice_shots_on_goal", "on_ice_shots_blocked", "on_ice_shots_missed",
+        "captain", "alternate_captain", "starting"
     ]
 
     def __init__(self, game_id, team_id, plr_id, data_dict):
@@ -51,7 +52,15 @@ class PlayerGame(Base):
 
     def update(self, other):
         for attr in self.STANDARD_ATTRS:
-            setattr(self, attr, getattr(other, attr))
+            # assuring  boolean attributes don't get set to null
+            if attr in ['starting', 'captain', 'alternate_captain']:
+                if getattr(other, attr) is True:
+                    setattr(self, attr, True)
+                else:
+                    setattr(self, attr, False)
+            # updating regular attributes
+            else:
+                setattr(self, attr, getattr(other, attr))
 
     # TODO: include further attributes
     def __eq__(self, other):
@@ -65,6 +74,7 @@ class PlayerGame(Base):
                 self.shots_blocked, self.shots_missed, self.hits,
                 self.giveaways, self.takeaways,
                 self.blocks, self.faceoffs_won, self.faceoffs_lost,
+                self.starting, self.captain, self.alternate_captain,
                 # self.on_ice_shots_on_goal, self.on_ice_shots_missed,
                 # self.on_ice_shots_blocked
                 ) == (
@@ -76,6 +86,7 @@ class PlayerGame(Base):
                 other.shots_blocked, other.shots_missed, other.hits,
                 other.giveaways, other.takeaways,
                 other.blocks, other.faceoffs_won, other.faceoffs_lost,
+                other.starting, other.captain, other.alternate_captain,
                 # other.on_ice_shots_on_goal, other.on_ice_shots_missed,
                 # other.on_ice_shots_blocked
                 ))

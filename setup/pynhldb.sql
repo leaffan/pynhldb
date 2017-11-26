@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Diagram Name: pynhldb - Database Design
--- Created on: 16.11.2017 10:32:30
--- Diagram Version: 1.6
+-- Created on: 24.11.2017 03:05:10
+-- Diagram Version: 1.7
 -- =============================================================================
 CREATE SCHEMA "nhl";
 
@@ -865,6 +865,9 @@ CREATE TABLE "nhl"."player_games" (
 	"on_ice_shots_on_goal" int2,
 	"on_ice_shots_blocked" int2,
 	"on_ice_shots_missed" int2,
+	"captain" bool DEFAULT False,
+	"alternate_captain" bool DEFAULT False,
+	"starting" bool DEFAULT False,
 	CONSTRAINT "player_game_key" PRIMARY KEY("player_game_id"),
 	CONSTRAINT "position_check" CHECK(position in ('G', 'D', 'L', 'C', 'R', 'F', 'W', ''))
 );
@@ -942,6 +945,12 @@ COMMENT ON COLUMN "nhl"."player_games"."on_ice_shots_blocked" IS 'Shots blocked 
 
 COMMENT ON COLUMN "nhl"."player_games"."on_ice_shots_missed" IS 'Missed shots with player on ice';
 
+COMMENT ON COLUMN "nhl"."player_games"."captain" IS 'Indicator whether the player acted as captain';
+
+COMMENT ON COLUMN "nhl"."player_games"."alternate_captain" IS 'Indicator whether the player acted as alternate captain';
+
+COMMENT ON COLUMN "nhl"."player_games"."starting" IS 'Indicator whether the player was part of the starting lineup';
+
 DROP TABLE IF EXISTS "nhl"."goalie_games" CASCADE;
 
 CREATE TABLE "nhl"."goalie_games" (
@@ -968,6 +977,7 @@ CREATE TABLE "nhl"."goalie_games" (
 	"shutout" int2,
 	"gaa" numeric,
 	"save_pctg" numeric,
+	"starting" bool DEFAULT False,
 	CONSTRAINT "goalie_game_key" PRIMARY KEY("goalie_game_id")
 );
 
@@ -1025,6 +1035,8 @@ COMMENT ON COLUMN "nhl"."goalie_games"."shutout" IS 'Shutout indicator for goali
 COMMENT ON COLUMN "nhl"."goalie_games"."gaa" IS 'Goals-against-average for goalie in a game';
 
 COMMENT ON COLUMN "nhl"."goalie_games"."save_pctg" IS 'Save percentage for goalie in a game';
+
+COMMENT ON COLUMN "nhl"."goalie_games"."starting" IS 'Indicator whether the player was the starting goaltender';
 
 DROP TABLE IF EXISTS "nhl"."shifts" CASCADE;
 
