@@ -35,6 +35,10 @@ if __name__ == '__main__':
         '-g', '--games', dest='tgt_game_ids', required=False,
         metavar='list of ids of games to parse',
         help="Game ids representing games to parse summaries")
+    parser.add_argument(
+        '-s', '--sequential', dest='sequential', required=False,
+        action='store_true',
+        help="Turn off multi-threaded parsing, turn on sequential parsing")
 
     args = parser.parse_args()
 
@@ -52,10 +56,16 @@ if __name__ == '__main__':
             [s.strip() for s in args.tgt_game_ids.split(",")])
     else:
         tgt_game_ids = None
+    # toggling simultaneous/sequential parsing
+    if args.sequential:
+        sequential_parsing = True
+    else:
+        sequential_parsing = False
 
     print("+ Using source directory:", src_dir)
     print("+ Parsing from date:", from_date)
     print("+ Parsing to date:", to_date)
+    print("+ Sequential parsing:", sequential_parsing)
 
     if to_date < from_date:
         print("+ Second date needs to be later than first date")
@@ -89,6 +99,8 @@ if __name__ == '__main__':
         print("+ Using data source '%s'" % file)
 
         mp = MainParser(file, tgt_game_ids)
-        mp.parse_games_simultaneously()
-        # mp.parse_games_sequentially()
+        if sequential_parsing:
+            mp.parse_games_sequentially()
+        else:
+            mp.parse_games_simultaneously()
         mp.dispose()
