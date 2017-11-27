@@ -16,7 +16,7 @@ class GoalieGame(Base):
         "no", "shots_against", "goals_against", "saves", "en_goals",
         "toi_overall", "toi_pp", "toi_sh", "toi_ev", "win", "loss", "otl",
         "tie", "regulation_tie", "overtime_game", "shootout_game",
-        "shutout", "gaa", "save_pctg"
+        "shutout", "gaa", "save_pctg", "starting",
     ]
 
     def __init__(self, game_id, team_id, plr_id, data_dict):
@@ -28,7 +28,10 @@ class GoalieGame(Base):
             if attr in data_dict:
                 setattr(self, attr, data_dict[attr])
             else:
-                setattr(self, attr, None)
+                if attr == "starting":
+                    setattr(self, attr, False)
+                else:
+                    setattr(self, attr, None)
 
     @classmethod
     def find(self, game_id, player_id):
@@ -55,7 +58,7 @@ class GoalieGame(Base):
                 self.en_goals, self.toi_overall, self.toi_pp, self.toi_sh,
                 self.toi_ev, self.win, self.loss, self.otl, self.tie,
                 self.regulation_tie, self.overtime_game, self.shootout_game,
-                self.shutout,
+                self.shutout, self.starting,
                 None if self.gaa is None else "{0:f}".format(
                     round(self.gaa, 6)),
                 None if self.save_pctg is None else "{0:f}".format(
@@ -66,7 +69,7 @@ class GoalieGame(Base):
                 other.en_goals, other.toi_overall, other.toi_pp, other.toi_sh,
                 other.toi_ev, other.win, other.loss, other.otl, other.tie,
                 other.regulation_tie, other.overtime_game, other.shootout_game,
-                other.shutout,
+                other.shutout, other.starting,
                 None if other.gaa is None else "{0:f}".format(
                     round(other.gaa, 6)),
                 None if other.save_pctg is None else "{0:f}".format(

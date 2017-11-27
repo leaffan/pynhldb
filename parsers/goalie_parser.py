@@ -54,8 +54,14 @@ class GoalieParser():
                 for item in self.GOALIE_GAME_ATTRS:
                     goalie_game_data_dict[item] = 0
 
+                # setting jersey/sweater number
                 goalie_game_data_dict['no'] = int(tokens[0])
+                # retrieving corresponding player/game item
                 plr_game = rosters[key][goalie_game_data_dict['no']]
+
+                # transfer starting role for goaltender (if applicable)
+                if plr_game.starting:
+                    goalie_game_data_dict['starting'] = True
 
                 # retrieving goalie's time on ice
                 goalie_game_data_dict = self.retrieve_time_on_ice(
