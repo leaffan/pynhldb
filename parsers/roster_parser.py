@@ -47,24 +47,24 @@ class RosterParser():
         for key in sorted(self.event_summary.keys(), reverse=True):
             curr_team = teams[key]
             self.rosters[key] = dict()
-            for roster_line in self.event_summary[key]:
-                plr_id = roster_line['plr_id']
+            for summary_item in self.event_summary[key]:
+                plr_id = summary_item['plr_id']
+
+                # setting role as captain/alternate captain
+                if summary_item['no'] == self.roster_data[key]['captain']:
+                    summary_item['captain'] = True
+                elif summary_item['no'] in self.roster_data[key][
+                        'alternate_captains']:
+                    summary_item['alternate_captain'] = True
+                # setting position in starting lineup
+                if summary_item['no'] in self.roster_data[key]['starting']:
+                    summary_item['starting'] = True
+
                 # TODO: check whether player exists in database
                 # TODO: otherwise create one
                 # setting up new player game item
                 new_pgame = PlayerGame(
-                    game.game_id, curr_team.team_id, plr_id, roster_line)
-
-                # TODO: make roles part of the roster line item
-                # setting role as captain/alternate captain
-                if roster_line['no'] == self.roster_data[key]['captain']:
-                    new_pgame.captain = True
-                if roster_line['no'] in self.roster_data[key][
-                        'alternate_captains']:
-                    new_pgame.alternate_captain = True
-                # setting position in starting lineup
-                if roster_line['no'] in self.roster_data[key]['starting']:
-                    new_pgame.starting = True
+                    game.game_id, curr_team.team_id, plr_id, summary_item)
 
                 # trying to find existing player game item in database
                 db_pgame = PlayerGame.find(
@@ -93,7 +93,7 @@ class RosterParser():
         # transforming table row elements into lists of data
         for key in ['road', 'home']:
 
-            roster_list = list()
+            event_summary = list()
 
             trs = self.event_summary[key]
             # retaining only those rows that have a number in their first table
@@ -111,9 +111,9 @@ class RosterParser():
             # creating data dictionaries for each table row, e.g. player
             for tr, content in zip(trs, contents):
                 content = [c for c in content if c.strip()]
-                single_roster_line = dict()
+                single_event_summary_item = dict()
                 # adding player id to single roster line
-                single_roster_line['plr_id'] = int(
+                single_event_summary_item['plr_id'] = int(
                     tr.xpath("td/span/@nhl_id")[0])
                 # retrieving values from table row contents
                 for attr in self.PLAYER_GAME_ATTRS:
@@ -129,30 +129,40 @@ class RosterParser():
                     else:
                         val = int(val)
 
-                    single_roster_line[attr] = val
+                    single_event_summary_item[attr] = val
                 # adding single roster line to all roster lines
-                roster_list.append(single_roster_line)
+                event_summary.append(single_event_summary_item)
             # setting roster data for current team type to retrieved contents
-            self.event_summary[key] = roster_list
+            self.event_summary[key] = event_summary
 
     def retrieve_starting_lineup_captains(self, raw_ro_data):
-
+        """
+        Retrieves players serving as (alternate) captain(s) and as part of the
+        starting lineup.
+        """
+        # retrieving rosters for road and home team from corresponding summary
         self.roster_data['road']['raw'], self.roster_data['home']['raw'] = (
             raw_ro_data.xpath(
                 "//table[@align='center' and  @width='100%' and " +
                 "@cellspacing = '0' and @border = '0']")[1:3])
 
         for key in self.roster_data.keys():
+            # retrieving raw captain and alternate captains
             captains = self.roster_data[key]['raw'].xpath(
                 "tr/td[contains(@class, 'italic')]/text()")
+            # setting initial values for captaincy roles
             self.roster_data[key]['alternate_captains'] = list()
+            self.roster_data[key]['captain'] = None
+            # retrieving actual players (via numbers) for captaincy roles
             for no, pos, name in [
                     captains[x:x+3] for x in range(0, len(captains), 3)]:
                 if name.strip().endswith('(C)'):
                     self.roster_data[key]['captain'] = int(no)
                 elif name.strip().endswith('(A)'):
                     self.roster_data[key]['alternate_captains'].append(int(no))
+            # retrieving raw starting lineup
             starting_lineup = self.roster_data[key]['raw'].xpath(
                 "tr/td[contains(@class, 'bold')]/text()")
+            # retrieving actual players (via numbers) in starting lineup
             self.roster_data[key]['starting'] = [
                 int(x) for x in starting_lineup[::3]]
