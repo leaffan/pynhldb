@@ -36,9 +36,13 @@ if __name__ == '__main__':
         metavar='list of ids of games to parse',
         help="Game ids representing games to parse summaries")
     parser.add_argument(
-        '-s', '--sequential', dest='sequential', required=False,
+        '--sequential', dest='sequential', required=False,
         action='store_true',
         help="Turn off multi-threaded parsing, turn on sequential parsing")
+    parser.add_argument(
+        '--exclude', dest='exclude', required=False, nargs='+',
+        choices=['shifts', 'events'],
+        help="Exclude the specified aspects from parsing")
 
     args = parser.parse_args()
 
@@ -100,7 +104,7 @@ if __name__ == '__main__':
 
         mp = MainParser(file, tgt_game_ids)
         if sequential_parsing:
-            mp.parse_games_sequentially()
+            mp.parse_games_sequentially(args.exclude)
         else:
-            mp.parse_games_simultaneously()
+            mp.parse_games_simultaneously(args.exclude)
         mp.dispose()

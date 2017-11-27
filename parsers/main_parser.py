@@ -52,22 +52,25 @@ class MainParser():
         else:
             self.tgt_game_ids = self.game_ids
 
-    def parse_games_sequentially(self):
+    def parse_games_sequentially(self, exclude=None):
         """
-        Parses multiple games in a sequential manner.
+        Parses multiple games in a sequential manner, excludes the specified
+        aspects (e.g. player shifts and/or game events) from processing.
         """
         for game_id in self.tgt_game_ids:
-            self.parse_single_game(game_id)
+            self.parse_single_game(game_id, exclude)
 
-    def parse_games_simultaneously(self, max_workers=8):
+    def parse_games_simultaneously(self, exclude=None, max_workers=8):
         """
-        Parses multiple games in a parallel manner.
+        Parses multiple games in a parallel manner with the given maximum
+        number of threads. Excludes the specified aspects (e.g. player shifts
+        and/or game events) from processing.
         """
         with ThreadPoolExecutor(max_workers=max_workers) as threads:
             future_tasks = {
                 threads.submit(
-                    self.parse_single_game,
-                    game_id): game_id for game_id in self.tgt_game_ids}
+                    self.parse_single_game, game_id,
+                    exclude): game_id for game_id in self.tgt_game_ids}
             for future in as_completed(future_tasks):
                 try:
                     # TODO: think of something to do with the result here
@@ -76,11 +79,16 @@ class MainParser():
                 except Exception as e:
                     pass
 
-    def parse_single_game(self, game_id):
+    def parse_single_game(self, game_id, exclude):
         """
         Parses raw structured data for single game to create datbase-ready
-        objects.
+        objects, excludes the specified aspects (e.g. player shifts and/or
+        game events) from processing.
         """
+        # creating empty list of aspects to exclude if necessary
+        if exclude is None:
+            exclude = list()
+
         # setting up dictionary for structured raw data
         self.raw_data[game_id] = dict()
         self.parsed_data[game_id] = dict()
@@ -112,12 +120,14 @@ class MainParser():
         self.parsed_data[game_id]['goalies'] = self.create_goalies(game_id)
         # print(self.parsed_data[game_id]['goalies'].keys())
 
-        # parsing player create_shifts
-        self.parsed_data[game_id]['shifts'] = self.create_shifts(game_id)
-        # print(self.parsed_data[game_id]['shifts'].keys())
+        # parsing player shifts (if not optionally excluded from processing)
+        if 'shifts' not in exclude:
+            self.parsed_data[game_id]['shifts'] = self.create_shifts(game_id)
+            # print(self.parsed_data[game_id]['shifts'].keys())
 
-        # parsing game events
-        self.parsed_data[game_id]['events'] = self.create_events(game_id)
+        # parsing game events (if not optonally excluded from processing)
+        if 'events' not in exclude:
+            self.parsed_data[game_id]['events'] = self.create_events(game_id)
 
         # removing raw structured data from memory
         del self.raw_data[game_id]
