@@ -32,7 +32,10 @@ class PlayerGame(Base):
             if attr in data_dict:
                 setattr(self, attr, data_dict[attr])
             else:
-                setattr(self, attr, None)
+                if attr in ("captain", "alternate_captain", "starting"):
+                    setattr(self, attr, False)
+                else:
+                    setattr(self, attr, None)
 
     @classmethod
     def find(self, game_id, player_id):
@@ -52,7 +55,7 @@ class PlayerGame(Base):
 
     def update(self, other):
         for attr in self.STANDARD_ATTRS:
-            # assuring  boolean attributes don't get set to null
+            # assuring boolean attributes don't get set to null
             if attr in ['starting', 'captain', 'alternate_captain']:
                 if getattr(other, attr) is True:
                     setattr(self, attr, True)
