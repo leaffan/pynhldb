@@ -312,7 +312,7 @@ class EventParser():
                 so_attempt_props = None
                 distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
                 logger.warn(
-                    "Couldn't retrieve shootout attempt properties" +
+                    "Couldn't retrieve shootout attempt properties " +
                     "from raw data: %s" % event.raw_data)
         else:
             so_attempt_props, distance = self.SHOT_WO_ZONE_REGEX.search(
@@ -331,7 +331,7 @@ class EventParser():
                 else:
                     shootout_data_dict['shot_type'] = so_attempt_props
                     logger.warn(
-                        "Couldn't retrieve shootout attempt miss" +
+                        "Couldn't retrieve shootout attempt miss " +
                         "type from raw data: %s" % event.raw_data)
 
         shootout_data_dict['distance'] = int(distance)
