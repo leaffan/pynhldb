@@ -141,11 +141,12 @@ class EventParser():
 
             if specific_event:
                 print(specific_event)
-
+                
             # determining coordinates in case current event is simultaneous
             # with others
-            if specific_event is not None and event.x is None:
-                self.find_coordinates_for_simultaneous_events(specific_event)
+            if specific_event is not None and None in [event.x, event.y]:
+                event = self.find_coordinates_for_simultaneous_events(
+                    specific_event)
 
             # skipping shot attempts conducted in a shootout
             if self.game.type == 2 and event.period == 5:
@@ -239,10 +240,6 @@ class EventParser():
                 single_play_dict = self.json_dict[play_key][0]
                 event_data_dict['x'] = int(single_play_dict['x'])
                 event_data_dict['y'] = int(single_play_dict['y'])
-            # else:
-            #     print()
-            #     print(self.json_dict[play_key])
-            #     print()
 
         # creating event id as combination of game id and in-game event count
         event_id = "{0:d}{1:04d}".format(
@@ -1000,6 +997,7 @@ class EventParser():
                 event.y = play['y']
                 commit_db_item(event)
                 break
+        return event
 
     # TODO: include data dict to assign elements to
     def retrieve_standard_event_parameters(self, event):

@@ -70,7 +70,7 @@ class Event(Base):
             # avoiding to overwrite existing coordinates in database
             # with null values
             if attr in ['x', 'y']:
-                if getattr(self, attr) and getattr(other, attr) is None:
+                if hasattr(self, attr) and getattr(other, attr) is None:
                     continue
             setattr(self, attr, getattr(other, attr))
 
