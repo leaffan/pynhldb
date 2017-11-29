@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # TODO: make it a list
     parser.add_argument(
         '-g', '--games', dest='tgt_game_ids', required=False,
-        metavar='list of ids of games to parse',
+        metavar='list of ids of games to parse', nargs='+',
         help="Game ids representing games to parse summaries")
     parser.add_argument(
         '--sequential', dest='sequential', required=False,
@@ -56,8 +56,7 @@ if __name__ == '__main__':
         to_date = from_date
     # setting game ids of interest from command line option
     if args.tgt_game_ids is not None:
-        tgt_game_ids = sorted(
-            [s.strip() for s in args.tgt_game_ids.split(",")])
+        tgt_game_ids = sorted(args.tgt_game_ids)
     else:
         tgt_game_ids = None
     # toggling simultaneous/sequential parsing
