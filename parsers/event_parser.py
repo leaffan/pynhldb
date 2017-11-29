@@ -141,7 +141,7 @@ class EventParser():
 
             if specific_event:
                 print(specific_event)
-                
+
             # determining coordinates in case current event is simultaneous
             # with others
             if specific_event is not None and None in [event.x, event.y]:
@@ -229,8 +229,8 @@ class EventParser():
             if key in goalies_on_ice:
                 event_data_dict["%s_goalie" % key] = goalies_on_ice[key]
 
-        # TODO: match all types of multiple plays (not just penalties) at the
-        # same time with events
+        # matching current event data with play (bringing along coordinates)
+        # in case of exactly one event of the same type at the same time
         play_key = (
             event_data_dict['period'],
             event_data_dict['time'],
