@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import math
 import logging
 
 from db.event import Event
@@ -19,6 +20,9 @@ EVENT_PLAYER_ATTRIBUTE_NAMES = {
     'FAC': 'faceoff_lost_player_id',
     'HIT': 'hit_taken_player_id',
     'BLOCK': 'blocked_player_id'
+}
+GOAL_COORDINATES = {
+    'x': 90, 'y': 0
 }
 
 
@@ -133,14 +137,38 @@ def is_matching_shot_event(specific_event, play):
         else:
             specific_event = Shot.find_by_event_id(event.event_id)
 
+    play_distance = calculate_distance_from_goal(play)
+
+    # trying to match shooter, shot type *and* shot distance first
     if (
-        play['active'], play['shot_type']
+        play['active'], play['shot_type'], play_distance
     ) == (
-        specific_event.player_id, specific_event.shot_type.lower()
+        specific_event.player_id,
+        specific_event.shot_type.lower(),
+        specific_event.distance
     ):
         return True
-    else:
-        return False
+
+    # trying to match only shooter and shot type
+    if (
+        play['active'], play['shot_type'],
+    ) == (
+        specific_event.player_id,
+        specific_event.shot_type.lower(),
+    ):
+        return True
+
+    return False
+
+
+def calculate_distance_from_goal(play):
+    """
+    Calculates Euclidean distance between coordinates of play and the goal.
+    """
+    return int(round(math.sqrt(
+        (GOAL_COORDINATES['x'] - play['x']) ** 2 +
+        (GOAL_COORDINATES['y'] - play['y']) ** 2
+    ), 0))
 
 
 def is_matching_miss_event(specific_event, play):
