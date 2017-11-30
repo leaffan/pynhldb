@@ -366,14 +366,11 @@ class EventParser():
 
         # assuming the shooting team is the home team
         shot_attempt_for_key, shot_attempt_against_key = 'home', 'road'
-        # for_score_diff_factor, against_score_diff_factor = 1, -1
         shot_attempt_dict['score_diff'] = self.score_diff
         # otherwise switching keys
         if specific_event.team_id == self.game.road_team_id:
             shot_attempt_for_key, shot_attempt_against_key = (
                 shot_attempt_against_key, shot_attempt_for_key)
-            # for_score_diff_factor, against_score_diff_factor = (
-            #     against_score_diff_factor, for_score_diff_factor)
             shot_attempt_dict['score_diff'] = self.score_diff / -1
 
         if event.type in ('MISS', 'SHOT', 'GOAL'):
@@ -385,13 +382,12 @@ class EventParser():
                 shot_attempt_dict['shot_attempt_type'] = 'S'
 
         elif event.type == 'BLOCK':
+            # retrieving reverse numerical situation and actual shooter
             shot_attempt_dict['num_situation'] = reverse_num_situation(
                 event.num_situation)
             shot_attempt_dict['shooter_id'] = specific_event.blocked_player_id
             shot_attempt_for_key, shot_attempt_against_key = (
                 shot_attempt_against_key, shot_attempt_for_key)
-            # for_score_diff_factor, against_score_diff_factor = (
-            #     against_score_diff_factor, for_score_diff_factor)
             shot_attempt_dict['score_diff'] = self.score_diff / -1
 
         shot_attempt_dict['shooting_team'] = getattr(
