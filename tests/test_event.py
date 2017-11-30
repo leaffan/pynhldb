@@ -64,7 +64,8 @@ def get_event_parser(dir, game_id):
     """
     # retrieving raw data
     game_report_doc = html.fromstring(get_document(dir, game_id, 'GS'))
-    roster_report_doc = html.fromstring(get_document(dir, game_id, 'ES'))
+    event_summary_doc = html.fromstring(get_document(dir, game_id, 'ES'))
+    roster_report_doc = html.fromstring(get_document(dir, game_id, 'RO'))
     play_by_play_report_doc = html.fromstring(
         get_document(dir, game_id, 'PL'))
     game_feed_json_doc = get_json_document(dir, game_id)
@@ -76,8 +77,8 @@ def get_event_parser(dir, game_id):
     gp = GameParser(game_id, game_report_doc)
     game = gp.create_game(teams)
     # using roster parser to retrieve team rosters
-    rp = RosterParser(roster_report_doc)
-    rosters = rp.create_roster(game, teams)
+    rp = RosterParser(event_summary_doc)
+    rosters = rp.create_roster(game, teams, roster_report_doc)
 
     # using event parser to retrieve all raw events
     ep = EventParser(
