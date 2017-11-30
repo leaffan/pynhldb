@@ -36,6 +36,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--draft_year', dest='draft_year', action='store', default=2017,
         help='draft year to retrieve players from')
+    parser.add_argument(
+        '--roster_season', dest='roster_season', action='store', default=None,
+        help='season to retrieve roster players for')
     args = parser.parse_args()
     setup_steps = args.steps
 
@@ -50,7 +53,7 @@ if __name__ == '__main__':
         migrate_players()
     # finding players on roster/system/contract pages
     if setup_steps in ['pf', 'a']:
-        search_players(args.roster_src)
+        search_players(args.roster_src, args.roster_season)
     # creating players from draft overview
     if setup_steps in ['pc', 'a']:
         create_players_for_draft_year(args.draft_year)

@@ -51,7 +51,7 @@ def migrate_players(plr_src_file=None):
         commit_db_item(plr)
 
 
-def search_players(src_type):
+def search_players(src_type, season=None):
     """
     Searches (and optionally creates) players that are listed either on the
     each team's official roster page (source type 'roster') or on its *in-the-
@@ -63,7 +63,7 @@ def search_players(src_type):
 
     current_teams = Team.find_teams_for_season()
     for team in sorted(current_teams)[:]:
-        team_players = plr_f.find_players_for_team(team, src_type)
+        team_players = plr_f.find_players_for_team(team, src_type, season)
 
         # using concurrent threads to speed up the retrieval of single player
         # season statistics

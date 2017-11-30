@@ -35,7 +35,7 @@ class PlayerFinder():
     def __init__(self):
         pass
 
-    def find_players_for_team(self, team, src='roster'):
+    def find_players_for_team(self, team, src='roster', season=None):
         """
         Finds players currently on roster/in system for specified team.
         """
@@ -46,7 +46,7 @@ class PlayerFinder():
         print("+ Searching %s players for %s" % (src, team))
 
         if src == 'roster':
-            players = self.get_roster_players(team)
+            players = self.get_roster_players(team, season)
         elif src == 'system':
             players = self.get_system_players(team)
         elif src == 'contract':
@@ -54,7 +54,7 @@ class PlayerFinder():
 
         return players
 
-    def get_roster_players(self, team):
+    def get_roster_players(self, team, season=None):
         """
         Retrieves basic player information from team roster page. Checks
         whether corresponding player already exists in database and creates it
@@ -64,7 +64,7 @@ class PlayerFinder():
         players = list()
 
         # getting html document with team's roster
-        doc = self.get_html_document(team, 'roster')
+        doc = self.get_html_document(team, 'roster', season)
 
         # retrieving player page urls, and players' first and last names
         # from roster page
@@ -336,7 +336,7 @@ class PlayerFinder():
 
         return Player.find_by_id(plr_id)
 
-    def get_html_document(self, team, src_type):
+    def get_html_document(self, team, src_type, season=None):
         """
         Gets html data for team roster, in-the-system or capfriendly pages.
         """
@@ -344,10 +344,17 @@ class PlayerFinder():
             # preparing url to team's roster page
             team_url_component = team.team_name.lower().replace(" ", "")
             # creating url like 'https://www.nhl.com/ducks/roster'
-            team_url = "/".join((
-                self.NHL_SITE_PREFIX,
-                team_url_component,
-                self.NHL_SITE_ROSTER_SUFFIX))
+            if season is not None:
+                team_url = "/".join((
+                    self.NHL_SITE_PREFIX,
+                    team_url_component,
+                    self.NHL_SITE_ROSTER_SUFFIX,
+                    str(season)))
+            else:
+                team_url = "/".join((
+                    self.NHL_SITE_PREFIX,
+                    team_url_component,
+                    self.NHL_SITE_ROSTER_SUFFIX))
         elif src_type == 'system':
             # preparing url to team's prospects page
             team_url_component = team.team_name.lower().replace(" ", "")
