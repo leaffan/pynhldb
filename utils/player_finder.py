@@ -96,6 +96,7 @@ class PlayerFinder():
                     if plr is None:
                         plr = self.create_player(
                             plr_id, last_name, first_name, position)
+                        logging.info("+ %s created" % plr)
 
                     players.append(plr)
 

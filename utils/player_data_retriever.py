@@ -132,7 +132,7 @@ class PlayerDataRetriever():
 
         with session_scope() as session:
             if not db_item or db_item is None:
-                logger.debug(
+                logger.info(
                     "\t+ Adding %s item for %s" % (cls_name, plr.name))
                 session.add(new_item)
                 return_item = new_item
