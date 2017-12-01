@@ -93,6 +93,17 @@ class Team(Base):
                 ).all()
             return teams
 
+    @classmethod
+    def find_teams_with_abbrs(cls, abbrs):
+        with session_scope() as session:
+            teams = session.query(Team).filter(
+                or_(
+                    Team.abbr.in_(abbrs),
+                    Team.orig_abbr.in_(abbrs)
+                )
+            ).all()
+        return teams
+
     def __str__(self):
         return self.name
 
