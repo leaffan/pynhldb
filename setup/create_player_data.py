@@ -10,6 +10,7 @@ from sqlalchemy import and_
 from db.common import session_scope
 from db.player import Player
 from db.team import Team
+from utils.player_finder import PlayerFinder
 from utils.player_data_retriever import PlayerDataRetriever
 from utils.player_contract_retriever import PlayerContractRetriever
 from utils.player_draft_retriever import PlayerDraftRetriever
@@ -91,6 +92,38 @@ def create_player_contracts():
                 pass
             except Exception as e:
                 print("Concurrent task generated an exception: %s" % e)
+
+
+def create_player_contracts_by_team():
+    """
+    Creates player contract items in database on a per-team basis.
+    """
+    with session_scope() as session:
+        teams = session.query(Team).filter(
+            and_(
+                Team.last_year_of_play.is_(None),
+                Team.first_year_of_play <= date.today().year
+            )
+        ).all()
+
+    data_retriever = PlayerContractRetriever()
+    player_finder = PlayerFinder()
+
+    for team in sorted(teams)[:]:
+        print("+ Retrieving contracts for players affiliated with %s" % team)
+        players = player_finder.get_contracted_players(team)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
+            future_tasks = {
+                threads.submit(
+                    data_retriever.retrieve_player_contracts, player.player_id
+                ): player for player in sorted(players)[:]
+            }
+            for future in concurrent.futures.as_completed(future_tasks):
+                try:
+                    pass
+                except Exception as e:
+                    print("Concurrent task generated an exception: %s" % e)
 
 
 def create_player_drafts():

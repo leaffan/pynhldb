@@ -11,6 +11,7 @@ from setup.create_players import create_players_for_draft_year
 from setup.create_player_data import create_player_seasons
 from setup.create_player_data import create_player_data
 from setup.create_player_data import create_player_contracts
+from setup.create_player_data import create_player_contracts_by_team
 from setup.create_player_data import create_player_drafts
 from setup.create_player_data import create_capfriendly_ids
 from setup.create_player_data import create_capfriendly_ids_by_team
@@ -28,7 +29,7 @@ if __name__ == '__main__':
         'steps', metavar='setup_steps', help='Setup steps to execute.',
         choices=[
             'a', 'c', 't', 'd', 'p', 'pf', 'pc',
-            'ps', 'pd', 'cf', 'cft', 'dft', 'lc'])
+            'ps', 'pd', 'cf', 'cft', 'dft', 'lc', 'ct'])
     parser.add_argument(
         '--roster_src', dest='roster_src', action='store', default='roster',
         choices=['roster', 'system', 'contract'],
@@ -69,6 +70,9 @@ if __name__ == '__main__':
     # retrieving contract data for all players in database
     if setup_steps in ['c']:
         create_player_contracts()
+    # retrieving contract data for all players contracted
+    if setup_steps in ['ct']:
+        create_player_contracts_by_team()
     # retrieving latest contract signings
     if setup_steps in ['lc']:
         create_latest_contract_signings(5)
