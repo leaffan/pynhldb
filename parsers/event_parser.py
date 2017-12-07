@@ -37,6 +37,10 @@ class EventParser():
     SHOT_REGEX = re.compile(",\s(.+),.+,\s(.+)\sft\.(Assist)?")
     # ... shot type and distance from goal for a shot when no zone is specified
     SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
+    # ... missed shot properties
+    MISS_REGEX = re.compile(
+        ",\s((?:.+),\s(?:Wide of Net|Hit Crossbar|Goalpost|Over Net)" +
+        ").*,\s(.+)\sft\.")
     # ... the distance from goal for a shot
     DISTANCE_REGEX = re.compile("(\d+)\sft\.")
     # ... assistants to a goal
@@ -469,7 +473,7 @@ class EventParser():
             miss_data_dict['penalty_shot'] = True
 
         # retrieving combined missed shot properties from raw data
-        miss_props, distance = self.SHOT_REGEX.search(
+        miss_props, distance = self.MISS_REGEX.search(
             event.raw_data).group(1, 2)
         # splitting up missed shot properties
         miss_props_tokens = [s.strip() for s in miss_props.split(',')]
@@ -491,7 +495,7 @@ class EventParser():
                 shot_type = None
                 miss_type = None
                 logger.warn(
-                    "Couldn't retrieve unambigious shot or" +
+                    "Couldn't retrieve unambigious shot or " +
                     "miss type from raw data: %s" % event.raw_data)
         # adding missed shot properties to data dictionary
         miss_data_dict['shot_type'] = shot_type
