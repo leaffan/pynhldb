@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import re
 from operator import attrgetter
 from itertools import groupby
 from collections import defaultdict
@@ -15,6 +16,8 @@ from db.team_game import TeamGame
 from db.division import Division
 
 # TODO: wild card rankings
+
+STREAK_REGEX = re.compile(R"(\w)\1*")
 
 
 def get_data(season):
@@ -113,28 +116,40 @@ def compile_records(team_games):
         records[tg.team_id]['ppctg'] = round(
             records[tg.team_id]['pts'] / (
                 records[tg.team_id]['gp'] * 2.0), 3)
-        # registering official *streaks*, denoting overtime/shootout losses
-        # separately
-        if not records[tg.team_id]['ostreak']:
-            records[tg.team_id]['ostreak'] = ''
+        # registering sequence of official game outcomes, denoting overtime/
+        # shootout losses separately
+        if not records[tg.team_id]['osequence']:
+            records[tg.team_id]['osequence'] = ''
         if tg.win:
-            records[tg.team_id]['ostreak'] += 'W'
+            records[tg.team_id]['osequence'] += 'W'
         elif tg.regulation_loss:
-            records[tg.team_id]['ostreak'] += 'L'
+            records[tg.team_id]['osequence'] += 'L'
         elif tg.loss:
-            records[tg.team_id]['ostreak'] += 'O'
-        # registering regulation *streaks*, denoting overtime/shootout games
-        # as ties
-        if not records[tg.team_id]['streak']:
-            records[tg.team_id]['streak'] = ''
+            records[tg.team_id]['osequence'] += 'O'
+
+        records[tg.team_id]['ostreak'] = get_current_streak(
+            records[tg.team_id]['osequence'])
+
+        # registering sequence of regulation game outcomes, denoting overtime/
+        # shootout games as ties
+        if not records[tg.team_id]['sequence']:
+            records[tg.team_id]['sequence'] = ''
         if tg.regulation_win:
-            records[tg.team_id]['streak'] += 'W'
+            records[tg.team_id]['sequence'] += 'W'
         elif tg.regulation_loss:
-            records[tg.team_id]['streak'] += 'L'
+            records[tg.team_id]['sequence'] += 'L'
         else:
-            records[tg.team_id]['streak'] += 'T'
+            records[tg.team_id]['sequence'] += 'T'
+
+        records[tg.team_id]['streak'] = get_current_streak(
+            records[tg.team_id]['sequence'])
 
     return records
+
+
+def get_current_streak(sequence):
+    curr_streak = [m.group(0) for m in re.finditer(STREAK_REGEX, sequence)][-1]
+    return "%s%d" % (curr_streak[0], len(curr_streak))
 
 
 def prepare_sorted_output(records, group=None, type='official'):
@@ -172,9 +187,11 @@ def prepare_sorted_output(records, group=None, type='official'):
     for team_id in sorted_team_ids:
         team = Team.find_by_id(team_id)
         gd, fore = get_colored_output(records[team_id]["%sgd" % key_prefix])
+        sequence = get_colored_sequence(
+            records[team_id]["%ssequence" % key_prefix])
         streak = get_colored_streak(records[team_id]["%sstreak" % key_prefix])
 
-        s = format("%3d %-22s %2d %2d %2d %2d %3d %3d-%3d %s%s%s %s" % (
+        s = format("%3d %-22s %2d %2d %2d %2d %3d %3d-%3d %s%s%s %s %s" % (
             rank, team, records[team_id]['gp'],
             records[team_id]["%sw" % key_prefix],
             records[team_id]['ol'],
@@ -182,7 +199,7 @@ def prepare_sorted_output(records, group=None, type='official'):
             records[team_id]["%spts" % key_prefix],
             records[team_id]["%sgf" % key_prefix],
             records[team_id]["%sga" % key_prefix],
-            fore, gd, Style.RESET_ALL, streak
+            fore, gd, Style.RESET_ALL, streak, sequence
             ))
 
         output.append(s)
@@ -191,11 +208,12 @@ def prepare_sorted_output(records, group=None, type='official'):
     return "\n".join(output)
 
 
-def get_colored_streak(streak, length=35):
-
+def get_colored_sequence(sequence, length=5):
+    """
+    Returns color-coded sequence of game outcomes.
+    """
     output = ""
-
-    for single_game in streak[-length:]:
+    for single_game in sequence[-length:]:
         if single_game == 'W':
             output += Fore.LIGHTGREEN_EX + single_game
         elif single_game in ('O', 'T'):
@@ -205,8 +223,24 @@ def get_colored_streak(streak, length=35):
     else:
         output += Style.RESET_ALL
 
-    if len(streak) < length:
-        output = "".join(((length - len(streak)) * '-', output))
+    if len(sequence) < length:
+        output = "".join(((length - len(sequence)) * '-', output))
+
+    return output
+
+
+def get_colored_streak(streak):
+    """
+    Returns color-coded streak of most recent game outcomes.
+    """
+    output = ""
+    if streak[0] == 'W':
+        output += Fore.LIGHTGREEN_EX + streak
+    elif streak[0] in ('O', 'T'):
+        output += Fore.LIGHTYELLOW_EX + streak
+    elif streak[0] == 'L':
+        output += Fore.LIGHTRED_EX + streak
+    output += Style.RESET_ALL
 
     return output
 
