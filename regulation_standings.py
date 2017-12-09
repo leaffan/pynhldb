@@ -113,6 +113,26 @@ def compile_records(team_games):
         records[tg.team_id]['ppctg'] = round(
             records[tg.team_id]['pts'] / (
                 records[tg.team_id]['gp'] * 2.0), 3)
+        # registering official *streaks*, denoting overtime/shootout losses
+        # separately
+        if not records[tg.team_id]['ostreak']:
+            records[tg.team_id]['ostreak'] = ''
+        if tg.win:
+            records[tg.team_id]['ostreak'] += 'W'
+        elif tg.regulation_loss:
+            records[tg.team_id]['ostreak'] += 'L'
+        elif tg.loss:
+            records[tg.team_id]['ostreak'] += 'O'
+        # registering regulation *streaks*, denoting overtime/shootout games
+        # as ties
+        if not records[tg.team_id]['streak']:
+            records[tg.team_id]['streak'] = ''
+        if tg.regulation_win:
+            records[tg.team_id]['streak'] += 'W'
+        elif tg.regulation_loss:
+            records[tg.team_id]['streak'] += 'L'
+        else:
+            records[tg.team_id]['streak'] += 'T'
 
     return records
 
@@ -152,8 +172,9 @@ def prepare_sorted_output(records, group=None, type='official'):
     for team_id in sorted_team_ids:
         team = Team.find_by_id(team_id)
         gd, fore = get_colored_output(records[team_id]["%sgd" % key_prefix])
+        streak = get_colored_streak(records[team_id]["%sstreak" % key_prefix])
 
-        s = format("%3d %-22s %2d %2d %2d %2d %3d %3d-%3d %s%s%s" % (
+        s = format("%3d %-22s %2d %2d %2d %2d %3d %3d-%3d %s%s%s %s" % (
             rank, team, records[team_id]['gp'],
             records[team_id]["%sw" % key_prefix],
             records[team_id]['ol'],
@@ -161,12 +182,33 @@ def prepare_sorted_output(records, group=None, type='official'):
             records[team_id]["%spts" % key_prefix],
             records[team_id]["%sgf" % key_prefix],
             records[team_id]["%sga" % key_prefix],
-            fore, gd, Style.RESET_ALL))
+            fore, gd, Style.RESET_ALL, streak
+            ))
 
         output.append(s)
         rank += 1
 
     return "\n".join(output)
+
+
+def get_colored_streak(streak, length=35):
+
+    output = ""
+
+    for single_game in streak[-length:]:
+        if single_game == 'W':
+            output += Fore.LIGHTGREEN_EX + single_game
+        elif single_game in ('O', 'T'):
+            output += Fore.LIGHTYELLOW_EX + single_game
+        elif single_game == 'L':
+            output += Fore.LIGHTRED_EX + single_game
+    else:
+        output += Style.RESET_ALL
+
+    if len(streak) < length:
+        output = "".join(((length - len(streak)) * '-', output))
+
+    return output
 
 
 if __name__ == '__main__':
