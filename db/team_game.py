@@ -76,3 +76,9 @@ class TeamGame(Base):
 
     def __ne__(self, other):
         return not self == other
+
+    def __gt__(self, other):
+        return self.game_id > other.game_id
+
+    def __lt__(self, other):
+        return self.game_id < other.game_id

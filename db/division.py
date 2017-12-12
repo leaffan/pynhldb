@@ -54,3 +54,9 @@ class Division(Base):
             sorted([Team.find_by_id(team_id).name for team_id in self.teams]))
 
         return "\n\t+ ".join((base_information_str, team_information_str))
+
+    def __gt__(self, other):
+        return self.division_name > other.division_name
+
+    def __lt__(self, other):
+        return self.division_name < other.division_name
