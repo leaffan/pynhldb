@@ -4,7 +4,7 @@
 import re
 from operator import attrgetter
 from itertools import groupby
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from colorama import Fore, init, Style
 from sqlalchemy import cast, String
@@ -15,12 +15,14 @@ from db.game import Game
 from db.team_game import TeamGame
 from db.division import Division
 
-# TODO: wild card rankings
 
 STREAK_REGEX = re.compile(R"(\w)\1*")
 
 
 def get_data(season):
+    """
+    Retrieves necessary data for specified season.
+    """
     # retrieving all team games for specified season
     with session_scope() as session:
         team_games = session.query(
@@ -37,37 +39,13 @@ def get_data(season):
     return team_games, divisions, last_game_date
 
 
-def get_colored_output(criterion):
-    # determining output color in dependance of selected criterion being larger
-    # than, less than or equal to zero
-    if criterion > 0:
-        criterion_as_string = "+%2d" % criterion
-        color = Fore.LIGHTGREEN_EX
-    elif criterion < 0:
-        criterion_as_string = "-%2d" % abs(criterion)
-        color = Fore.LIGHTRED_EX
-    else:
-        criterion_as_string = "%3d" % 0
-        color = Fore.LIGHTYELLOW_EX
-    return criterion_as_string, color
-
-
-def get_teams_by_division_conference(divisions):
-    teams_by_division = defaultdict(list)
-    teams_by_conference = defaultdict(list)
-
-    for division in divisions:
-        teams_by_division[division.division_name] += division.teams
-        if division.conference:
-            teams_by_division[division.conference] += division.teams
-
-    return teams_by_division, teams_by_conference
-
-
 def compile_records(team_games):
+    """
+    Compiles team records from specified team-per-game items.
+    """
     records = dict()
 
-    for tg in team_games:
+    for tg in sorted(team_games):
         if tg.team_id not in records:
             records[tg.team_id] = defaultdict(int)
         # aggregating games played
@@ -147,35 +125,69 @@ def compile_records(team_games):
     return records
 
 
-def get_current_streak(sequence):
-    curr_streak = [m.group(0) for m in re.finditer(STREAK_REGEX, sequence)][-1]
-    return "%s%d" % (curr_streak[0], len(curr_streak))
-
-
-def prepare_sorted_output(records, group=None, type='official'):
+def group_records(records):
     """
-    Prepares sorted output of specified records.
+    Groups records by league, conference and division.
+    """
+    grouped_records = dict()
+    # grouping records by league
+    grouped_records['league'] = records
+    # grouping records by conference
+    for value, group in groupby(records.items(), lambda x: x[1]['conference']):
+        if value not in grouped_records:
+            grouped_records[value] = dict()
+        grouped_records[value].update(group)
+    # grouping records by division
+    for value, group in groupby(records.items(), lambda x: x[1]['division']):
+        if value not in grouped_records:
+            grouped_records[value] = dict()
+        grouped_records[value].update(group)
+
+    return grouped_records
+
+
+def sort_records(records, type='official', max_number=None):
+    """
+    Sorts records by specified sorting type. Optionally constrains output to
+    specified maximum number of teams.
+    """
+    sorted_records = OrderedDict()
+
+    if type == 'official':
+        key_prefix = 'o'
+    elif type == 'regulation':
+        key_prefix = ''
+
+    sorted_records_keys = sorted(records, key=lambda x: (
+        records[x]["%spts" % key_prefix],
+        records[x]["%sppctg" % key_prefix],
+        records[x]["%sw" % key_prefix],
+        records[x]["%sgd" % key_prefix],
+        records[x]["%sgf" % key_prefix]), reverse=True)
+
+    if max_number:
+        upper_limit = max_number
+    else:
+        upper_limit = len(records)
+
+    for team_id in sorted_records_keys[:upper_limit]:
+        sorted_records[team_id] = records[team_id]
+
+    return sorted_records
+
+
+def prepare_output(records, type='official'):
+    """
+    Prepares output of specified (and usually sorted) records.
     """
     if type == 'official':
         key_prefix = 'o'
         otl_tie_key = 'otl'
         otl_tie_header = 'OT'
-        sorted_team_ids = sorted(records, key=lambda x: (
-            records[x]["%spts" % key_prefix],
-            records[x]["%sppctg" % key_prefix],
-            records[x]["%sw" % key_prefix],
-            records[x]["%sgd" % key_prefix],
-            records[x]["%sgf" % key_prefix]), reverse=True)
     elif type == 'regulation':
         key_prefix = ''
         otl_tie_key = 't'
         otl_tie_header = 'T'
-        sorted_team_ids = sorted(records, key=lambda x: (
-            records[x]["%spts" % key_prefix],
-            records[x]["%sppctg" % key_prefix],
-            records[x]["%sw" % key_prefix],
-            records[x]["%sgd" % key_prefix],
-            records[x]["%sgf" % key_prefix]), reverse=True)
 
     rank = 1
     output = list()
@@ -184,7 +196,7 @@ def prepare_sorted_output(records, group=None, type='official'):
         "  # %-22s %2s %2s %2s %2s %3s %3s %3s %3s" % (
             'Team', 'GP', 'W', 'L', otl_tie_header, 'Pts', 'GF', 'GA', 'GD')))
 
-    for team_id in sorted_team_ids:
+    for team_id in records:
         team = Team.find_by_id(team_id)
         gd, fore = get_colored_output(records[team_id]["%sgd" % key_prefix])
         sequence = get_colored_sequence(
@@ -208,7 +220,15 @@ def prepare_sorted_output(records, group=None, type='official'):
     return "\n".join(output)
 
 
-def get_colored_sequence(sequence, length=5):
+def get_current_streak(sequence):
+    """
+    Retrieves most current streak from specified sequence of game outcomes.
+    """
+    curr_streak = [m.group(0) for m in re.finditer(STREAK_REGEX, sequence)][-1]
+    return "%s%d" % (curr_streak[0], len(curr_streak))
+
+
+def get_colored_sequence(sequence, length=15):
     """
     Returns color-coded sequence of game outcomes.
     """
@@ -245,6 +265,23 @@ def get_colored_streak(streak):
     return output
 
 
+def get_colored_output(criterion):
+    """
+    Returns color-coded output based on specified criterion being larger than,
+    less than or equal to zero.
+    """
+    if criterion > 0:
+        criterion_as_string = "+%2d" % criterion
+        color = Fore.LIGHTGREEN_EX
+    elif criterion < 0:
+        criterion_as_string = "-%2d" % abs(criterion)
+        color = Fore.LIGHTRED_EX
+    else:
+        criterion_as_string = "%3d" % 0
+        color = Fore.LIGHTYELLOW_EX
+    return criterion_as_string, color
+
+
 if __name__ == '__main__':
 
     season = 2017
@@ -260,18 +297,8 @@ if __name__ == '__main__':
                 records[team_id]['conference'] = division.conference
                 break
 
-    # grouping records by division/conference
-    grouped_records = dict()
-
-    for value, group in groupby(records.items(), lambda x: x[1]['conference']):
-        if value not in grouped_records:
-            grouped_records[value] = dict()
-        grouped_records[value].update(group)
-
-    for value, group in groupby(records.items(), lambda x: x[1]['division']):
-        if value not in grouped_records:
-            grouped_records[value] = dict()
-        grouped_records[value].update(group)
+    # grouping records by league/division/conference
+    grouped_records = group_records(records)
 
     # printing records of both ranking types
     init()
@@ -283,32 +310,66 @@ if __name__ == '__main__':
             " + NHL %s Standings (%s)" % (
                 ranking_type.capitalize(),
                 last_game_date.strftime("%b %d, %Y")))
-        print(prepare_sorted_output(records, type=ranking_type))
+        sorted_records = sort_records(
+            grouped_records['league'], type=ranking_type)
+        print(prepare_output(sorted_records, type=ranking_type))
         print()
 
-        # printing official conference records
+        print(73 * "-")
+        print()
+
+        # printing conference records
         for conference in ['Eastern', 'Western']:
             print(" + %s Conference %s Standings (%s)" % (
                 conference, ranking_type.capitalize(),
                 last_game_date.strftime("%b %d, %Y")))
-            print(prepare_sorted_output(
-                grouped_records[conference], type=ranking_type))
+            sorted_records = sort_records(
+                grouped_records[conference], type=ranking_type)
+            print(prepare_output(sorted_records, type=ranking_type))
             print()
 
-        # printing official division records
-        for division in divisions:
+        print(73 * "-")
+        print()
+
+        # printing conference records in wild card mode
+        for conference in ['Eastern', 'Western']:
+            print(" + %s Conference %s Wild Card Standings (%s)" % (
+                conference, ranking_type.capitalize(),
+                last_game_date.strftime("%b %d, %Y")))
+            # sorting records in conference
+            sorted_records = sort_records(
+                grouped_records[conference], type=ranking_type)
+            for division in sorted(divisions):
+                # only considering divisions in current conference
+                if division.conference == conference:
+                    print(" + %s Division:" % division.division_name)
+                    # sorting records in division, yielding first three only
+                    sorted_by_division = sort_records(
+                        grouped_records[division.division_name],
+                        type=ranking_type,
+                        max_number=3)
+                    # printing first three in division
+                    print(
+                        prepare_output(sorted_by_division, type=ranking_type))
+                    # removing teams from sorted division in conference
+                    for team_id in sorted_by_division:
+                        del sorted_records[team_id]
+            print(" + %s Conference Wild Card" % conference)
+            # printing remaining teams in conference
+            print(prepare_output(sorted_records, type=ranking_type))
+            print()
+
+        print(73 * "-")
+        print()
+
+        # printing division records
+        for division in sorted(divisions):
             print(" + %s Division %s Standings (%s)" % (
                 division.division_name, ranking_type.capitalize(),
                 last_game_date.strftime("%b %d, %Y")))
-            print(prepare_sorted_output(
-                grouped_records[division.division_name], type=ranking_type))
+            sorted_records = sort_records(
+                grouped_records[division.division_name], type=ranking_type)
+            print(prepare_output(sorted_records, type=ranking_type))
             print()
 
-        print("==============================================================")
-
-    # printing regulation overall records
-    # TODO: retain official/another ranking
-    # saving official ranking
-    # records[team_id]['orank'] = i
-    # print("  # (O#) %-22s %2s %2s %2s %2s %3s %3s %3s %3s" % (
-    #     'Team', 'GP', 'W', 'L', 'T', 'Pts', 'GF', 'GA', 'GD'))
+        print(73 * "=")
