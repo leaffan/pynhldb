@@ -40,6 +40,9 @@ class Team(Base):
                 "canadien de montreal"]:
                     name = "Montréal Canadiens"
 
+        if name.lower() == "anaheim mighty ducks":
+                name = "Anaheim Ducks"
+
         with session_scope() as session:
             try:
                 t = session.query(Team).filter(
