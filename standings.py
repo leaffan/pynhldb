@@ -303,7 +303,7 @@ def get_colored_output(criterion):
         criterion_as_string = "-%3d" % abs(criterion)
         color = Fore.LIGHTRED_EX
     else:
-        criterion_as_string = "%3d" % 0
+        criterion_as_string = "%4d" % 0
         color = Fore.LIGHTYELLOW_EX
     return criterion_as_string, color
 
