@@ -64,6 +64,11 @@ def compile_records(team_games):
             records[tg.team_id]['ootl'] += 1
         # aggregating regulation wins
         records[tg.team_id]['w'] += tg.regulation_win
+        # aggregating official regulation or overtime wins (row)
+        if any([tg.regulation_win, tg.overtime_win]):
+            records[tg.team_id]['orow'] += 1
+        # *regulation* rows are just regulation wins
+        records[tg.team_id]['row'] = records[tg.team_id]['w']
         # aggregating ties, i.e. games that went to overtime or shootout
         if any([
                 tg.overtime_win, tg.shootout_win,
@@ -162,7 +167,7 @@ def sort_records(records, type='official', max_number=None):
     sorted_records_keys = sorted(records, key=lambda x: (
         records[x]["%spts" % key_prefix],
         records[x]["%sppctg" % key_prefix],
-        records[x]["%sw" % key_prefix],
+        records[x]["%srow" % key_prefix],
         records[x]["%sgd" % key_prefix],
         records[x]["%sgf" % key_prefix]), reverse=True)
 
@@ -215,7 +220,7 @@ def prepare_output(records, type='official'):
             records[team_id]["%spts" % key_prefix],
             records[team_id]["%sgf" % key_prefix],
             records[team_id]["%sga" % key_prefix],
-            fore, gd, Style.RESET_ALL, streak, sequence, recent_record
+            fore, gd, Style.RESET_ALL, streak, sequence, recent_record,
             ))
 
         output.append(s)
