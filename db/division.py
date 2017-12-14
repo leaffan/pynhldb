@@ -56,7 +56,19 @@ class Division(Base):
         return "\n\t+ ".join((base_information_str, team_information_str))
 
     def __gt__(self, other):
-        return self.division_name > other.division_name
+        if None in (self.conference, other.conference):
+            return self.division_name > other.division_name
+        else:
+            return (
+                self.conference, self.division_name
+            ) > (
+                other.conference, other.division_name)
 
     def __lt__(self, other):
-        return self.division_name < other.division_name
+        if None in (self.conference, other.conference):
+            return self.division_name < other.division_name
+        else:
+            return (
+                self.conference, self.division_name
+            ) < (
+                other.conference, other.division_name)
