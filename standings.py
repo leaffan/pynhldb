@@ -204,7 +204,7 @@ def prepare_output(records, type='official'):
     output = list()
     # creating header with column titles
     output.append(format(
-        "  # %-22s %2s %2s %2s %2s %3s %3s %3s %3s %s %-15s %s" % (
+        "  # %-22s %2s %2s %2s %2s %3s %3s %3s %4s %s %-15s %s" % (
             'Team', 'GP', 'W', 'L', otl_tie_header, 'Pts', 'GF', 'GA', 'GD',
             'CS', 'Seq 15', 'L 10')))
 
@@ -297,10 +297,10 @@ def get_colored_output(criterion):
     less than or equal to zero.
     """
     if criterion > 0:
-        criterion_as_string = "+%2d" % criterion
+        criterion_as_string = "+%3d" % criterion
         color = Fore.LIGHTGREEN_EX
     elif criterion < 0:
-        criterion_as_string = "-%2d" % abs(criterion)
+        criterion_as_string = "-%3d" % abs(criterion)
         color = Fore.LIGHTRED_EX
     else:
         criterion_as_string = "%3d" % 0
