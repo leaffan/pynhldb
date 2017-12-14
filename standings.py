@@ -17,6 +17,7 @@ from db.division import Division
 
 
 STREAK_REGEX = re.compile(R"(\w)\1*")
+MAX_LINE_LENGTH = 76
 
 
 def get_data(season):
@@ -87,7 +88,7 @@ def compile_records(team_games):
             records[tg.team_id]['ow'] * 2 + records[tg.team_id]['ootl'])
         records[tg.team_id]['pts'] = (
             records[tg.team_id]['w'] * 2 + records[tg.team_id]['t'])
-        # calculating point percentage
+        # calculating point percentages
         records[tg.team_id]['oppctg'] = round(
             records[tg.team_id]['opts'] / (
                 records[tg.team_id]['gp'] * 2.0), 3)
@@ -193,8 +194,9 @@ def prepare_output(records, type='official'):
     output = list()
     # creating header with column titles
     output.append(format(
-        "  # %-22s %2s %2s %2s %2s %3s %3s %3s %3s" % (
-            'Team', 'GP', 'W', 'L', otl_tie_header, 'Pts', 'GF', 'GA', 'GD')))
+        "  # %-22s %2s %2s %2s %2s %3s %3s %3s %3s %s %-15s %s" % (
+            'Team', 'GP', 'W', 'L', otl_tie_header, 'Pts', 'GF', 'GA', 'GD',
+            'CS', 'Seq 15', 'L 10')))
 
     for team_id in records:
         team = Team.find_by_id(team_id)
@@ -202,8 +204,10 @@ def prepare_output(records, type='official'):
         sequence = get_colored_sequence(
             records[team_id]["%ssequence" % key_prefix])
         streak = get_colored_streak(records[team_id]["%sstreak" % key_prefix])
+        recent_record = get_recent_record(
+            records[team_id]["%ssequence" % key_prefix])
 
-        s = format("%3d %-22s %2d %2d %2d %2d %3d %3d-%3d %s%s%s %s %s" % (
+        s = format("%3d %-22s %2d %2d %2d %2d %3d %3d-%3d %s%s%s %s %s %s" % (
             rank, team, records[team_id]['gp'],
             records[team_id]["%sw" % key_prefix],
             records[team_id]['ol'],
@@ -211,7 +215,7 @@ def prepare_output(records, type='official'):
             records[team_id]["%spts" % key_prefix],
             records[team_id]["%sgf" % key_prefix],
             records[team_id]["%sga" % key_prefix],
-            fore, gd, Style.RESET_ALL, streak, sequence
+            fore, gd, Style.RESET_ALL, streak, sequence, recent_record
             ))
 
         output.append(s)
@@ -226,6 +230,18 @@ def get_current_streak(sequence):
     """
     curr_streak = [m.group(0) for m in re.finditer(STREAK_REGEX, sequence)][-1]
     return "%s%d" % (curr_streak[0], len(curr_streak))
+
+
+def get_recent_record(sequence, length=10):
+    """
+    Retrieves record in last number of games, specified by provided length.
+    """
+    wins = sequence[-length:].count('W')
+    losses = sequence[-length:].count('L')
+    overtime_losses = sequence[-length:].count('O')
+    ties = sequence[-length:].count('T')
+
+    return "%d-%d-%d" % (wins, losses, overtime_losses + ties)
 
 
 def get_colored_sequence(sequence, length=15):
@@ -315,7 +331,7 @@ if __name__ == '__main__':
         print(prepare_output(sorted_records, type=ranking_type))
         print()
 
-        print(73 * "-")
+        print(MAX_LINE_LENGTH * "-")
         print()
 
         # printing conference records
@@ -328,7 +344,7 @@ if __name__ == '__main__':
             print(prepare_output(sorted_records, type=ranking_type))
             print()
 
-        print(73 * "-")
+        print(MAX_LINE_LENGTH * "-")
         print()
 
         # printing conference records in wild card mode
@@ -359,7 +375,7 @@ if __name__ == '__main__':
             print(prepare_output(sorted_records, type=ranking_type))
             print()
 
-        print(73 * "-")
+        print(MAX_LINE_LENGTH * "-")
         print()
 
         # printing division records
@@ -372,4 +388,4 @@ if __name__ == '__main__':
             print(prepare_output(sorted_records, type=ranking_type))
             print()
 
-        print(73 * "=")
+        print(MAX_LINE_LENGTH * "=")
