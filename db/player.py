@@ -76,6 +76,29 @@ class Player(Base):
             return player
 
     @classmethod
+    def find_by_full_name(self, full_name, position=None):
+        with session_scope() as session:
+            try:
+                if position:
+                    player = session.query(Player).filter(
+                        and_(
+                            func.concat(
+                                Player.first_name, " ", Player.last_name
+                            ) == full_name,
+                            Player.position == position.upper()
+                        )
+                    ).one()
+                else:
+                    player = session.query(Player).filter(
+                        func.concat(
+                            Player.first_name, " ", Player.last_name
+                        ) == full_name
+                    ).one()
+            except:
+                player = None
+            return player
+
+    @classmethod
     def find_by_name_position(self, first_name, last_name, position):
         with session_scope() as session:
             try:
