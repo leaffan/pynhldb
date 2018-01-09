@@ -50,10 +50,10 @@ def test_get_player_without_alternate_last_name():
     assert plr.date_of_birth == "1981-01-04"
     assert plr.alt_last_name == ""
 
-    # Nicklaus Perbix aka. "Nicholas, Nick Perbix"
+    # Nick Perbix aka. "Nicholas, Nicklaus Perbix"
     url = "http://www.eliteprospects.com/player.php?player=380612"
     plr = get_player_with_dob(url)
-    assert plr.first_name == "Nicklaus"
+    assert plr.first_name == "Nick"
     assert plr.last_name == "Perbix"
     assert plr.date_of_birth == "1998-06-15"
     assert plr.alt_last_name == ""
