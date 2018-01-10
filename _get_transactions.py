@@ -7,6 +7,8 @@ from dateutil.parser import parse
 
 from db.team import Team
 from db.player import Player
+from utils.player_finder import PlayerFinder
+
 
 ACTIONS = [
     'signed', 're-signed', 'acquired',
@@ -109,12 +111,53 @@ def retrieve_waiver_claim(transaction_raw_data):
     return plr, other_team
 
 
+def find_player_in_transaction(position, plr_name):
+    """
+    Finds actual player in database.
+    """
+    # first trying to find player by full name and position
+    plr = Player.find_by_full_name(plr_name, position[0])
+    # then trying to find player by full name only
+    if plr is None:
+        plr = Player.find_by_full_name(plr_name)
+    # at last naively splitting full name into first and last name and
+    # trying to find player accordingly
+    if plr is None:
+        first_name, last_name = plr_name.strip().split(" ", 2)[:2]
+        plr = Player.find_by_name_extended(
+            first_name, last_name)
+    return plr
+
+
 def retrieve_signing(transaction_raw_data):
+
+    signings = retrieve_signing_information(transaction_raw_data)
+    signed_players = list()
+
+    for signing in signings:
+        if len(signing) == 3:
+            position, plr_name, length = signing
+        else:
+            position, plr_name = signing
+        plr = find_player_in_transaction(position, plr_name)
+
+        if plr is None:
+            print(transaction_raw_data, plr_name)
+            pfr = PlayerFinder()
+            suggestions = pfr.get_suggested_players(plr_name)
+            print(suggestions)
+        else:
+            signed_players.append(plr)
+
+    return signed_players
+
+
+def retrieve_signing_information(transaction_raw_data):
     """
     Retrieves transaction properties for a contract signing.
     """
     signings = list()
-    # trying multiple signings w/ contract indication first
+    # skipping contract extensions, offer sheets and tryouts
     if any(
         s in transaction_raw_data for s in [
             "extension", "offer sheet", "tryout"]):
@@ -169,7 +212,9 @@ def retrieve_signing(transaction_raw_data):
         match = re.search(MULTIPLE_SIGNING, transaction_raw_data)
         if match:
             tokens = [
-                s.strip() for s in re.split(",\s?|and ", match.group(1)) if s]
+                re.sub(
+                    "\.$", "", s).strip() for s in re.split(
+                        ",\s?|and ", match.group(1)) if s]
             for token in tokens:
                 match = re.search(
                     "(%s)\s(.+)" % "|".join(
@@ -212,7 +257,7 @@ if __name__ == '__main__':
     with open(src) as file:
         lines = [l.strip() for l in file.readlines() if l.strip()]
 
-    for line in lines[:600]:
+    for line in lines[:]:
         # trying to parse line into a date
         try:
             curr_date = parse(line).date()
@@ -238,11 +283,13 @@ if __name__ == '__main__':
                     continue
                 if action == 'claimed':
                     plr, other_team = retrieve_waiver_claim(transaction)
+                    print(
+                        "%s Claim: %s - %s -> %s" % (
+                            curr_date, plr, team, other_team))
                 elif action == 'signed':
-                    signings = retrieve_signing(transaction)
-                    for s in signings:
-                        if len(s) < 3:
-                            print(curr_date, team, s)
+                    plrs = retrieve_signing(transaction)
+                    for plr in plrs:
+                        print("%s Signing: %s -> %s" % (curr_date, plr, team))
 
             except IndexError:
                 print(line)
