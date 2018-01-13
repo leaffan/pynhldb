@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 import re
 from operator import attrgetter
 from itertools import groupby
@@ -310,7 +311,13 @@ def get_colored_output(criterion):
 
 if __name__ == '__main__':
 
-    season = 2017
+    parser = argparse.ArgumentParser(
+        description="NHL official and regulation standings for given season")
+    parser.add_argument(
+        'season', metavar='season', help='Season selection for standings.',
+        default=2017, nargs='?', type=int)
+    args = parser.parse_args()
+    season = args.season
 
     team_games, divisions, last_game_date = get_data(season)
     records = compile_records(team_games)
