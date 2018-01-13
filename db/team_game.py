@@ -5,6 +5,7 @@ from sqlalchemy import and_
 
 from db.common import Base, session_scope
 from db.team import Team
+from db.game import Game
 
 
 class TeamGame(Base):
@@ -52,7 +53,7 @@ class TeamGame(Base):
                         TeamGame.game_id == game_id,
                         TeamGame.team_id == team_id
                     )).one()
-            except:
+            except Exception as e:
                 team_game = None
             return team_game
 
@@ -78,7 +79,13 @@ class TeamGame(Base):
         return not self == other
 
     def __gt__(self, other):
-        return self.game_id > other.game_id
+        return (
+            Game.find_by_id(self.game_id).date >
+            Game.find_by_id(other.game_id).date
+        )
 
     def __lt__(self, other):
-        return self.game_id < other.game_id
+        return (
+            Game.find_by_id(self.game_id).date <
+            Game.find_by_id(other.game_id).date
+        )
