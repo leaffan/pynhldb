@@ -94,7 +94,7 @@ class GameParser():
         try:
             game_data['data_last_modified'] = parser.parse(
                 self.raw_data.xpath("//p[@id='last_modified']/text()")[0])
-        except:
+        except Exception as e:
             game_data['data_last_modified'] = None
 
         return game_data
@@ -113,7 +113,7 @@ class GameParser():
         # trying to convert attendance string into integer value
         try:
             attendance = int(attendance_venue[1].replace(",", ""))
-        except:
+        except Exception as e:
             logger.warn(
                 "+ Unable to convert '%s' to integer" % attendance_venue[1] +
                 " attendance value")
@@ -463,7 +463,7 @@ class GameParser():
                 pp_goals, pp_opps = [
                     int(x) for x in pp_raw[pp_idx].split("/")[0].split("-")]
                 pp_time = str_to_timedelta(pp_raw[pp_idx].split("/")[-1])
-            except:
+            except Exception as e:
                 pp_goals = 0
                 pp_opps = 0
                 pp_time = str_to_timedelta("00:00")

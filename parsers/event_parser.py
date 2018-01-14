@@ -309,7 +309,7 @@ class EventParser():
             try:
                 so_attempt_props, distance = self.SHOT_REGEX.search(
                     event.raw_data).group(1, 2)
-            except:
+            except Exception as e:
                 so_attempt_props = None
                 distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
                 logger.warn(
@@ -547,7 +547,7 @@ class EventParser():
             if "," in shot_type:
                 shot_type = shot_type.split(",")[-1].strip()
             shot_data_dict['shot_type'] = shot_type
-        except:
+        except Exception as e:
             distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
             logger.warn(
                 "Unable to retrieve shot type from" +
@@ -580,7 +580,7 @@ class EventParser():
         try:
             taken_by_no = int(re.search(
                 self.PENALTY_NO_REGEX, event.raw_data).group(1))
-        except:
+        except Exception as e:
             taken_by_no = None
 
         # retrieving number of player serving the penalty (if applicable)
@@ -588,7 +588,7 @@ class EventParser():
             served_by_no, served_by_name = re.search(
                 self.SERVED_BY_REGEX, event.raw_data).group(1, 2)
             served_by_no = int(served_by_no)
-        except:
+        except Exception as e:
             served_by_no = None
 
         # retrieving team and number of player drawing the penalty (if
@@ -598,7 +598,7 @@ class EventParser():
                 self.PENALTY_DRAWN_REGEX, event.raw_data).group(1, 2)
             drawn_by_no = int(drawn_by_no)
             drawn_by_team = Team.find_by_abbr(drawn_by_team)
-        except:
+        except Exception as e:
             drawn_by_no = None
             drawn_by_team = None
 
@@ -763,7 +763,7 @@ class EventParser():
             blocked_player_no, team, player_no = re.search(
                 self.HIT_BLOCK_REGEX, event.raw_data).group(2, 3, 4)
             blocked_player_no = int(blocked_player_no)
-        except:
+        except Exception as e:
             logger.warn(
                 "Couldn't retrieve blocked player" +
                 "from raw data: %s" % event.raw_data)
@@ -1008,7 +1008,7 @@ class EventParser():
         team = Team.find_by_abbr(event.raw_data[0:3])
         try:
             zone = re.search(self.ZONE_REGEX, event.raw_data).group(1)[0:3]
-        except:
+        except Exception as e:
             logger.warn(
                 "Couldn't retrieve zone from raw data: %s" % event.raw_data)
             if event.type in ['MISS', 'SHOT', 'GOAL']:
@@ -1032,7 +1032,7 @@ class EventParser():
             # retrieving players on ice for current event
             poi_data['road'], poi_data['home'] = event_data_item.xpath(
                 "td/table")
-        except:
+        except Exception as e:
             return players_on_ice, goalies_on_ice
 
         for key in ['road', 'home']:
@@ -1204,7 +1204,7 @@ class EventParser():
                     logger.warn(
                         "Unexpected number of table cells in play-by-play" +
                         "table row: %d" % len(tr.xpath("td")))
-            except:
+            except Exception as e:
                 logger.debug(
                     "Skipping row in play-by-play table")
                 continue
