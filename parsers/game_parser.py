@@ -250,7 +250,7 @@ class GameParser():
         Retrieves the game's referees.
         """
         referees = self.raw_data.xpath(
-            "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
+            "//td[contains(., 'OFFICIALS')]/parent::tr/parent::table" +
             "/tr/td/table/tr/td/table/tr/td[@align='left']/text()"
         )[:4]
 
