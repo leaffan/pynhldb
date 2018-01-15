@@ -80,12 +80,12 @@ class TeamGame(Base):
 
     def __gt__(self, other):
         return (
-            Game.find_by_id(self.game_id).date >
-            Game.find_by_id(other.game_id).date
+            (Game.find_by_id(self.game_id).date, self.game_id) >
+            (Game.find_by_id(other.game_id).date, other.game_id)
         )
 
     def __lt__(self, other):
         return (
-            Game.find_by_id(self.game_id).date <
-            Game.find_by_id(other.game_id).date
+            (Game.find_by_id(self.game_id).date, self.game_id) <
+            (Game.find_by_id(other.game_id).date, other.game_id)
         )
