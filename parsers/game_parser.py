@@ -189,24 +189,24 @@ class GameParser():
             "//td[contains(text(), 'SCORING SUMMARY')]/ancestor::tr/" +
             "following-sibling::tr[1]/td/table/tr[contains(@class, 'Color')]")
 
-        # retrieving all table cells with periods a goal was scored in
-        score_periods_tds = [tr.xpath("td[2]/text()")[0] for tr in scoring_trs]
+        # retrieving period with last score of the game
+        last_score_period = scoring_trs[-1].xpath("td[2]/text()")[0]
 
         # checking regular season game...
         if game_type == 2:
             # ...for a shootout goal
-            if 'SO' in score_periods_tds:
+            if last_score_period == 'SO':
                 shootout_game = True
                 overtime_game = True
             # ...for an overtime goal
-            elif 'OT' in score_periods_tds:
+            elif last_score_period == 'OT':
                 overtime_game = True
 
         # checking playoff game...
         elif game_type == 3:
             # ...for an overtime goal, e.g. if there was a goal scored
             # in a period later than the third
-            if max([int(x) for x in score_periods_tds]) > 3:
+            if int(last_score_period) > 3:
                 overtime_game = True
 
         return overtime_game, shootout_game
