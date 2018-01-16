@@ -216,7 +216,7 @@ class GameParser():
         Retrieves the game's three star selections
         """
         three_stars_raw_data = raw_data.xpath(
-            "//td[text() = 'OFFICIALS']/parent::tr/parent::table" +
+            "//td[contains(., 'OFFICIALS')]/parent::tr/parent::table" +
             "/tr[2]/td[2]/table/tr/td/table/tr")
 
         i = 1
