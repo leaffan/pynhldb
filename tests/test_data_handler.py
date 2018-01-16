@@ -6,8 +6,8 @@ import json
 from utils.data_handler import DataHandler
 
 
-src_rs = r"D:\nhl\official_and_json\_2015-16\2016-04\2016-04-10.zip"
-src_po = r"D:\nhl\official_and_json\_2015-16\2016-04\2016-04-13.zip"
+src_rs = R"D:\nhl\official_and_json\2015-16\2016-04\2016-04-10.zip"
+src_po = R"D:\nhl\official_and_json\2015-16\2016-04\2016-04-13.zip"
 
 
 def test_find_html_data():
