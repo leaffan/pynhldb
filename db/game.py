@@ -36,7 +36,7 @@ class Game(Base):
                 g = session.query(Game).filter(
                     Game.game_id == game_id
                 ).one()
-            except:
+            except Exception as e:
                 g = None
         return g
 
@@ -50,7 +50,7 @@ class Game(Base):
                         Game.road_team_id == road_team.team_id,
                         Game.home_team_id == home_team.team_id
                     )).one()
-            except:
+            except Exception as e:
                 g = None
         return g
 
