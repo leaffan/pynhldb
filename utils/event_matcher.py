@@ -198,6 +198,9 @@ def calculate_distance_from_goal(play):
     """
     Calculates Euclidean distance between coordinates of play and the goal.
     """
+    if any([play['x'], play['y']]) is None:
+        return 0
+    
     return int(round(math.sqrt(
         (GOAL_COORDINATES['x'] - play['x']) ** 2 +
         (GOAL_COORDINATES['y'] - play['y']) ** 2
