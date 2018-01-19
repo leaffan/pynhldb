@@ -140,23 +140,56 @@ def is_matching_shot_event(specific_event, play):
     play_distance = calculate_distance_from_goal(play)
 
     # trying to match shooter, shot type *and* shot distance first
-    if (
-        play['active'], play['shot_type'], play_distance
-    ) == (
-        specific_event.player_id,
-        specific_event.shot_type.lower(),
-        specific_event.distance
-    ):
-        return True
+    try:
+        if (
+            play['active'], play['shot_type'], play_distance
+        ) == (
+            specific_event.player_id,
+            specific_event.shot_type.lower(),
+            specific_event.distance
+        ):
+            return True
+    except Exception as e:
+        # TODO: propper logging
+        pass
 
     # trying to match only shooter and shot type
-    if (
-        play['active'], play['shot_type'],
-    ) == (
-        specific_event.player_id,
-        specific_event.shot_type.lower(),
-    ):
-        return True
+    try:
+        if (
+            play['active'], play['shot_type'],
+        ) == (
+            specific_event.player_id,
+            specific_event.shot_type.lower(),
+        ):
+            return True
+    except Exception as e:
+        # TODO: propper logging
+        pass
+
+    # trying to match shooter and distance
+    try:
+        if (
+            play['active'], play_distance,
+        ) == (
+            specific_event.player_id,
+            specific_event.distance,
+        ):
+            return True
+    except Exception as e:
+        # TODO: propper logging
+        pass
+
+    # finally trying to match only shooter
+    try:
+        if (
+            play['active'],
+        ) == (
+            specific_event.player_id,
+        ):
+            return True
+    except Exception as e:
+        # TODO: propper logging
+        pass
 
     return False
 
