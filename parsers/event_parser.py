@@ -95,10 +95,10 @@ class EventParser():
     # utilized in the json data
     PLAY_PLAYER_TYPES = {
         'FAC': ('Winner', 'Loser'), 'HIT': ('Hitter', 'Hittee'),
-        'BLOCK': ('Blocker', 'Shooter'), 'GOAL': ('Scorer',),
-        'SHOT': ('Shooter',), 'MISS': ('Shooter',),
-        'PENL': ("PenaltyOn", "DrewBy"), 'GIVE': ("PlayerID",),
-        'TAKE': ("PlayerID",)
+        'BLOCK': ('Blocker', 'Shooter'), 'GOAL': ('Scorer', ''),
+        'SHOT': ('Shooter', ''), 'MISS': ('Shooter', ''),
+        'PENL': ('PenaltyOn', 'DrewBy'), 'GIVE': ('PlayerID', ''),
+        'TAKE': ('PlayerID', '')
     }
     SHOT_TYPES = [
         'Wrist', 'Snap', 'Backhand',
@@ -994,13 +994,27 @@ class EventParser():
         # retrieving plays of same type occurring at the same time from
         # registry of all plays
         plays = self.json_dict[(event.period, event.time, event.type)]
-        # determining matching play (and coordinates) for current play
-        for play in plays:
-            if is_matching_event(play, specific_event):
-                event.x = play['x']
-                event.y = play['y']
-                commit_db_item(event)
-                break
+        
+        # returning if no feasible play was found
+        if not plays:
+            return event
+        
+        # if only one play was found this is the matching one
+        if len(plays) == 1:
+            matching_play = plays.pop()
+        # otherwise determining matching play (and coordinates) for current
+        # event from multiple alternative
+        else:
+            for play in plays:
+                if is_matching_event(play, specific_event):
+                    matching_play = play
+                    break
+
+        # finally assigning play coordinates to event
+        event.x = matching_play['x']
+        event.y = matching_play['y']
+        commit_db_item(event)
+
         return event
 
     # TODO: include data dict to assign elements to
@@ -1129,14 +1143,17 @@ class EventParser():
                 # 'active', e.g. blocking, hitting, faceoff-winning player
                 if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
                         0]:
-                            single_play_dict['active'] = player['player']['id']
+                            single_play_dict['active'] = player[
+                                'player']['id']
                             single_play_dict['active_name'] = player[
                                 'player']['fullName']
                 # 'passive', e.g. blocked, hit, faceoff-losing player
-                else:
-                    single_play_dict['passive'] = player['player']['id']
-                    single_play_dict['passive_name'] = player[
-                        'player']['fullName']
+                elif player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
+                        1]:
+                            single_play_dict['passive'] = player[
+                                'player']['id']
+                            single_play_dict['passive_name'] = player[
+                                'player']['fullName']
             # adding penalty minutes to single play dictionary (if applicable)
             if play_type == 'PENL':
                 single_play_dict['pim'] = play[
