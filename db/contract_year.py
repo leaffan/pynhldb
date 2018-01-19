@@ -43,7 +43,7 @@ class ContractYear(Base):
                         ContractYear.season == season,
                     )
                 ).one()
-            except:
+            except Exception as e:
                 contract_year = None
             return contract_year
 

@@ -31,7 +31,7 @@ class PlayerDraft(Base):
                         PlayerDraft.year == year
                     )
                 ).one()
-            except:
+            except Exception as e:
                 plr_draft = None
             return plr_draft
 
@@ -42,7 +42,7 @@ class PlayerDraft(Base):
                 plr_draft = session.query(PlayerDraft).filter(
                     PlayerDraft.player_id == player_id
                 ).all()
-            except:
+            except Exception as e:
                 plr_draft = None
             return plr_draft
 

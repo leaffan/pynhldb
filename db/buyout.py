@@ -32,7 +32,7 @@ class Buyout(Base):
                 buyout = session.query(Buyout).filter(
                     Buyout.contract_id == contract_id
                 ).one()
-            except:
+            except Exception as e:
                 buyout = None
             return buyout
 

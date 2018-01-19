@@ -48,7 +48,7 @@ class Team(Base):
                 t = session.query(Team).filter(
                     func.lower(Team.name) == name.lower()
                 ).one()
-            except:
+            except Exception as e:
                 t = None
             return t
 
@@ -59,7 +59,7 @@ class Team(Base):
                 t = session.query(Team).filter(
                     Team.team_id == id
                 ).one()
-            except:
+            except Exception as e:
                 t = None
             return t
 
@@ -73,7 +73,7 @@ class Team(Base):
                         func.lower(Team.orig_abbr) == abbr.lower()
                     )
                 ).one()
-            except:
+            except Exception as e:
                 t = None
             return t
 

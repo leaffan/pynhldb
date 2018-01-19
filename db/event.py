@@ -35,7 +35,7 @@ class Event(Base):
                         Event.game_id == game_id,
                         Event.in_game_event_cnt == in_game_event_cnt
                     )).one()
-            except:
+            except Exception as e:
                 event = None
             return event
 
@@ -46,7 +46,7 @@ class Event(Base):
                 event = session.query(Event).filter(
                     Event.event_id == event_id
                 ).one()
-            except:
+            except Exception as e:
                 event = None
             return event
 
@@ -61,7 +61,7 @@ class Event(Base):
                         Event.time == event_time,
                         Event.type == event_type
                     )).all()
-            except:
+            except Exception as e:
                 event = None
             return event
 

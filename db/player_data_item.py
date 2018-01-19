@@ -42,7 +42,7 @@ class PlayerDataItem(Base):
                 plr_data_item = session.query(PlayerDataItem).filter(
                     PlayerDataItem.player_id == player_id
                 ).one()
-            except:
+            except Exception as e:
                 plr_data_item = None
             return plr_data_item
 
@@ -56,7 +56,7 @@ class PlayerDataItem(Base):
                 plr_infos = session.query(PlayerDataItem).filter(
                     PlayerDataItem.player_id.in_(player_ids)
                 ).all()
-            except:
+            except Exception as e:
                 plr_infos = None
             return plr_infos
 
@@ -97,7 +97,8 @@ class PlayerDataItem(Base):
             pass
             # loc = Location.find_by_id(self.place_of_birth)
             # if loc.state_province:
-            #     loc = ", ".join((loc.real_name, loc.state_province, loc.country))
+            #     loc = ", ".join((
+            #         loc.real_name, loc.state_province, loc.country))
             # else:
             #     loc = ", ".join((loc.real_name, loc.country))
         else:

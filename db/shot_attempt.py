@@ -39,6 +39,6 @@ class ShotAttempt(Base, SpecificEvent):
                         ShotAttempt.player_id == player_id
                     )
                 ).one()
-            except:
+            except Exception as e:
                 shot_attempt = None
             return shot_attempt

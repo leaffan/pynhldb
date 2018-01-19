@@ -23,7 +23,7 @@ class SpecificEvent():
                 specific_event = session.query(c).filter(
                     c.event_id == event_id
                 ).one()
-            except:
+            except Exception as e:
                 specific_event = None
             return specific_event
 

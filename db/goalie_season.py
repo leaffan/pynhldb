@@ -41,7 +41,9 @@ class GoalieSeason(Base):
     # attributes that are to be treated as time intervals
     INTERVAL_ATTRS = ["toi"]
 
-    def __init__(self, player_id, season, season_type, team, season_team_sequence, season_data):
+    def __init__(
+            self, player_id, season, season_type,
+            team, season_team_sequence, season_data):
 
         self.player_id = player_id
         self.season = season
@@ -62,7 +64,7 @@ class GoalieSeason(Base):
                     else:
                         value = season_data[json_key]
                     setattr(self, self.JSON_DB_MAPPING[json_key], value)
-                except:
+                except Exception as e:
                     print(
                         "Unable to retrieve %s from season data" %
                         self.JSON_DB_MAPPING[json_key])
@@ -99,7 +101,7 @@ class GoalieSeason(Base):
                         season_team_sequence
                     )
                 ).one()
-            except:
+            except Exception as e:
                 goalie_season = None
             return goalie_season
 
@@ -110,7 +112,7 @@ class GoalieSeason(Base):
                 goalie_seasons = session.query(GoalieSeason).filter(
                     GoalieSeason.player_id == player_id,
                 ).all()
-            except:
+            except Exception as e:
                 goalie_seasons = None
             return goalie_seasons
 

@@ -34,7 +34,7 @@ class BuyoutYear(Base):
                         BuyoutYear.season == season
                     )
                 ).one()
-            except:
+            except Exception as e:
                 buyout_year = None
             return buyout_year
 

@@ -42,7 +42,7 @@ class GoalieGame(Base):
                         GoalieGame.game_id == game_id,
                         GoalieGame.player_id == player_id
                     )).one()
-            except:
+            except Exception as e:
                 plr_game = None
             return plr_game
 

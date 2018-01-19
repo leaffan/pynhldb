@@ -43,7 +43,7 @@ class Contract(Base):
                         Contract.end_season == end_season
                     )
                 ).one()
-            except:
+            except Exception as e:
                 contract = None
             return contract
 
@@ -60,7 +60,7 @@ class Contract(Base):
                         Contract.signing_team_id == signing_team_id
                     )
                 ).one()
-            except:
+            except Exception as e:
                 contract = None
             return contract
 
@@ -74,7 +74,7 @@ class Contract(Base):
                         Contract.signing_date == signing_date
                     )
                 ).one()
-            except:
+            except Exception as e:
                 contract = None
             return contract
 

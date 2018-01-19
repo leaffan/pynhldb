@@ -46,7 +46,7 @@ class Player(Base):
                 player = session.query(Player).filter(
                     Player.player_id == nhl_id
                 ).one()
-            except:
+            except Exception as e:
                 player = None
             return player
 
@@ -57,7 +57,7 @@ class Player(Base):
                 player = session.query(Player).filter(
                     Player.capfriendly_id == capfriendly_id
                 ).one()
-            except:
+            except Exception as e:
                 player = None
             return player
 
@@ -71,7 +71,7 @@ class Player(Base):
                         Player.last_name == last_name
                     )
                 ).one()
-            except:
+            except Exception as e:
                 player = None
             return player
 
@@ -94,7 +94,7 @@ class Player(Base):
                             Player.first_name, " ", Player.last_name
                         ) == full_name
                     ).one()
-            except:
+            except Exception as e:
                 player = None
             return player
 
@@ -109,7 +109,7 @@ class Player(Base):
                         func.lower(Player.position) == position.lower()
                     )
                 ).one()
-            except:
+            except Exception as e:
                 player = None
             return player
 
@@ -140,7 +140,7 @@ class Player(Base):
                         )
                     )
                 ).one()
-            except:
+            except Exception as e:
                 player = None
             return player
 

@@ -40,7 +40,7 @@ class Shift(Base):
                         Shift.player_id == player_id,
                         Shift.in_game_shift_cnt == in_game_cnt
                     )).one()
-            except:
+            except Exception as e:
                 shift = None
             return shift
 
