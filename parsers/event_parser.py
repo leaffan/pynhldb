@@ -242,8 +242,12 @@ class EventParser():
         if play_key in self.json_dict:
             if len(self.json_dict[play_key]) == 1:
                 single_play_dict = self.json_dict[play_key][0]
-                event_data_dict['x'] = int(single_play_dict['x'])
-                event_data_dict['y'] = int(single_play_dict['y'])
+                # checking whether there are non-null values stored as
+                # coordinates first
+                if single_play_dict['x']:
+                    event_data_dict['x'] = int(single_play_dict['x'])
+                if single_play_dict['y']:
+                    event_data_dict['y'] = int(single_play_dict['y'])
 
         # creating event id as combination of game id and in-game event count
         event_id = "{0:d}{1:04d}".format(
@@ -550,7 +554,7 @@ class EventParser():
         except Exception as e:
             distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
             logger.warn(
-                "Unable to retrieve shot type from" +
+                "Unable to retrieve shot type from " +
                 "raw data: %s" % event.raw_data)
         shot_data_dict['distance'] = int(distance)
         # adjusting scored flag
@@ -1115,8 +1119,10 @@ class EventParser():
             single_play_dict['play_type'] = play_type
             # adding coordinates and description to single play dictionary
             single_play_dict['period_type'] = play['about']['periodType']
-            single_play_dict['x'] = coords['x']
-            single_play_dict['y'] = coords['y']
+            # setting coordinates to null per default since at times single
+            # x or y values are missing (e.g. in game 2010020237)
+            single_play_dict['x'] = coords.get('x', None)
+            single_play_dict['y'] = coords.get('y', None)
             single_play_dict['description'] = play['result']['description']
             # adding players participating in play
             for player in play['players']:
@@ -1141,8 +1147,14 @@ class EventParser():
                     'infraction'] = self.adjust_penalty_infraction(
                         infraction, severity)
             if play_type in ['SHOT', 'GOAL']:
-                single_play_dict['shot_type'] = play['result'][
-                    'secondaryType'].lower().replace("shot", "").strip()
+                # using empty string as default since at times json data is
+                # missing shot types (e.g. in game 2010020193)
+                shot_type = play['result'].get('secondaryType', '')
+                if shot_type:
+                    # single_play_dict['shot_type'] = play['result'][
+                    #     'secondaryType'].lower().replace("shot", "").strip()
+                    single_play_dict['shot_type'] = shot_type.lower().replace(
+                        "shot", "").strip()
             # adding single player dictionary to dictionary of all plays using
             # period, time and type of play as key
             self.json_dict[(play_period, play_time, play_type)].append(
