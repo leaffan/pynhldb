@@ -36,7 +36,16 @@ class Hit(Base, SpecificEvent):
         hit_team = Team.find_by_id(self.team_id)
         taken_team = Team.find_by_id(self.hit_taken_team_id)
         event = Event.find_by_id(self.event_id)
+        
+        if taken_plr is None:
+            taken = "unknown"
+        else:
+            taken = taken_plr.name
+
+        if hit_plr is None:
+            hit = "unknown"
+        else:
+            hit = hit_plr.name
+        
         return "Hit: %s (%s) on %s (%s) - %s" % (
-            hit_plr.name, hit_team.abbr,
-            taken_plr.name, taken_team.abbr,
-            event)
+            hit, hit_team.abbr, taken, taken_team.abbr, event)
