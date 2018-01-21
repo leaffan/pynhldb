@@ -39,7 +39,7 @@ class EventParser():
     SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
     # ... missed shot properties
     MISS_REGEX = re.compile(
-        ",\s((?:.+),\s(?:Wide of Net|Hit Crossbar|Goalpost|Over Net)" +
+        ",\s((?:.+),\s(?:Wide of Net|Hit Crossbar|Goalpost|Over Net)?" +
         ").*,\s(.+)\sft\.")
     # ... the distance from goal for a shot
     DISTANCE_REGEX = re.compile("(\d+)\sft\.")
@@ -51,7 +51,7 @@ class EventParser():
     INFRACTION_REGEX = re.compile(
         "#\d+.{1}[A-Z]+(\'| |\.|\-){0,2}(?:[A-Z ]+)?\.?.{1}([A-Z].+)\(\d")
     # ... a penalty infraction for a team
-    TEAM_INFRACTION_REGEX = re.compile("(.{3})\sTEAM(.+)\(\d")
+    TEAM_INFRACTION_REGEX = re.compile("(.{3})\s(?:TEAM)?(.+)\(\d")
     # ... a penalty infraction for a team but without anyone serving it
     ANONYMOUS_TEAM_INFRACTION_REGEX = re.compile("Team(.+)\-.+bench")
     # ... a penalty infraction for a coach
@@ -475,32 +475,19 @@ class EventParser():
         # checking whether current shot was a penalty shot
         if "penalty shot" in event.raw_data.lower():
             miss_data_dict['penalty_shot'] = True
-
         # retrieving combined missed shot properties from raw data
         miss_props, distance = self.MISS_REGEX.search(
             event.raw_data).group(1, 2)
         # splitting up missed shot properties
         miss_props_tokens = [s.strip() for s in miss_props.split(',')]
         # sorting out missed shot properties to retrieve shot/miss type
-        if len(miss_props_tokens) == 3 and miss_props_tokens[0].lower(
-                ) == 'penalty shot':
-                    shot_type, miss_type = miss_props_tokens[1:]
-        elif len(miss_props_tokens) == 2:
-            shot_type, miss_type = miss_props_tokens
-        else:
-            token = miss_props_tokens.pop()
+        shot_type = None
+        miss_type = None
+        for token in miss_props_tokens:
             if token in self.SHOT_TYPES:
                 shot_type = token
-                miss_type = None
             elif token in self.MISS_TYPES:
-                shot_type = None
                 miss_type = token
-            else:
-                shot_type = None
-                miss_type = None
-                logger.warn(
-                    "Couldn't retrieve unambigious shot or " +
-                    "miss type from raw data: %s" % event.raw_data)
         # adding missed shot properties to data dictionary
         miss_data_dict['shot_type'] = shot_type
         miss_data_dict['miss_type'] = miss_type
@@ -632,7 +619,7 @@ class EventParser():
             infraction = infraction_match.group(2).strip()
         else:
             logger.debug(
-                "Couldn't retrieve regular infraction" +
+                "Couldn't retrieve regular infraction " +
                 "from raw data: %s" % event.raw_data)
             infraction = None
 
@@ -642,9 +629,13 @@ class EventParser():
                 self.TEAM_INFRACTION_REGEX, event.raw_data)
             if infraction_match:
                 infraction = infraction_match.group(2).strip()
+                # the following replacement is necessary since at times there
+                # still is a number sign in the infraction string, e.g. at
+                # 16:16 in the third period of game id 2011020069
+                infraction = infraction.replace("#", "").strip()
             else:
                 logger.debug(
-                    "Couldn't retrieve team infraction" +
+                    "Couldn't retrieve team infraction " +
                     "from raw data: %s" % event.raw_data)
                 infraction = None
 
@@ -656,7 +647,7 @@ class EventParser():
                 infraction = infraction_match.group(1).strip()
             else:
                 logger.debug(
-                    "Couldn't retrieve anonymous team infraction" +
+                    "Couldn't retrieve anonymous team infraction " +
                     "from raw data: %s" % event.raw_data)
                 infraction = None
 
@@ -668,7 +659,7 @@ class EventParser():
                 infraction = infraction_match.group(1).strip()
             else:
                 logger.debug(
-                    "Couldn't retrieve coach infraction" +
+                    "Couldn't retrieve coach infraction " +
                     "from raw data: %s" % event.raw_data)
                 infraction = None
 
@@ -676,7 +667,7 @@ class EventParser():
 
         if infraction is None:
             logger.error(
-                "Could not retrieve infraction from" +
+                "Could not retrieve infraction from " +
                 "raw data: %s (game_id: %s)" % (
                     event.raw_data, self.game.game_id))
 
@@ -799,7 +790,7 @@ class EventParser():
             block_data_dict['shot_type'] = shot_type
         except AttributeError:
             logger.warn(
-                "Couldn't retrieve blocked shot type" +
+                "Couldn't retrieve blocked shot type " +
                 "from raw data: %s" % event.raw_data)
 
         # retrieving blocked shot with same event id from database
@@ -879,7 +870,7 @@ class EventParser():
         # sometimes only one of the involved players is retrievable
         else:
             logger.warn(
-                "Couldn't retrieve all involved players" +
+                "Couldn't retrieve all players involved " +
                 "in hit from raw data: %s" % event.raw_data)
             if self.ONLY_HIT_TAKEN_REGEX.search(event.raw_data):
                 team_taken, plr_no_taken = self.ONLY_HIT_TAKEN_REGEX.search(
@@ -995,7 +986,7 @@ class EventParser():
         # registry of all plays
         plays = self.json_dict[(event.period, event.time, event.type)]
         
-        # returning if no feasible play was found
+        # returning if no play at all was found
         if not plays:
             return event
         
@@ -1009,6 +1000,13 @@ class EventParser():
                 if is_matching_event(play, specific_event):
                     matching_play = play
                     break
+            # returning if no matching play was found amont existing ones
+            else:
+                # TODO: proper logging
+                print(
+                    "No matching play with coordinates found " +
+                    "for %s" % specific_event)
+                return event
 
         # finally assigning play coordinates to event
         event.x = matching_play['x']
@@ -1056,7 +1054,7 @@ class EventParser():
         for key in ['road', 'home']:
             # retrieving jersey numbers of players on ice for current event
             nos_on_ice = [int(n) for n in poi_data[key].xpath(
-                "tr/td/table/tr/td/font/text()")]
+                "tr/td/table/tr/td/font/text()") if n.strip()]
             # retrieving positions of players on ice for current event
             pos_on_ice = [s for s in poi_data[key].xpath(
                 "tr/td/table/tr/td/text()") if s.strip()]
