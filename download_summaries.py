@@ -29,6 +29,10 @@ if __name__ == '__main__':
         '-t', '--to', dest='to_date', required=False,
         metavar='last date to download summaries for',
         help="The last date summaries will be downloaded for")
+    parser.add_argument(
+        '--exclude', dest='exclude', required=False, nargs='+',
+        choices=['game_feed', 'shift_chart', 'html_reports'],
+        help="Exclude the specified datasets from downloading")
 
     args = parser.parse_args()
 
@@ -77,5 +81,6 @@ if __name__ == '__main__':
             to_date = (datetime.now() + relativedelta(days=-1)).strftime(
                 "%B %d, %Y")
 
-    downloader = SummaryDownloader(tgt_dir, from_date, to_date, workers=8)
+    downloader = SummaryDownloader(
+        tgt_dir, from_date, to_date, workers=8, exclude=args.exclude)
     downloader.run()
