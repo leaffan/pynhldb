@@ -12,7 +12,7 @@ from dateutil.rrule import rrule, DAILY
 
 from .multi_downloader import MultiFileDownloader
 from .summary_data_injector import add_nhl_ids_to_content
-from utils import adjust_html_response
+from utils import adjust_html_response, compare_json_data
 
 
 class SummaryDownloader(MultiFileDownloader):
@@ -22,6 +22,8 @@ class SummaryDownloader(MultiFileDownloader):
     # url template for official json gamefeed page
     JSON_GAME_FEED_URL_TEMPLATE = (
         "http://statsapi.web.nhl.com/api/v1/game/%s/feed/live")
+    JSON_SHIFT_CHART_URL_TEMPLATE = (
+        "http://www.nhl.com/stats/rest/shiftcharts?cayenneExp=gameId=%s")
     # url parameter for json scoreboard page
     LINESCORE_CONTENT_KEY = "schedule.linescore"
 
@@ -143,7 +145,11 @@ class SummaryDownloader(MultiFileDownloader):
                     full_game_id)
                 files_to_download.append(
                     (feed_json_url, ".".join((game_id, "json"))))
-
+                chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(
+                    full_game_id)
+                files_to_download.append(
+                    (chart_json_url, "".join((game_id, "_sc.json"))))
+    
         return files_to_download
 
     def get_last_modification_timestamp(self, url, tgt_path):
@@ -177,6 +183,9 @@ class SummaryDownloader(MultiFileDownloader):
         if url.lower().endswith('.htm'):
             content = self.download_html_content(url, tgt_path)
             write_type = 'wb'
+        elif tgt_path.endswith('_sc.json'):
+            content = self.download_json_shift_chart(url, tgt_path)
+            write_type = 'w'
         else:
             content = self.download_json_content(url, tgt_path)
             write_type = 'w'
@@ -266,6 +275,25 @@ class SummaryDownloader(MultiFileDownloader):
                 self.mod_timestamps[url] = str(act_time_stamp)
                 # returning json data as prettily formatted string
                 return json.dumps(json_data, indent=2)
+
+    def download_json_shift_chart(self, url, tgt_path):
+
+        req = requests.get(url)
+
+        if os.path.isfile(tgt_path):
+            existing_json_data = json.loads(open(tgt_path).read())
+        else:
+            existing_json_data = dict()
+
+        if req.status_code == 200:
+            json_data = req.json()
+            if not compare_json_data(json_data, existing_json_data):
+                sys.stdout.write("+")
+                sys.stdout.flush()
+                return json.dumps(json_data, indent=2)
+            else:
+                sys.stdout.write(".")
+                sys.stdout.flush()
 
     def run(self):
         """
