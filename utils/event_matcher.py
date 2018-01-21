@@ -76,7 +76,7 @@ def is_matching_penalty_event(penalty, play):
                 return True
         # trying to match play and penalty using participating player,
         # penalty minutes and sanctioned infraction
-        elif 'active' in play:
+        if 'active' in play:
             if (
                 play['active'], play['pim'], play['infraction']
             ) == (
@@ -198,7 +198,7 @@ def calculate_distance_from_goal(play):
     """
     Calculates Euclidean distance between coordinates of play and the goal.
     """
-    if any([play['x'], play['y']]) is None:
+    if None in [play['x'], play['y']]:
         return 0
     
     return int(round(math.sqrt(
