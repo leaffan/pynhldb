@@ -4,6 +4,7 @@
 import os
 import sys
 import json
+import hashlib
 from urllib.parse import urlsplit
 
 import requests
@@ -38,7 +39,7 @@ class SummaryDownloader(MultiFileDownloader):
 
     def __init__(
             self, tgt_dir, date, to_date='',
-            zip_summaries=True, workers=0, cleanup=True):
+            zip_summaries=True, workers=0, cleanup=True, exclude=None):
         # constructing base class instance
         super(self.__class__, self).__init__(
             tgt_dir, zip_summaries, workers, cleanup)
@@ -52,6 +53,10 @@ class SummaryDownloader(MultiFileDownloader):
         # preparing list of dates to download summary data for
         self.game_dates = list(
             rrule(DAILY, dtstart=self.date, until=self.to_date))
+        # storing datasets to be excluded from downloading
+        self.exclude = list()
+        if exclude is not None:
+            self.exclude = exclude
 
         # preparing connection to dumped dictionary of modification timestamps
         self.mod_timestamp_src = os.path.join(tgt_dir, '_mod_timestamps.json')
@@ -126,29 +131,34 @@ class SummaryDownloader(MultiFileDownloader):
                 if game_type not in self.GAME_TYPES:
                     continue
                 # constructing urls to individual game report pages
-                for rt in self.REPORT_TYPES:
-                    # only adding shootout report to files to be downloaded
-                    # if the current game ended in a shootout
-                    if rt == 'SO' and not game['linescore']['hasShootout']:
-                        continue
-                    htmlreport_url = "".join((
-                        self.HTML_REPORT_PREFIX,
-                        season,
-                        "/",
-                        rt,
-                        str(game_id),
-                        ".HTM"))
-                    files_to_download.append((htmlreport_url, None))
+                if 'html_reports' not in self.exclude:
+                    for rt in self.REPORT_TYPES:
+                        # only adding shootout report to files to be downloaded
+                        # if the current game ended in a shootout
+                        if rt == 'SO' and not game['linescore']['hasShootout']:
+                            continue
+                        htmlreport_url = "".join((
+                            self.HTML_REPORT_PREFIX,
+                            season,
+                            "/",
+                            rt,
+                            str(game_id),
+                            ".HTM"))
+                        files_to_download.append((htmlreport_url, None))
                 # setting upd json game feed url and adding it to list of
                 # files to be downloaded
-                feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(
-                    full_game_id)
-                files_to_download.append(
-                    (feed_json_url, ".".join((game_id, "json"))))
-                chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(
-                    full_game_id)
-                files_to_download.append(
-                    (chart_json_url, "".join((game_id, "_sc.json"))))
+                if 'game_feed' not in self.exclude:
+                    feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(
+                        full_game_id)
+                    files_to_download.append(
+                        (feed_json_url, ".".join((game_id, "json"))))
+                # setting upd json shift chart url and adding it to list of
+                # files to be downloaded
+                if 'shift_chart' not in self.exclude:
+                    chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(
+                        full_game_id)
+                    files_to_download.append(
+                        (chart_json_url, "".join((game_id, "_sc.json"))))
     
         return files_to_download
 
@@ -183,9 +193,6 @@ class SummaryDownloader(MultiFileDownloader):
         if url.lower().endswith('.htm'):
             content = self.download_html_content(url, tgt_path)
             write_type = 'wb'
-        elif tgt_path.endswith('_sc.json'):
-            content = self.download_json_shift_chart(url, tgt_path)
-            write_type = 'w'
         else:
             content = self.download_json_content(url, tgt_path)
             write_type = 'w'
@@ -232,7 +239,16 @@ class SummaryDownloader(MultiFileDownloader):
 
     def download_json_content(self, url, tgt_path):
         """
-        Downloads json content from specified url.
+        Downloads JSON content from specified url.
+        """
+        if tgt_path.endswith('_sc.json'):
+            return self.download_json_shift_chart(url, tgt_path)
+        else:
+            return self.download_json_game_feed(url, tgt_path)
+
+    def download_json_game_feed(self, url, tgt_path):
+        """
+        Downloads JSON game feed data from specified url.
         """
         # retrieving timestamp of last modification in case data has been
         # downloaded before
@@ -277,19 +293,26 @@ class SummaryDownloader(MultiFileDownloader):
                 return json.dumps(json_data, indent=2)
 
     def download_json_shift_chart(self, url, tgt_path):
+        """
+        Downloads JSON shift data from specified url.
+        """
+        # retrieving timestamp of last modification in case data has been
+        # downloaded before
+        existing_data_hash = self.get_last_modification_timestamp(
+            url, tgt_path)
 
         req = requests.get(url)
 
-        if os.path.isfile(tgt_path):
-            existing_json_data = json.loads(open(tgt_path).read())
-        else:
-            existing_json_data = dict()
-
         if req.status_code == 200:
             json_data = req.json()
-            if not compare_json_data(json_data, existing_json_data):
+            # calculating MD5 hash for downloaded data
+            json_data_hash = hashlib.md5(
+                json.dumps(json_data).encode('utf-8')).hexdigest()
+            # comparing hashes of downloaded and already exising data
+            if not existing_data_hash == json_data_hash:
                 sys.stdout.write("+")
                 sys.stdout.flush()
+                self.mod_timestamps[url] = json_data_hash
                 return json.dumps(json_data, indent=2)
             else:
                 sys.stdout.write(".")
