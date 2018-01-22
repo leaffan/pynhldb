@@ -51,8 +51,10 @@ def set_up_comparison_files():
     # specified date
     files = ["".join(c) + ".HTM" for c in list(
         itertools.product(prefixes, game_ids))]
-    # adding JSON game report files
+    # adding JSON game feed files
     files.extend(["".join((gid, ".json")) for gid in game_ids])
+    # adding JSON shift chart files
+    files.extend(["".join((gid, "_sc.json")) for gid in game_ids])
     # adding shootout report for one of the games
     files.append("SO020082.HTM")
 
