@@ -122,12 +122,11 @@ class MainParser():
 
         # parsing player shifts (if not optionally excluded from processing)
         if 'shifts' not in exclude:
-            self.parsed_data[game_id]['shifts'] = self.create_shifts(game_id)
-            # print(self.parsed_data[game_id]['shifts'].keys())
+            self.create_shifts(game_id)
 
         # parsing game events (if not optonally excluded from processing)
         if 'events' not in exclude:
-            self.parsed_data[game_id]['events'] = self.create_events(game_id)
+            self.create_events(game_id)
 
         # removing raw structured data from memory
         del self.raw_data[game_id]
@@ -217,34 +216,47 @@ class MainParser():
         """
         Retrieves shift information.
         """
-        # setting up dictionary container for shifts from both teams
-        shifts = dict()
-        # doing this for both road and home team
-        for prefix in ['TV', 'TH']:
-            # reading time-on-ice data anew if necessary
-            self.read_on_demand(game_id, prefix)
-            # setting up parser for shift data
-            sp = ShiftParser(self.raw_data[game_id][prefix])
-            # selecting home or road type corresponding to data prefix
-            if prefix == 'TV':
-                home_road_type = 'road'
-            else:
-                home_road_type = 'home'
-            # retrieving shift information
-            shifts[home_road_type] = sp.create_shifts(
-                self.parsed_data[game_id]['game'],
-                self.parsed_data[game_id]['rosters'][home_road_type])
-        else:
-            return shifts
+        # first trying to retrieve json shift data from downloaded raw data
+        # for current game
+        json_shift_data = self.read_json_data(game_id, data_type='shift_chart')
 
-    def read_json_data(self, game_id):
+        # if available using JSON shift data as source per default
+        if json_shift_data:
+            sp = ShiftParser(json_shift_data)
+            sp.create_shifts_from_json(
+                self.parsed_data[game_id]['game'],
+                self.parsed_data[game_id]['rosters'])
+        # otherwise using shift data from HTML reports available for both road
+        # and home team
+        else:
+            for prefix in ['TV', 'TH']:
+                # reading time-on-ice data anew if necessary
+                self.read_on_demand(game_id, prefix)
+                # setting up parser for shift data
+                sp = ShiftParser(self.raw_data[game_id][prefix])
+                # selecting home or road type corresponding to data prefix
+                if prefix == 'TV':
+                    home_road_type = 'road'
+                else:
+                    home_road_type = 'home'
+                # retrieving shift information
+                sp.create_shifts(
+                    self.parsed_data[game_id]['game'],
+                    self.parsed_data[game_id]['rosters'][home_road_type])
+
+    def read_json_data(self, game_id, data_type='game_feed'):
         """
         Reads gamefeed JSON data for game with specified id.
         """
-        json_file = self.dh.get_game_json_data(game_id)
-        json_data = json.loads(open(json_file).read())
-
-        return json_data
+        if data_type == 'game_feed':
+            json_file = self.dh.get_game_json_data(game_id)
+        elif data_type == 'shift_chart':
+            json_file = self.dh.get_shift_json_data(game_id)
+        
+        if json_file is None:
+            return
+        
+        return json.loads(open(json_file).read())
 
     def read_on_demand(self, game_id, prefix):
         """

@@ -94,8 +94,33 @@ class DataHandler():
                 nhl_game_id, self.src))
             return None
 
+        j_data = None
+
         for item in self._get_contents('.json'):
             if re.search("%s\.json" % nhl_game_id, item):
+                if self.src_type == 'zip':
+                    j_data = self._get_game_data_from_zip(item)
+                elif self.src_type == 'dir':
+                    j_data = self._get_game_data_from_dir(item)
+                break
+
+        return j_data
+
+    def get_shift_json_data(self, nhl_game_id):
+        """
+        Retrieves JSON shift data for specified game id from data directory/
+        zip file.
+        """
+        # checking whether this zip or dir contains this game
+        if self.game_ids and nhl_game_id not in self.game_ids:
+            logger.error("Game id {0} not found in contents of {1}".format(
+                nhl_game_id, self.src))
+            return None
+
+        j_data = None
+
+        for item in self._get_contents('.json'):
+            if re.search("%s_sc\.json" % nhl_game_id, item):
                 if self.src_type == 'zip':
                     j_data = self._get_game_data_from_zip(item)
                 elif self.src_type == 'dir':

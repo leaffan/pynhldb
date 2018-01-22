@@ -22,7 +22,6 @@ class ShiftParser():
     def __init__(self, raw_data):
         self.raw_data = raw_data
         self.shift_data = dict()
-        self.shifts = defaultdict(list)
 
     def create_shifts(self, game, roster):
         """
@@ -58,12 +57,53 @@ class ShiftParser():
                 # creating new or updating existing shift item
                 create_or_update_db_item(db_shift, shift)
 
-                self.shifts[no].append(
-                    Shift.find(
-                        shift.game_id, shift.player_id,
-                        shift.in_game_shift_cnt))
-        else:
-            return self.shifts
+    def create_shifts_from_json(self, game, rosters):
+        """
+        Creates shifts from JSON shift chart data.
+        """
+        # temporarily collecting all players' sweater numbers in a dictionary
+        # using player_id as key
+        rosters_by_player_id = dict()
+        for home_road in rosters:
+            for no in rosters[home_road]:
+                rosters_by_player_id[rosters[home_road][no].player_id] = no
+
+        # iterating over all shift data items in the JSON structure
+        for shift_item in self.raw_data['data']:
+
+            # skipping shift if it has a null duration
+            if shift_item['duration'] is None:
+                continue
+
+            shift_data_dict = dict()
+            # retrieving basic data
+            shift_data_dict['player_id'] = shift_item['playerId']
+            shift_data_dict['team_id'] = shift_item['teamId']
+            # retrieving sweater number by utilizing previously created dict
+            shift_data_dict['no'] = rosters_by_player_id[
+                shift_data_dict['player_id']]
+            # retrieving actual single shift data
+            shift_data_dict['in_game_shift_cnt'] = shift_item['shiftNumber']
+            shift_data_dict['period'] = shift_item['period']
+            shift_data_dict['start'] = str_to_timedelta(
+                shift_item['startTime'])
+            shift_data_dict['end'] = str_to_timedelta(
+                shift_item['endTime'])
+            shift_data_dict['duration'] = str_to_timedelta(
+                shift_item['duration'])
+
+            # setting up new shift item
+            shift = Shift(
+                game.game_id, shift_data_dict['team_id'],
+                shift_data_dict['player_id'], shift_data_dict)
+
+            # trying to find current shift item in database
+            db_shift = Shift.find(
+                game.game_id, shift_data_dict['player_id'],
+                shift_data_dict['in_game_shift_cnt'])
+
+            # creating new or updating existing shift item
+            create_or_update_db_item(db_shift, shift)
 
     def get_shifts_for_player(self, shift_data_trs, player):
         """
