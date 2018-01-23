@@ -246,12 +246,9 @@ class MainParser():
 
     def read_json_data(self, game_id, data_type='game_feed'):
         """
-        Reads gamefeed JSON data for game with specified id.
+        Reads JSON game feed or shift chart data for game with specified id.
         """
-        if data_type == 'game_feed':
-            json_file = self.dh.get_game_json_data(game_id)
-        elif data_type == 'shift_chart':
-            json_file = self.dh.get_shift_json_data(game_id)
+        json_file = self.dh.get_game_json_data(game_id, data_type)
         
         if json_file is None:
             return

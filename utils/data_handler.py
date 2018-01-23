@@ -83,12 +83,12 @@ class DataHandler():
             return [s for s in os.listdir(self.dir) if os.path.splitext(
                 s)[-1].lower().endswith(file_type.lower())]
 
-    def get_game_json_data(self, nhl_game_id):
+    def get_game_json_data(self, nhl_game_id, data_type='game_feed'):
         """
-        Retrieves JSON game data for specified game id from data directory/
-        zip file.
+        Retrieves JSON game feed or shift chart data for specified game id from
+        data directory/zip file.
         """
-        # checking whether this zip or dir contains this game
+        # checking whether current zip or dir contains game w/ soecified id
         if self.game_ids and nhl_game_id not in self.game_ids:
             logger.error("Game id {0} not found in contents of {1}".format(
                 nhl_game_id, self.src))
@@ -96,31 +96,14 @@ class DataHandler():
 
         j_data = None
 
-        for item in self._get_contents('.json'):
-            if re.search("%s\.json" % nhl_game_id, item):
-                if self.src_type == 'zip':
-                    j_data = self._get_game_data_from_zip(item)
-                elif self.src_type == 'dir':
-                    j_data = self._get_game_data_from_dir(item)
-                break
-
-        return j_data
-
-    def get_shift_json_data(self, nhl_game_id):
-        """
-        Retrieves JSON shift data for specified game id from data directory/
-        zip file.
-        """
-        # checking whether this zip or dir contains this game
-        if self.game_ids and nhl_game_id not in self.game_ids:
-            logger.error("Game id {0} not found in contents of {1}".format(
-                nhl_game_id, self.src))
-            return None
-
-        j_data = None
+        # retrieving JSON data file for specified data type
+        if data_type == 'game_feed':
+            file_name_regex = re.compile("%s\.json" % nhl_game_id)
+        elif data_type == 'shift_chart':
+            file_name_regex = re.compile("%s_sc\.json" % nhl_game_id)
 
         for item in self._get_contents('.json'):
-            if re.search("%s_sc\.json" % nhl_game_id, item):
+            if re.search(file_name_regex, item):
                 if self.src_type == 'zip':
                     j_data = self._get_game_data_from_zip(item)
                 elif self.src_type == 'dir':
