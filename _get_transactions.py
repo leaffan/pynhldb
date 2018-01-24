@@ -68,7 +68,7 @@ def retrieve_waiver_claim_information(raw_data):
     match = re.search(CLAIM_FROM_REGEX, raw_data)
     try:
         pos, plr_name, team_name = match.group(1, 2, 3)
-    except:
+    except Exception as e:
         print("+ Unable to retrieve feasible information from '%s'", raw_data)
 
     return pos, plr_name, team_name
@@ -267,7 +267,7 @@ if __name__ == '__main__':
         # trying to retrieve both team name and transaction raw data
         try:
             team, data = [token.strip() for token in line.split(":")]
-        except:
+        except Exception as e:
             print(line)
         # retrieving team from team name
         team = Team.find_by_name(team)
