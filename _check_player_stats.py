@@ -1,21 +1,56 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 from operator import attrgetter
 
 from sqlalchemy import and_, String, cast
 
 from db.common import session_scope
 from db.player import Player
+from db.team import Team
 from db.player_game import PlayerGame
 from db.player_season import PlayerSeason
 
 # TODO: command line arguments, comparison of all applicable stat values
 season = 2016
 season_type = 'RS'
-stat_criterion = 'goals'
+stat_criterion = 'assists'
 
 if __name__ == '__main__':
+
+    # retrieving arguments specified on command line
+    parser = argparse.ArgumentParser(
+        description='Download NHL game summary reports.')
+    parser.add_argument(
+        '-s', '--season', dest='season', required=False,
+        metavar='season to check stats for',
+        help="Season for which stats data will be checked")
+    parser.add_argument(
+        '-t', '--type', dest='season_type', required=False,
+        metavar='season type', choices=['RS', 'PO'],
+        help="Season type, e.g. regular season (RS) or playoffs (PO)")
+    parser.add_argument(
+        '-c', '--criterion', dest='stat_criterion', required=False,
+        metavar='statistics criterion to be checked',
+        help="Statistics criterion to be checked")
+
+    args = parser.parse_args()
+
+    if args.season is not None:
+        season = int(args.season)
+    else:
+        season = 2017
+
+    if args.stat_criterion is not None:
+        stat_criterion = args.stat_criterion
+    else:
+        stat_criterion = 'goals'
+
+    if args.season_type is not None:
+        season_type = args.season_type
+    else:
+        season_type = 'RS'
 
     with session_scope() as session:
 
@@ -33,6 +68,8 @@ if __name__ == '__main__':
 
             plr = Player.find_by_id(pseason.player_id)
             # retrieving individual player games for specified player
+            # TODO: group by team, i.e. for players with multiple stints with
+            # a team in one season
             pgames = session.query(PlayerGame).filter(
                 and_(
                     PlayerGame.player_id == pseason.player_id,
@@ -41,8 +78,8 @@ if __name__ == '__main__':
                 )
             ).all()
 
-
             stats_value = sum(map(attrgetter(stat_criterion), pgames))
+            team = Team.find_by_id(pseason.team_id)
 
             # print(plr, stats_value, getattr(pseason, stat_criterion))
 
@@ -50,5 +87,8 @@ if __name__ == '__main__':
                 assert stats_value == getattr(pseason, stat_criterion)
             except Exception as e:
                 print(plr)
-                print("\t Goals in player games: %d" % stats_value)
-                print("\t Goals in player season stats: %d" % pseason.goals)
+                print("\t %s in player games for %s: %d" % (
+                    stat_criterion.capitalize(), team, stats_value))
+                print("\t %s in player season stats for %s: %d" % (
+                    stat_criterion.capitalize(), team,
+                    getattr(pseason, stat_criterion)))
