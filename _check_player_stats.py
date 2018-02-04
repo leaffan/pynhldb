@@ -17,6 +17,12 @@ season = 2016
 season_type = 'RS'
 stat_criterion = 'assists'
 
+PS_PG_MAPPING = {
+    'shots': 'shots_on_goal',
+    'shifts': 'no_shifts',
+    'toi': 'toi_overall'
+}
+
 if __name__ == '__main__':
 
     # retrieving arguments specified on command line
@@ -32,6 +38,10 @@ if __name__ == '__main__':
         help="Season type, e.g. regular season (RS) or playoffs (PO)")
     parser.add_argument(
         '-c', '--criterion', dest='stat_criterion', required=False,
+        choices=[
+            'goals', 'assists', 'points', 'pim', 'plus_minus', 'shots',
+            'hits', 'blocks', 'shifts', 'toi'
+        ],
         metavar='statistics criterion to be checked',
         help="Statistics criterion to be checked")
 
@@ -78,7 +88,11 @@ if __name__ == '__main__':
                 )
             ).all()
 
-            stats_value = sum(map(attrgetter(stat_criterion), pgames))
+            if stat_criterion in PS_PG_MAPPING:
+                stats_value = sum(
+                    map(attrgetter(PS_PG_MAPPING[stat_criterion]), pgames))
+            else:
+                stats_value = sum(map(attrgetter(stat_criterion), pgames))
             team = Team.find_by_id(pseason.team_id)
 
             # print(plr, stats_value, getattr(pseason, stat_criterion))
