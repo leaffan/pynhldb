@@ -25,7 +25,7 @@ class MultiFileDownloader():
         if not os.path.isdir(tgt_dir):
             try:
                 os.makedirs(tgt_dir)
-            except:
+            except Exception as e:
                 logger.warn(
                     "Couldn't create target directory '%s', using " % tgt_dir +
                     "system temporary directory %s instead" % self.TMP_DIR)
@@ -239,7 +239,7 @@ class MultiFileDownloader():
                 try:
                     try_delete_count += 1
                     os.unlink(f)
-                except:
+                except Exception as e:
                     print(f)
                     # TODO: log
                     pass
