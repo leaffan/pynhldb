@@ -13,7 +13,7 @@ from dateutil.rrule import rrule, DAILY
 
 from .multi_downloader import MultiFileDownloader
 from .summary_data_injector import add_nhl_ids_to_content
-from utils import adjust_html_response, compare_json_data
+from utils import adjust_html_response
 
 
 class SummaryDownloader(MultiFileDownloader):
@@ -159,7 +159,7 @@ class SummaryDownloader(MultiFileDownloader):
                         full_game_id)
                     files_to_download.append(
                         (chart_json_url, "".join((game_id, "_sc.json"))))
-    
+
         return files_to_download
 
     def get_last_modification_timestamp(self, url, tgt_path):
@@ -334,4 +334,6 @@ class SummaryDownloader(MultiFileDownloader):
             if self.zip_downloaded_files:
                 self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
-        json.dump(self.mod_timestamps, open(self.mod_timestamp_src, 'w'))
+        json.dump(
+            self.mod_timestamps, open(self.mod_timestamp_src, 'w'),
+            indent=2, sort_keys=True)
