@@ -65,7 +65,7 @@ if __name__ == '__main__':
                     try:
                         curr_date = parse(os.path.basename(file.split(".")[0]))
                         all_dates.append(curr_date)
-                    except:
+                    except Exception as e:
                         pass
 
         from_date = (sorted(all_dates)[-1] + relativedelta(days=1)).strftime(
