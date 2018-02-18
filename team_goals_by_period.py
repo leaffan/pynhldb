@@ -48,6 +48,7 @@ if __name__ == '__main__':
 
     team_goals_summary = dict()
 
+    # aggregating goals for and goals against
     for tg in team_games:
         if tg.team_id not in team_goals_summary:
             team_goals_summary[tg.team_id] = defaultdict(int)
@@ -61,6 +62,7 @@ if __name__ == '__main__':
         team_goals_summary[tg.team_id]['gf'] += tg.goals_for
         team_goals_summary[tg.team_id]['ga'] += tg.goals_against
 
+    # calculating goal differences
     for team in teams:
         team_goals_summary[team.team_id]['gd_1'] = (
             team_goals_summary[team.team_id]['gf_1'] -
@@ -86,8 +88,8 @@ if __name__ == '__main__':
         " + NHL Goal Differential per Period (%s)" % (
             last_game_date.strftime("%b %d, %Y")))
     print("  # %-22s %4s %4s %4s %4s %4s %4s %4s %4s %4s %4s %4s %4s" % (
-        'Team', 'GF1', 'GA1', 'GD1', 'GF2', 'GA2', 'GD2', 'GF3',
-        'GA3', 'GD3', 'GF', 'GA', 'GD'))
+        'Team', 'GF', 'GA', 'GD', 'GF1', 'GA1', 'GD1', 'GF2',
+        'GA2', 'GD2', 'GF3', 'GA3', 'GD3'))
 
     # sorting teams by goal differential
     for team_id in sorted(team_goals_summary, key=lambda x: (
@@ -95,24 +97,27 @@ if __name__ == '__main__':
             team_goals_summary[x]['gf']), reverse=True):
         team = Team.find_by_id(team_id)
 
-        print("%3d %-22s %4d %4d  %s%s%s %4d %4d  %s%s%s %4d %4d  %s%s%s %4d %4d  %s%s%s" % (
-            i, team,
-            team_goals_summary[team_id]['gf_1'],
-            team_goals_summary[team_id]['ga_1'],
-            *determine_format_string(team_goals_summary[team_id]['gd_1']),
-            Style.RESET_ALL,
-            team_goals_summary[team_id]['gf_2'],
-            team_goals_summary[team_id]['ga_2'],
-            *determine_format_string(team_goals_summary[team_id]['gd_2']),
-            Style.RESET_ALL,
-            team_goals_summary[team_id]['gf_3'],
-            team_goals_summary[team_id]['ga_3'],
-            *determine_format_string(team_goals_summary[team_id]['gd_3']),
-            Style.RESET_ALL,
-            team_goals_summary[team_id]['gf'],
-            team_goals_summary[team_id]['ga'],
-            *determine_format_string(team_goals_summary[team_id]['gd']),
-            Style.RESET_ALL,
-        ))
-
+        print(
+            "%3d %-22s%5d%5d%s%5s%s" % (
+                i, team,
+                team_goals_summary[team_id]['gf'],
+                team_goals_summary[team_id]['ga'],
+                *determine_format_string(team_goals_summary[team_id]['gd']),
+                Style.RESET_ALL) +
+            "%5d%5d%s%5s%s" % (
+                team_goals_summary[team_id]['gf_1'],
+                team_goals_summary[team_id]['ga_1'],
+                *determine_format_string(team_goals_summary[team_id]['gd_1']),
+                Style.RESET_ALL) +
+            "%5d%5d%s%5s%s" % (
+                team_goals_summary[team_id]['gf_2'],
+                team_goals_summary[team_id]['ga_2'],
+                *determine_format_string(team_goals_summary[team_id]['gd_3']),
+                Style.RESET_ALL) +
+            "%5d%5d%s%5s%s" % (
+                team_goals_summary[team_id]['gf_3'],
+                team_goals_summary[team_id]['ga_3'],
+                *determine_format_string(team_goals_summary[team_id]['gd_3']),
+                Style.RESET_ALL)
+        )
         i += 1
