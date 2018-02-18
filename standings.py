@@ -7,6 +7,7 @@ from operator import attrgetter
 from itertools import groupby
 from collections import defaultdict, OrderedDict
 
+# from dateutil.parser import parse
 from colorama import Fore, init, Style
 from sqlalchemy import cast, String
 
@@ -39,6 +40,23 @@ def get_data(season):
             session.query(Game).filter(Game.season == season).all()))
 
     return team_games, divisions, last_game_date
+
+
+def get_data_for_interval(from_date, to_date, include_playoffs=False):
+
+    filters = [
+        Game.game_id == TeamGame.game_id,
+        Game.date >= from_date,
+        Game.date <= to_date
+    ]
+
+    if not include_playoffs:
+        filters.append(Game.type == 2)
+
+    with session_scope() as session:
+        team_games = session.query(TeamGame, Game).filter(*filters).all()
+
+    return [tg[0] for tg in team_games]
 
 
 def compile_records(team_games):
@@ -309,17 +327,53 @@ def get_colored_output(criterion):
     return criterion_as_string, color
 
 
+def get_league_standings(ranking_type, grouped_records, last_game_date):
+    print(
+        " + NHL %s Standings (%s)" % (
+            ranking_type.capitalize(),
+            last_game_date.strftime("%b %d, %Y")))
+    sorted_records = sort_records(
+        grouped_records['league'], type=ranking_type)
+    print(prepare_output(sorted_records, type=ranking_type))
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
-        description="NHL official and regulation standings for given season")
+        description='NHL official and regulation standings for given season')
     parser.add_argument(
         'season', metavar='season', help='Season selection for standings.',
         default=2017, nargs='?', type=int)
+    parser.add_argument(
+        '-f', '--from', dest='from_date', required=False,
+        metavar='first date to retrieve standings for',
+        help='The date from which on standings will be retrieved')
+    parser.add_argument(
+        '-t', '--to', dest='to_date', required=False,
+        metavar='last date to retrieve standings for',
+        help='The date to which to standings will be retrieved')
+    parser.add_argument(
+        '--sequence', dest='sequence', required=False, type=int, default=15,
+        metavar='Length of game sequence to present streak information for'
+    )
+    parser.add_argument(
+        '--regulation', dest='regulation', required=False,
+        action='store_true',
+        help='Include regulation standings in output')
+    parser.add_argument(
+        '-s', '--standings', dest='standings', required=False,
+        choices=['all', 'league', 'conference', 'division', 'wild_card'],
+        help='Type of standings to be displayed')
+
     args = parser.parse_args()
     season = args.season
+    sequence = args.sequence
 
     team_games, divisions, last_game_date = get_data(season)
+    from datetime import datetime
+    dt_1 = datetime(2017, 1, 1)
+    dt_2 = datetime(2017, 12, 31)
+    team_games = get_data_for_interval(dt_1, dt_2)
     records = compile_records(team_games)
 
     # adding team's division and conference to each record
