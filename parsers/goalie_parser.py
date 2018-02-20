@@ -144,7 +144,7 @@ class GoalieParser():
             # retrieving shootout goalie's number and name
             try:
                 so_no, so_name = so_goalie.split()
-            except:
+            except Exception as e:
                 logger.warn(
                     "Unable to retrieve shootout goalie number" +
                     "and name from %s" % so_goalie)
