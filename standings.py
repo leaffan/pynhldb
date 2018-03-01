@@ -122,11 +122,6 @@ def compile_records(team_games):
         # decreasing regulation goal totals by empty-net goals for and against
         records[tg.team_id]['gf'] -= tg.empty_net_goals_for
         records[tg.team_id]['ga'] -= tg.empty_net_goals_against
-        # decreasing regulation goal totals by overtime goals for and against
-        if tg.overtime_win:
-            records[tg.team_id]['gf'] -= 1
-        if tg.overtime_loss:
-            records[tg.team_id]['ga'] -= 1
         # calculating goal differentials
         records[tg.team_id]['ogd'] = (
             records[tg.team_id]['ogf'] - records[tg.team_id]['oga'])
