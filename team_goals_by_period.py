@@ -62,6 +62,13 @@ if __name__ == '__main__':
         team_goals_summary[tg.team_id]['gf'] += tg.goals_for
         team_goals_summary[tg.team_id]['ga'] += tg.goals_against
 
+        # decreasing actual goals scored by one for an overtime win
+        if tg.overtime_win:
+            team_goals_summary[tg.team_id]['gf'] -= 1
+        # decreasing actual goals allowed by one for an overtime loss
+        if tg.overtime_loss:
+            team_goals_summary[tg.team_id]['ga'] -= 1
+
     # calculating goal differences
     for team in teams:
         team_goals_summary[team.team_id]['gd_1'] = (
@@ -112,7 +119,7 @@ if __name__ == '__main__':
             "%5d%5d%s%5s%s" % (
                 team_goals_summary[team_id]['gf_2'],
                 team_goals_summary[team_id]['ga_2'],
-                *determine_format_string(team_goals_summary[team_id]['gd_3']),
+                *determine_format_string(team_goals_summary[team_id]['gd_2']),
                 Style.RESET_ALL) +
             "%5d%5d%s%5s%s" % (
                 team_goals_summary[team_id]['gf_3'],
