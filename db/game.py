@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 from .common import Base, session_scope
 from .team import Team
@@ -53,6 +53,20 @@ class Game(Base):
             except Exception as e:
                 g = None
         return g
+
+    @classmethod
+    def find_by_season_team(self, season, team):
+        with session_scope() as session:
+            try:
+                games = session.query(Game).filter(
+                    and_(
+                        Game.season == season, or_(
+                            Game.home_team_id == team.team_id,
+                            Game.road_team_id == team.team_id)
+                    )).all()
+            except Exception as e:
+                return list()
+        return games
 
     def update(self, other):
         for attr in self.STANDARD_ATTRS:
