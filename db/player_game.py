@@ -5,6 +5,7 @@ from sqlalchemy import and_
 
 from .common import Base, session_scope
 from .player import Player
+from .game import Game
 
 
 class PlayerGame(Base):
@@ -49,6 +50,29 @@ class PlayerGame(Base):
             except Exception as e:
                 plr_game = None
             return plr_game
+
+    @classmethod
+    def get_players_in_game(self, game_id, positions=["C", "L", "R", "D"]):
+        with session_scope() as session:
+            game = Game.find_by_id(game_id)
+
+            players_in_game = dict()
+
+            for team_type in ['home', 'road']:
+                team_id = getattr(game, "_".join((team_type, "team_id")))
+                team_players_in_game = session.query(PlayerGame).filter(
+                    and_(
+                        PlayerGame.game_id == game_id,
+                        PlayerGame.team_id == team_id,
+                        PlayerGame.position.in_(positions)
+                    )).all()
+                team_dict = dict()
+                team_dict['team_id'] = team_id
+                team_dict['player_games'] = team_players_in_game
+
+                players_in_game[team_type] = team_dict
+
+        return players_in_game
 
     def get_player(self):
         return Player.find_by_id(self.player_id)
