@@ -3,13 +3,12 @@
 
 import os
 import re
-import configparser
 import unicodedata
 import logging
 import logging.handlers
-from configparser import NoOptionError, NoSectionError
 from datetime import timedelta
 
+import yaml
 from lxml import html, etree
 
 
@@ -144,59 +143,62 @@ def lbs_to_kg(lbs):
     return lbs * 0.453592
 
 
-def get_target_directory_from_config_file(cfg_src, section):
+def get_target_directory_from_config_file(cfg_src):
     """
     Gets download directory from specified section in
     a configuration file.
     """
-    cfg_parser = configparser.ConfigParser()
-    cfg_parser.read(cfg_src)
+    # reading complete configuration
+    with open(cfg_src, 'r') as yml_file:
+        cfg = yaml.load(yml_file)
 
     try:
-        tgt_dir = cfg_parser.get(section, 'tgt_dir')
-    except NoOptionError as e:
-        print(e)
-        return
-    except NoSectionError as e:
-        print(e)
-        return
+        tgt_dir = cfg['downloading']['tgt_dir']
     except KeyError as e:
         print(
             "Unable to retrieve parameter '%s' "
             "from configuration file." % e.args[0])
+        return
+    except Exception as e:
+        print("Unable to read configuration file")
         return
 
     return tgt_dir
 
 
 # utility function for database connection
-def get_connection_string_from_config_file(cfg_src, section):
+def get_connection_string_from_config_file(cfg_src, db_cfg_key):
     """
     Gets connection parameters from specified section in
     a configuration file.
     """
-    cfg_parser = configparser.ConfigParser()
-    cfg_parser.read(cfg_src)
+    # reading complete configuration
+    with open(cfg_src, 'r') as yml_file:
+        cfg = yaml.load(yml_file)
 
+    # looking for specified connection name
+    for connection_cfg in cfg['connections']:
+        if db_cfg_key in connection_cfg:
+            db_cfg = connection_cfg[db_cfg_key]
+
+    # reading distinct configuration parameters
     try:
-        db_engine = cfg_parser.get(section, 'db_engine')
-        user = cfg_parser.get(section, 'user')
-        password = cfg_parser.get(section, 'password')
-        host = cfg_parser.get(section, 'host')
-        port = cfg_parser.get(section, 'port')
-        database = cfg_parser.get(section, 'database')
-    except NoOptionError as e:
-        print(e)
-        return
-    except NoSectionError as e:
-        print(e)
-        return
+        db_engine = db_cfg['db_engine']
+        user = db_cfg['user']
+        password = db_cfg['password']
+        host = db_cfg['host']
+        port = db_cfg['port']
+        database = db_cfg['database']
     except KeyError as e:
         print(
             "Unable to retrieve parameter '%s' "
             "from configuration file." % e.args[0])
         return
+    except Exception as e:
+        print("Unable to read configuration file")
+        return
 
+    # setting up connection string
     conn_string = "{0}://{1}:{2}@{3}:{4}/{5}".format(
         db_engine, user, password, host, port, database)
 
