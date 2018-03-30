@@ -79,13 +79,17 @@ def get_data_for_interval(from_date, to_date, include_playoffs=False):
     return [tg[0] for tg in team_games]
 
 
-def compile_records(team_games):
+def compile_records(team_games, home_road_split=None):
     """
     Compiles team records from specified team-per-game items.
     """
     records = dict()
 
     for tg in sorted(team_games):
+        # considering only home or road games if according retrieval of splits
+        # has been initiated
+        if home_road_split and tg.home_road_type != home_road_split:
+            continue
         if tg.team_id not in records:
             records[tg.team_id] = defaultdict(int)
         # aggregating games played
@@ -354,25 +358,31 @@ def get_date_string(from_date, to_date):
         return to_date.strftime("%b %d, %Y")
 
 
-def get_league_standings(records, ranking_type, from_date, to_date):
+def get_league_standings(records, ranking_type, from_date, to_date, splits):
     """
     Gets overall league standings using specified records.
     """
+    prefix = ranking_type.capitalize()
+    if splits:
+        prefix = " ".join((prefix, splits.capitalize()))
     print(
         " + NHL %s Standings (%s)" % (
-            ranking_type.capitalize(),
-            get_date_string(from_date, to_date)))
+            prefix, get_date_string(from_date, to_date)))
     sorted_records = sort_records(records['league'], type=ranking_type)
     print(prepare_output(sorted_records, type=ranking_type))
 
 
-def get_conference_standings(records, rankings_type, from_date, to_date):
+def get_conference_standings(
+        records, rankings_type, from_date, to_date, splits):
     """
     Gets conference standngs using specified records.
     """
     for conference in ['Eastern', 'Western']:
+        prefix = ranking_type.capitalize()
+        if splits:
+            prefix = " ".join((prefix, splits.capitalize()))
         print(" + %s Conference %s Standings (%s)" % (
-            conference, ranking_type.capitalize(),
+            conference, prefix,
             get_date_string(from_date, to_date)))
         sorted_records = sort_records(records[conference], type=ranking_type)
         print(prepare_output(sorted_records, type=ranking_type))
@@ -380,14 +390,17 @@ def get_conference_standings(records, rankings_type, from_date, to_date):
 
 
 def get_division_standings(
-        records, ranking_type, divisions, from_date, to_date):
+        records, ranking_type, divisions, from_date, to_date, splits):
     """
     Gets division standings using specified records
     """
     # printing division records
     for division in sorted(divisions):
+        prefix = ranking_type.capitalize()
+        if splits:
+            prefix = " ".join((prefix, splits.capitalize()))
         print(" + %s Division %s Standings (%s)" % (
-            division.division_name, ranking_type.capitalize(),
+            division.division_name, prefix,
             get_date_string(from_date, to_date)))
         sorted_records = sort_records(
             records[division.division_name], type=ranking_type)
@@ -396,13 +409,16 @@ def get_division_standings(
 
 
 def get_wildcard_standings(
-        records, ranking_type, divisions, from_date, to_date):
+        records, ranking_type, divisions, from_date, to_date, splits):
     """
     Gets wildcard standings using specified records.
     """
     for conference in ['Eastern', 'Western']:
+        prefix = ranking_type.capitalize()
+        if splits:
+            prefix = " ".join((prefix, splits.capitalize()))
         print(" + %s Conference %s Wild Card Standings (%s)" % (
-            conference, ranking_type.capitalize(),
+            conference, prefix,
             get_date_string(from_date, to_date)))
         # sorting records in conference
         sorted_records = sort_records(
@@ -445,12 +461,13 @@ if __name__ == '__main__':
         help='The date to which to standings will be retrieved')
     parser.add_argument(
         '--sequence', dest='sequence', required=False, type=int, default=15,
-        metavar='Length of game sequence to present streak information for'
-    )
+        help='Length of game sequence to present streak information for')
     parser.add_argument(
         '--regulation', dest='regulation', required=False,
-        action='store_true',
-        help='Include regulation standings in output')
+        action='store_true', help='Include regulation standings in output')
+    parser.add_argument(
+        '--splits', dest='splits', required=False, choices=['home', 'road'],
+        help='Retrieve split standings')
     parser.add_argument(
         '-s', '--standings', dest='standings', required=False,
         choices=['all', 'league', 'conference', 'division', 'wildcard'],
@@ -460,6 +477,7 @@ if __name__ == '__main__':
     season = args.season
     sequence = args.sequence
     standings = args.standings
+    splits = args.splits
 
     if args.from_date:
         from_date = parse(args.from_date)
@@ -480,7 +498,7 @@ if __name__ == '__main__':
 
     divisions = get_divisions(from_date)
 
-    records = compile_records(team_games)
+    records = compile_records(team_games, splits)
 
     # adding team's division and conference to each record
     for team_id in records:
@@ -506,7 +524,7 @@ if __name__ == '__main__':
         if standings in ['all', 'league']:
             # printing overall records of current ranking type
             get_league_standings(
-                grouped_records, ranking_type, from_date, to_date)
+                grouped_records, ranking_type, from_date, to_date, splits)
             print()
             print(MAX_LINE_LENGTH * "-")
             print()
@@ -514,19 +532,21 @@ if __name__ == '__main__':
         if standings in ['all', 'conference']:
             # printing conference records
             get_conference_standings(
-                grouped_records, ranking_type, from_date, to_date)
+                grouped_records, ranking_type, from_date, to_date, splits)
             print(MAX_LINE_LENGTH * "-")
             print()
 
         if standings in ['all', 'wildcard']:
             # printing conference records in wild card mode
             get_wildcard_standings(
-                grouped_records, ranking_type, divisions, from_date, to_date)
+                grouped_records, ranking_type, divisions, from_date, to_date,
+                splits)
             print(MAX_LINE_LENGTH * "-")
             print()
 
         if standings in ['all', 'divisions']:
             # printing division records
             get_division_standings(
-                grouped_records, ranking_type, divisions, from_date, to_date)
+                grouped_records, ranking_type, divisions, from_date, to_date,
+                splits)
             print(MAX_LINE_LENGTH * "=")
