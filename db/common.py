@@ -12,7 +12,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from utils import get_connection_string_from_config_file
 
-cfg_src = os.path.join(os.path.dirname(__file__), "..", r"_config.ini")
+cfg_src = os.path.join(os.path.dirname(__file__), "..", r"_config.yml")
 conn_string = get_connection_string_from_config_file(cfg_src, 'db_conn')
 
 Engine = create_engine(conn_string, echo=False, pool_size=5)
@@ -25,7 +25,7 @@ def session_scope():
     session = Session()
     try:
         yield session
-    except:
+    except Exception as e:
         session.rollback()
         raise
     finally:

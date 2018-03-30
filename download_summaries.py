@@ -45,8 +45,8 @@ if __name__ == '__main__':
         tgt_dir = args.tgt_dir
     # ...or from configuration file
     else:
-        cfg_src = os.path.join(os.path.dirname(__file__), r"_config.ini")
-        tgt_dir = get_target_directory_from_config_file(cfg_src, 'downloading')
+        cfg_src = os.path.join(os.path.dirname(__file__), r"_config.yml")
+        tgt_dir = get_target_directory_from_config_file(cfg_src)
 
     # bailing out if target directory doesn't exist
     if not os.path.isdir(tgt_dir):

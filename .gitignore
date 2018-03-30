@@ -92,5 +92,5 @@ ENV/
 .vscode
 
 # project-related stuff
-_config.ini
+_config.yml
 utils/uppers.txt
