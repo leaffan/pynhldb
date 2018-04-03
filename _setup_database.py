@@ -34,6 +34,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '--roster_teams', dest='roster_teams', nargs='+', action='store',
         default=None, help='teams to retrieve roster players for')
+    parser.add_argument(
+        '--contract_count', dest='contract_count', action='store',
+        type=int, default=5, help='number of latest signings to retrieve')
     args = parser.parse_args()
     setup_steps = args.steps
 
@@ -67,7 +70,7 @@ if __name__ == '__main__':
         cpd.create_player_contracts_by_team()
     # retrieving latest contract signings
     if setup_steps in ['lc']:
-        cpd.create_latest_contract_signings(5)
+        cpd.create_latest_contract_signings(args.contract_count)
     # retrieving draft data for all players in database
     if setup_steps in ['dft']:
         cpd.create_player_drafts()

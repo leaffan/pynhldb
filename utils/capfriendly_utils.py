@@ -183,89 +183,102 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
     """
     existing_contracts_found = 0
 
-    url = LATEST_SIGNINGS_TEMPLATE % 1
-    r = requests.get(url)
-    doc = html.fromstring(r.json()['html'])
+    i = 1
 
-    # retrieving links to pages of recently signed players
-    recently_signed_player_links = doc.xpath(
-        "tr/td/a[contains(@href, 'players')]/@href")
-    # retrieving names of recently signed players
-    recently_signed_player_names = doc.xpath("tr/td/a/text()")
-    # retrieving signing dates of recently signed players
-    recent_signing_dates = [
-        parse(x).date() for x in doc.xpath("tr/td[5]/text()")]
-    recent_signings = zip(
-        recently_signed_player_names,
-        recently_signed_player_links,
-        recent_signing_dates
-    )
+    # TODO: reduce complexity and length of this function
+    while existing_contracts_found < max_existing_contracts_found:
+        url = LATEST_SIGNINGS_TEMPLATE % i
+        r = requests.get(url)
+        doc = html.fromstring(r.json()['html'])
 
-    pcr = PlayerContractRetriever()
+        # retrieving links to pages of recently signed players
+        recently_signed_player_links = doc.xpath(
+            "tr/td/a[contains(@href, 'players')]/@href")
+        # retrieving names of recently signed players
+        recently_signed_player_names = doc.xpath("tr/td/a/text()")
+        # retrieving signing dates of recently signed players
+        recent_signing_dates = [
+            parse(x).date() for x in doc.xpath("tr/td[5]/text()")]
+        recent_signings = zip(
+            recently_signed_player_names,
+            recently_signed_player_links,
+            recent_signing_dates
+        )
 
-    for signee, link, signing_date in recent_signings:
-        # retrieving capfriendly id and subsequentially corresponding player
-        capfriendly_id = link.split("/")[-1]
-        plr = Player.find_by_capfriendly_id(capfriendly_id)
+        pcr = PlayerContractRetriever()
 
-        if plr is None:
-            print("+ Contracted player (%s) not found in database" % signee)
-            pfr = PlayerFinder()
-            first_name, last_name = signee.split()
-            suggested_players = pfr.get_suggested_players(
-                last_name, first_name)
-            if len(suggested_players) == 1:
-                (
-                    nhl_id, pos,
-                    sugg_last_name, sugg_first_name,
-                    dob
-                ) = suggested_players.pop()
-                if (
-                    first_name, last_name
-                ) == (
-                    sugg_first_name, sugg_last_name
-                ):
-                    pfr.create_player(
-                        nhl_id, sugg_last_name, sugg_first_name,
-                        pos, capfriendly_id=capfriendly_id)
-                    plr = Player.find_by_capfriendly_id(capfriendly_id)
-                    print("+ Player %s created in database" % plr)
-                # TODO: error handling, date of birth checking
+        for signee, link, signing_date in recent_signings:
+            # retrieving capfriendly id and subsequentially corresponding
+            # player
+            capfriendly_id = link.split("/")[-1]
+            plr = Player.find_by_capfriendly_id(capfriendly_id)
+
+            # TODO: try to find player by name in case no valid capfriendly
+            # id exists
+            if plr is None:
+                print(
+                    "+ Contracted player (%s) not found in database" % signee)
+                pfr = PlayerFinder()
+                first_name, last_name = signee.split()
+                suggested_players = pfr.get_suggested_players(
+                    last_name, first_name)
+                if len(suggested_players) == 1:
+                    (
+                        nhl_id, pos,
+                        sugg_last_name, sugg_first_name,
+                        dob
+                    ) = suggested_players.pop()
+                    if (
+                        first_name, last_name
+                    ) == (
+                        sugg_first_name, sugg_last_name
+                    ):
+                        pfr.create_player(
+                            nhl_id, sugg_last_name, sugg_first_name,
+                            pos, capfriendly_id=capfriendly_id)
+                        plr = Player.find_by_capfriendly_id(capfriendly_id)
+                        print("+ Player %s created in database" % plr)
+                    # TODO: error handling, date of birth checking
+                    else:
+                        continue
                 else:
                     continue
-            else:
-                continue
 
-        # trying to find existing contract signed on this date in database
-        contract_db = Contract.find_with_signing_date(
-            plr.player_id, signing_date)
+            # trying to find existing contract signed on this date in database
+            contract_db = Contract.find_with_signing_date(
+                plr.player_id, signing_date)
 
-        if contract_db is not None:
-            print("+ Contract for %s signed on %s already in database" % (
-                plr.name, signing_date))
-            existing_contracts_found += 1
-        else:
-            print(
-                "+ Contract for %s signed on %s not found in database yet" % (
+            if contract_db is not None:
+                print("+ Contract for %s signed on %s already in database" % (
                     plr.name, signing_date))
-            # retrieving all contracts associated with current capfriendly id
-            raw_contract_list = (
-                pcr.retrieve_raw_contract_data_by_capfriendly_id(
-                    capfriendly_id))
+                existing_contracts_found += 1
+            else:
+                print(
+                    "+ Contract for %s signed on " % plr.name +
+                    "%s not found in database yet" % signing_date)
+                # retrieving all contracts associated with current
+                # capfriendly id
+                raw_contract_list = (
+                    pcr.retrieve_raw_contract_data_by_capfriendly_id(
+                        capfriendly_id))
 
-            # finding contract signed on signing date in list of all contracts
-            # and creating it along with corresponding contract years
-            for raw_contract in raw_contract_list:
-                if raw_contract['signing_date'] == signing_date:
-                    contract = Contract(plr.player_id, raw_contract)
-                    commit_db_item(contract)
-                    for raw_contract_year in raw_contract['contract_years']:
-                        contract_year = ContractYear(
-                            plr.player_id,
-                            contract.contract_id,
-                            raw_contract_year)
-                        commit_db_item(contract_year)
-                    break
+                # finding contract signed on signing date in list of all
+                # contracts and creating it along with corresponding contract
+                # years
+                for raw_contract in raw_contract_list:
+                    if raw_contract['signing_date'] == signing_date:
+                        contract = Contract(plr.player_id, raw_contract)
+                        commit_db_item(contract)
+                        for raw_contract_year in raw_contract[
+                                'contract_years']:
+                                    contract_year = ContractYear(
+                                        plr.player_id,
+                                        contract.contract_id,
+                                        raw_contract_year)
+                                    commit_db_item(contract_year)
+                        break
 
-        if existing_contracts_found >= max_existing_contracts_found:
-            break
+            if existing_contracts_found >= max_existing_contracts_found:
+                break
+
+        i += 1
