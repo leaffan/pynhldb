@@ -28,8 +28,8 @@ def test_find_json_data():
     json_files_rs = dh_rs._get_contents('json')
     json_files_po = dh_po._get_contents('.JSON')
 
-    assert len(json_files_rs) == 2
-    assert len(json_files_po) == 3
+    assert len(json_files_rs) == 4
+    assert len(json_files_po) == 6
 
 
 def test_get_html_data():
