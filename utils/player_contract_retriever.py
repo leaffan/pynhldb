@@ -203,7 +203,7 @@ class PlayerContractRetriever():
             # retrieving source for contract data
             contract_dict['source'] = ct_source.split(":")[-1].strip()
             # retrieving contract signing date
-            contract_dict['signing_date'] = self.get_contract_signing_date(
+            contract_dict['signing_date'] = self.get_contract_buyout_date(
                 sign_date)
 
             # retrieving seasons and contract years
@@ -319,8 +319,10 @@ class PlayerContractRetriever():
         doc = html.fromstring(r.text)
 
         # retrieving raw length, value and team of buyout
-        buyout_length, buyout_value, buyout_team = doc.xpath(
-            "//div[@class='l cont_t mt4 mb2 mr30']/text()")
+        buyout_length, buyout_team = doc.xpath(
+            "//div[@class='mt4 mb2']/div[@class='l cont_t']/text()")
+        buyout_value, buyout_date = doc.xpath(
+            "//div[@class='mt2 mb4 cb']/div[@class='l cont_t']/text()")
 
         # retrieving buyout length
         buyout_dict['length'] = int(
@@ -331,10 +333,12 @@ class PlayerContractRetriever():
         # retrieving id of buyout team
         buyout_dict['buyout_team_id'] = self.get_contract_buyout_signing_team(
             buyout_team)
+        buyout_dict['buyout_date'] = self.get_contract_buyout_date(
+            buyout_date)
 
         # retrieving table rows each representing a year of the buyout
         raw_buyout_years = doc.xpath(
-            "//div[@class='l cont_t mt4 mb2 mr30']/ancestor::div/" +
+            "//div[@class='mt4 mb2']/ancestor::div/" +
             "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
 
         buyout_years = list()
@@ -456,7 +460,7 @@ class PlayerContractRetriever():
         else:
             return None
 
-    def get_contract_signing_date(self, sign_date_info):
+    def get_contract_buyout_date(self, sign_date_info):
         """
         Gets contract signing date from specified raw data.
         """
