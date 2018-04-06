@@ -244,11 +244,17 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                 else:
                     continue
 
-            # trying to find existing contract signed on this date in database
-            contract_db = Contract.find_with_signing_date(
+            # trying to find existing contract(s) signed on this date
+            # in database
+            contracts_db = Contract.find_with_signing_date(
                 plr.player_id, signing_date)
 
-            if contract_db is not None:
+            if contracts_db:
+                if len(contracts_db) > 1:
+                    print(
+                        "+++ Multiple contracts found for %s " % plr.name +
+                        "(%d) on signing date %s" % (
+                            plr.player_id, signing_date))
                 print("+ Contract for %s signed on %s already in database" % (
                     plr.name, signing_date))
                 existing_contracts_found += 1

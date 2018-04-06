@@ -68,15 +68,15 @@ class Contract(Base):
     def find_with_signing_date(self, player_id, signing_date):
         with session_scope() as session:
             try:
-                contract = session.query(Contract).filter(
+                contracts = session.query(Contract).filter(
                     and_(
                         Contract.player_id == player_id,
                         Contract.signing_date == signing_date
                     )
-                ).one()
+                ).all()
             except Exception as e:
-                contract = None
-            return contract
+                contracts = None
+            return contracts
 
     def update(self, other):
         for attr in self.STANDARD_ATTRS:
