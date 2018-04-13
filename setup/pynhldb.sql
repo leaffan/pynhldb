@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Diagram Name: pynhldb - Database Design
--- Created on: 24.11.2017 03:05:10
--- Diagram Version: 1.7
+-- Created on: 13.04.2018 21:04:58
+-- Diagram Version: 1.9
 -- =============================================================================
 CREATE SCHEMA "nhl";
 
@@ -2165,13 +2165,6 @@ ALTER TABLE "nhl"."goals" ADD CONSTRAINT "goals_to_players" FOREIGN KEY ("player
 
 ALTER TABLE "nhl"."goals" ADD CONSTRAINT "goals_against_to_teams" FOREIGN KEY ("goal_against_team_id")
 	REFERENCES "nhl"."teams"("team_id")
-	MATCH SIMPLE
-	ON DELETE CASCADE
-	ON UPDATE CASCADE
-	NOT DEFERRABLE;
-
-ALTER TABLE "nhl"."goals" ADD CONSTRAINT "goals_to_shots" FOREIGN KEY ("shot_id")
-	REFERENCES "nhl"."shots"("shot_id")
 	MATCH SIMPLE
 	ON DELETE CASCADE
 	ON UPDATE CASCADE
