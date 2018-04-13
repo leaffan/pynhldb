@@ -539,10 +539,19 @@ class EventParser():
                 shot_type = shot_type.split(",")[-1].strip()
             shot_data_dict['shot_type'] = shot_type
         except Exception as e:
-            distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
             logger.warn(
                 "Unable to retrieve shot type from " +
                 "raw data: %s" % event.raw_data)
+            try:
+                distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
+            except AttributeError:
+                logger.warn(
+                    "Unable to retrieve shot distance from " +
+                    "raw data: %s" % event.raw_data)
+                # if no distance for a shot could be retrieved this maybe is
+                # an awarded goal, like the one to Nathan Horton on Apr 9, 2014
+                logger.warn("Maybe not actual a shot?")
+                distance = -1
         shot_data_dict['distance'] = int(distance)
         # adjusting scored flag
         if event.type == 'GOAL':
@@ -695,7 +704,10 @@ class EventParser():
         goal_data_dict['team_id'] = shot.team_id
         goal_data_dict['goal_against_team_id'] = shot.goalie_team_id
         goal_data_dict['player_id'] = shot.player_id
-        goal_data_dict['shot_id'] = shot.shot_id
+        # distance was set to -1 if no actual shot could be found for this goal
+        # shot id is therefore only valid if the shot distance is at least zero
+        if shot.distance >= 0:
+            goal_data_dict['shot_id'] = shot.shot_id
 
         # determining whether this was an empty net goal, i.e. no opposing
         # goalie was on ice for the goal
@@ -985,11 +997,11 @@ class EventParser():
         # retrieving plays of same type occurring at the same time from
         # registry of all plays
         plays = self.json_dict[(event.period, event.time, event.type)]
-        
+
         # returning if no play at all was found
         if not plays:
             return event
-        
+
         # if only one play was found this is the matching one
         if len(plays) == 1:
             matching_play = plays.pop()
