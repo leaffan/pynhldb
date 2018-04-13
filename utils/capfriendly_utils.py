@@ -196,22 +196,35 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
             "tr/td/a[contains(@href, 'players')]/@href")
         # retrieving names of recently signed players
         recently_signed_player_names = doc.xpath("tr/td/a/text()")
+        # retrieving positions of recently signed players
+        recently_signed_player_positions = doc.xpath("tr/td[3]/text()")
         # retrieving signing dates of recently signed players
         recent_signing_dates = [
             parse(x).date() for x in doc.xpath("tr/td[5]/text()")]
         recent_signings = zip(
             recently_signed_player_names,
             recently_signed_player_links,
-            recent_signing_dates
+            recent_signing_dates,
+            recently_signed_player_positions
         )
 
         pcr = PlayerContractRetriever()
 
-        for signee, link, signing_date in recent_signings:
+        for signee, link, signing_date, positions in recent_signings:
             # retrieving capfriendly id and subsequentially corresponding
             # player
             capfriendly_id = link.split("/")[-1]
             plr = Player.find_by_capfriendly_id(capfriendly_id)
+
+            if plr is None:
+                # multiple positions are possible, i.e. "RW, C"
+                # stripping and using only first letter of position, i.e. "R"
+                # instead of "RW"
+                positions = [p.strip()[0] for p in positions.split(",")]
+                for pos in positions:
+                    plr = Player.find_by_full_name(signee, pos)
+                    if plr:
+                        break
 
             # TODO: try to find player by name in case no valid capfriendly
             # id exists
@@ -224,9 +237,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                     last_name, first_name)
                 if len(suggested_players) == 1:
                     (
-                        nhl_id, pos,
-                        sugg_last_name, sugg_first_name,
-                        dob
+                        nhl_id, pos, sugg_last_name, sugg_first_name, dob
                     ) = suggested_players.pop()
                     if (
                         first_name, last_name
