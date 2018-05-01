@@ -467,7 +467,7 @@ if __name__ == '__main__':
         action='store_true', help='Include regulation standings in output')
     parser.add_argument(
         '--splits', dest='splits', required=False, choices=['home', 'road'],
-        help='Retrieve split standings')
+        help='Retrieve split (either home or road) standings')
     parser.add_argument(
         '-s', '--standings', dest='standings', required=False,
         choices=['all', 'league', 'conference', 'division', 'wildcard'],
