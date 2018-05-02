@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from collections import defaultdict
 
 from lxml import etree
 
@@ -131,7 +130,7 @@ class ShiftParser():
                 shift['end'] = str_to_timedelta(
                     tokens[3].split("/")[0].strip())
             # sometimes no end time is specified
-            except:
+            except Exception as e:
                 logger.warning(
                     "Unable to extract time interval from raw" +
                     "data: %s (game id: %s, %s)" % (
