@@ -155,13 +155,13 @@ class GameParser():
         # usually games end after noon on the same day they started
         end_time_suffix = "PM"
         end_date = game_date
-        # only playoff games may end after midnight
+        # some games may end after midnight
         if int(start_time.split(":")[0]) != 12:
             if int(end_time.split(":")[0]) < int(start_time.split(":")[0]):
-                if game_type == 3:
-                    print(start_end)
-                    end_time_suffix = "AM"
-                    end_date = game_date + timedelta(days=1)
+                logging.warn("Game %s ending after midnight: %s" % (
+                    self.game_id, start_end[-1]))
+                end_time_suffix = "AM"
+                end_date = game_date + timedelta(days=1)
 
         # turning raw end time, time zone and time suffix into timestamp
         end_time_stamp = parser.parse(
