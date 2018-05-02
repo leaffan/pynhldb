@@ -138,7 +138,7 @@ class GoalieParser():
                 "/td/table/tr[@height='30']/td[5]/text()"))
         if len(so_goalies) < 2:
             logger.warn(
-                "Unable to retrieve goalies participating in" +
+                "Unable to retrieve at least two goalies participating in " +
                 "shootout: %s" % str(so_goalies))
         for so_goalie in so_goalies:
             # retrieving shootout goalie's number and name
@@ -146,7 +146,7 @@ class GoalieParser():
                 so_no, so_name = so_goalie.split()
             except Exception as e:
                 logger.warn(
-                    "Unable to retrieve shootout goalie number" +
+                    "Unable to retrieve shootout goalie number " +
                     "and name from %s" % so_goalie)
                 continue
             so_name = so_name.split(".")
