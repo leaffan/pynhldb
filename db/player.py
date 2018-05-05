@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, any_, func
 
 from .common import Base, session_scope
 
@@ -85,7 +85,11 @@ class Player(Base):
                             func.concat(
                                 Player.first_name, " ", Player.last_name
                             ) == full_name,
-                            Player.position == position.upper()
+                            or_(
+                                Player.position == position.upper(),
+                                position.upper() == any_(
+                                    Player.alternate_positions)
+                            )
                         )
                     ).one()
                 else:
