@@ -12,9 +12,9 @@ from lxml import html
 from utils import remove_non_ascii_chars
 
 # base url for eliteprospects.com
-BASE_URL = "http://www.eliteprospects.com"
+BASE_URL = "https://www.eliteprospects.com"
 # url template for draft overview pages at eliteprospects.com
-DRAFT_URL_TEMPLATE = "draft.php?year=%d"
+DRAFT_URL_TEMPLATE = "draft/nhl-entry-draft/%d"
 # maximum worker count
 MAX_WORKERS = 8
 # named tuple to contain basic player information
@@ -55,24 +55,17 @@ def get_player_with_dob(url):
     """
     req = requests.get(url)
     print("+ Retrieving player information from %s" % url)
-    # NB: there's a problem with eliteprospects player pages: officially
-    # encoded in iso-8859-1 they at times contain plain unicode characters,
-    # e.g. for alternate names (see Dominik Lakatos/Lakatoš, url:
-    # http://www.eliteprospects.com/player.php?player=195562)
-    # this is obviously a data problem that couldn't have been solved within
-    # the context of this application yet, manual post-processing of alternate
-    # names may therefore be necessary
     doc = html.fromstring(req.text)
 
-    # retrieving birthdate url that contains all necessary information in
-    # granular form, i.e. <a href="birthdate.php?Birthdate=1998-04-19&amp;
-    # Firstname=Patrik&amp;Lastname=Laine">1998-04-19</a>
-    dob_url = doc.xpath("//a[starts-with(@href, 'birthdate')]/@href")
-    if not dob_url:
-        return
-    dob_url = dob_url.pop(0)
-    # retrieving player information from retrieved url
-    dob, first_name, last_name = get_player_details_from_url(dob_url)
+    # retrieving date of birth
+    dob_url = doc.xpath("//a[contains(@href, '?dob=')]/@href").pop()
+    url_comps = urlparse(dob_url)
+    dob = url_comps.query.split("=")[-1]
+
+    # retrieving first and last name
+    title = doc.xpath("//title/text()").pop()
+    full_name = title.replace("- Elite Prospects", "").strip()
+    first_name, last_name = full_name.split(maxsplit=1)
 
     # retrieving alternate last name (if applicable)
     alt_last_name = get_alternate_last_name(doc, first_name, last_name)
@@ -97,24 +90,11 @@ def retrieve_drafted_player_links(draft_year):
         "+ Retrieving urls of Eliteprospects profiles " +
         "for each player drafted in %d" % draft_year)
 
-    # stub links to player pages are present at the specified position in
-    # the main table
-    return ["/".join((BASE_URL, link)) for link in doc.xpath(
-        "//tr[@bordercolor='#FFFFFF']/td[3]/a/@href")]
-
-
-def get_player_details_from_url(dob_url):
-    """
-    Gets player details, i.e. first name, last name and date of birth, from
-    specifield url.
-    """
-    # exploding url into its components
-    url_comps = urlparse(dob_url)
-    # retrieving player details by exploding each part of the url's
-    # query component
-    dob, first_name, last_name = [
-        comp.split("=")[-1] for comp in url_comps.query.split("&")]
-    return dob, first_name, last_name
+    # links to player pages are present at the specified position in the
+    # main table
+    return doc.xpath(
+        "//table[@data-sort-ajax-container='#drafted-players']//tbody//td" +
+        "[@class='player']//span[@class='txt-blue']/a/@href")
 
 
 def get_alternate_last_name(doc, first_name, last_name):
@@ -123,9 +103,10 @@ def get_alternate_last_name(doc, first_name, last_name):
     and given player's first and last names.
     """
     alt_last_name = ''
-    aka_element = doc.xpath("//font[starts-with(text(), 'a.k.a.')]/text()")
+    aka_element = doc.xpath("//small[starts-with(text(), ' a.k.a.')]/text()")
     if aka_element:
-        aka = aka_element.pop(0).replace("a.k.a.", "").replace('"', "").strip()
+        aka = aka_element.pop().strip().replace(
+            "a.k.a.", "").replace('"', "").strip()
         # retrieving all available alternate names
         akas = [a.strip() for a in aka.split(",")]
         tmp_alt_last_names = list()
