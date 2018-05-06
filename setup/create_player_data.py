@@ -110,7 +110,8 @@ def create_player_contracts_by_team():
     player_finder = PlayerFinder()
 
     for team in sorted(teams)[:]:
-        print("+ Retrieving contracts for players affiliated with %s" % team)
+        print(
+            "+ Retrieving contracts for players affiliated with the %s" % team)
         players = player_finder.get_contracted_players(team)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
