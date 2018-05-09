@@ -232,7 +232,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                 print(
                     "+ Contracted player (%s) not found in database" % signee)
                 pfr = PlayerFinder()
-                first_name, last_name = signee.split()
+                first_name, last_name = signee.split(maxsplit=1)
                 suggested_players = pfr.get_suggested_players(
                     last_name, first_name)
                 if len(suggested_players) == 1:
