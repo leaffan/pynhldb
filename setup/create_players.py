@@ -62,7 +62,7 @@ def search_players(src_type, teams=None, season=None):
     plr_r = PlayerDataRetriever()
     if teams is None:
         if season is None:
-            # using current teams (if nothing else is specfied)            
+            # using current teams (if nothing else is specified)
             teams_of_interest = Team.find_teams_for_season()
         else:
             # using teams from specified season
@@ -84,7 +84,8 @@ def search_players(src_type, teams=None, season=None):
             for future in as_completed(future_tasks):
                 try:
                     # TODO: think of something to do with the result here
-                    data = future.result()
+                    # data = future.result()
+                    pass
                 except Exception as e:
                     print
                     print("Conccurrent task generated an exception: %s" % e)
@@ -136,12 +137,16 @@ def get_suggestions_for_drafted_players(draft_year):
     pfr = PlayerFinder()
     suggested_players = list()
 
+    # TODO: more tidy, more structured output
+
     for drafted_plr in drafted_players:
+        found = True
         # trying to find suggestions by using both first and last name
         suggestions = pfr.get_suggested_players(
             drafted_plr.last_name, drafted_plr.first_name)
         # otherwise trying to find suggestions for last name only
         if not suggestions:
+            found = False
             print(
                 "+ No suggestion found " +
                 "for %s %s. " % (
@@ -157,6 +162,7 @@ def get_suggestions_for_drafted_players(draft_year):
             suggestions = pfr.get_suggested_players(drafted_plr.alt_last_name)
 
         if len(suggestions) > 1:
+            found = False
             print(
                 "+ %d suggestions found " % len(suggestions) +
                 "for %s %s" % (drafted_plr.first_name, drafted_plr.last_name))
@@ -167,8 +173,10 @@ def get_suggestions_for_drafted_players(draft_year):
             if suggested_dob == drafted_plr.date_of_birth:
                 break
         else:
-            print("+ No matching date of birth found for %s %s" % (
-                drafted_plr.first_name, drafted_plr.last_name))
+            found = False
+            print("+ Date of births don't match for %s %s (%s vs. %s)" % (
+                drafted_plr.first_name, drafted_plr.last_name,
+                suggested_dob, drafted_plr.date_of_birth))
             continue
 
         if drafted_plr.alt_last_name:
@@ -179,6 +187,8 @@ def get_suggestions_for_drafted_players(draft_year):
         else:
             suggestion = suggestion + ('',)
 
+        if not found:
+            print(suggestion)
         suggested_players.append(suggestion)
 
     return suggested_players
