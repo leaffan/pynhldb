@@ -32,8 +32,8 @@ if __name__ == '__main__':
         '--roster_season', dest='roster_season', action='store', default=None,
         help='season to retrieve roster players for')
     parser.add_argument(
-        '--roster_teams', dest='roster_teams', nargs='+', action='store',
-        default=None, help='teams to retrieve roster players for')
+        '--teams', dest='teams', nargs='+', action='store',
+        default=None, help='teams to retrieve roster players/contracts for')
     parser.add_argument(
         '--contract_count', dest='contract_count', action='store',
         type=int, default=5, help='number of latest signings to retrieve')
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     # finding players on roster/system/contract pages
     if setup_steps in ['pf', 'a']:
         cp.search_players(
-            args.roster_src, args.roster_teams, args.roster_season)
+            args.roster_src, args.teams, args.roster_season)
     # creating players from draft overview
     if setup_steps in ['pc', 'a']:
         cp.create_players_for_draft_year(args.draft_year)
@@ -67,7 +67,7 @@ if __name__ == '__main__':
         cpd.create_player_contracts()
     # retrieving contract data for all players contracted
     if setup_steps in ['ct']:
-        cpd.create_player_contracts_by_team()
+        cpd.create_player_contracts_by_team(args.teams)
     # retrieving latest contract signings
     if setup_steps in ['lc']:
         cpd.create_latest_contract_signings(args.contract_count)

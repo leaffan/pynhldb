@@ -94,22 +94,26 @@ def create_player_contracts():
                 print("Concurrent task generated an exception: %s" % e)
 
 
-def create_player_contracts_by_team():
+def create_player_contracts_by_team(teams=None):
     """
     Creates player contract items in database on a per-team basis.
     """
     with session_scope() as session:
-        teams = session.query(Team).filter(
-            and_(
-                Team.last_year_of_play.is_(None),
-                Team.first_year_of_play <= date.today().year
-            )
-        ).all()
+        if teams is None:
+            teams_of_interest = session.query(Team).filter(
+                and_(
+                    Team.last_year_of_play.is_(None),
+                    Team.first_year_of_play <= date.today().year
+                )
+            ).all()
+        else:
+            # explicitly using specified teams
+            teams_of_interest = Team.find_teams_with_abbrs(teams)
 
     data_retriever = PlayerContractRetriever()
     player_finder = PlayerFinder()
 
-    for team in sorted(teams)[:]:
+    for team in sorted(teams_of_interest)[:]:
         print(
             "+ Retrieving contracts for players affiliated with the %s" % team)
         players = player_finder.get_contracted_players(team)
