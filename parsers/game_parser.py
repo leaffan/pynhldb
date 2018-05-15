@@ -307,6 +307,13 @@ class GameParser():
         pp_overall = gs_data.xpath(
             "//td[@class='bold' and contains(text(), 'Power Plays')]/" +
             "parent::*/parent::td/following-sibling::td/text()")
+        # for game summaries prior to 2010-11 this information has to be
+        # retrieved from another location
+        if not pp_overall:
+            pp_overall = gs_data.xpath(
+                "//td[@class='sectionheading' and contains(text(), 'POWER " +
+                "PLAYS')]/parent::tr/following-sibling::tr/td/table//tr" +
+                "[@class='oddColor']/td[4]/text()")
 
         team_games = dict()
 
