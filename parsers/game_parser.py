@@ -449,14 +449,20 @@ class GameParser():
             pp_idx = 0
         else:
             pp_idx = -1
-        # retrieving overall power play goals, chances and minutes
-        pp_ovr_goals, pp_ovr_opps = [
-            int(x) for x in pp_overall[pp_idx].split("/")[0].split("-")]
-        pp_ovr_time = str_to_timedelta(pp_overall[pp_idx].split("/")[-1])
 
-        team_game_data['pp_time_overall'] = pp_ovr_time
-        team_game_data['pp_overall'] = pp_ovr_opps
-        team_game_data['pp_goals_overall'] = pp_ovr_goals
+        try:
+            # retrieving overall power play goals, chances and minutes
+            pp_ovr_goals, pp_ovr_opps = [
+                int(x) for x in pp_overall[pp_idx].split("/")[0].split("-")]
+            pp_ovr_time = str_to_timedelta(pp_overall[pp_idx].split("/")[-1])
+        except Exception as e:
+            pp_ovr_goals = 0
+            pp_ovr_opps = 0
+            pp_ovr_time = str_to_timedelta("00:00")
+        finally:
+            team_game_data['pp_goals_overall'] = pp_ovr_goals
+            team_game_data['pp_overall'] = pp_ovr_opps
+            team_game_data['pp_time_overall'] = pp_ovr_time
 
         # setting up lists of power play types and power play time types
         pp_types = ['pp_5v4', 'pp_5v3', 'pp_4v3']
@@ -475,9 +481,9 @@ class GameParser():
                 pp_opps = 0
                 pp_time = str_to_timedelta("00:00")
             finally:
+                team_game_data[pp_goal_types.pop(0)] = pp_goals
                 team_game_data[pp_types.pop(0)] = pp_opps
                 team_game_data[pp_time_types.pop(0)] = pp_time
-                team_game_data[pp_goal_types.pop(0)] = pp_goals
 
         return team_game_data
 

@@ -1079,7 +1079,14 @@ class EventParser():
                 continue
             for no, pos in zip(nos_on_ice, pos_on_ice):
                 # retrieving actual player from rosters of current game
-                player = self.rosters[key][no]
+                try:
+                    player = self.rosters[key][no]
+                except KeyError as e:
+                    # TODO: propper logging
+                    print(
+                        "Unable to retrieve player on ice with number " +
+                        "%d from %s team roster. Skipping number." % (no, key))
+                    continue
                 # and appending to list of players on ice
                 players_on_ice[key].append(player.player_id)
                 if pos == 'G':

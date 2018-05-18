@@ -35,7 +35,14 @@ class ShiftParser():
 
         for no in sorted(self.shift_data.keys()):
             # retrieving player with jersey number
-            player = roster[no].get_player()
+            try:
+                player = roster[no].get_player()
+            except KeyError as e:
+                # TODO: propper logging
+                print(
+                    "Unable to get player with number %d from team " % no +
+                    "roster for %s. Skipping shift creation." % team)
+                continue
             # retrieving all shifts for current player
             shifts = self.get_shifts_for_player(self.shift_data[no], player)
 
@@ -164,7 +171,11 @@ class ShiftParser():
 
         for h, s in zip(headings, spacers):
             # retrieving player's jersey number
-            no = int(h.xpath("td/text()")[0].split()[0])
+            try:
+                no = int(h.xpath("td/text()")[0].split()[0])
+            except Exception as e:
+                print("unable to get player number from shift table heading")
+                continue
             # retrieving explicit xpath expressions for both
             # current heading and spacer
             ns1 = tree.getpath(h)
