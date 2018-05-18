@@ -151,8 +151,16 @@ class GoalieParser():
                 continue
             so_name = so_name.split(".")
             if int(so_no) == data_dict['no']:
-                goalie_last_name = plr_game.get_player().last_name.upper()
-                if so_name[-1] == goalie_last_name:
+                # retrieving goalie's last name
+                goalie_plr = plr_game.get_player()
+                goalie_last_names = [goalie_plr.last_name.upper()]
+                # retrieving goalie's alternative last names (if existing)
+                if goalie_plr.alternate_last_names:
+                    goalie_last_names.extend(
+                        [ln.upper() for ln in goalie_plr.alternate_last_names])
+                # checking whether shootout goalie in summary matches to one
+                # of collected last names
+                if so_name[-1] in goalie_last_names:
                     data_dict['shootout_game'] = 1
                     break
         return data_dict
