@@ -57,7 +57,6 @@ class PlayerContractRetriever():
             contract_db = Contract.find_with_team(
                 player_id,
                 plr_contract_dict['start_season'],
-                plr_contract_dict['end_season'],
                 plr_contract_dict['signing_team_id'])
 
             contract_db = self.create_or_update_database_item(

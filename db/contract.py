@@ -49,14 +49,13 @@ class Contract(Base):
 
     @classmethod
     def find_with_team(
-            self, player_id, start_season, end_season, signing_team_id):
+            self, player_id, start_season, signing_team_id):
         with session_scope() as session:
             try:
                 contract = session.query(Contract).filter(
                     and_(
                         Contract.player_id == player_id,
                         Contract.start_season == start_season,
-                        Contract.end_season == end_season,
                         Contract.signing_team_id == signing_team_id
                     )
                 ).one()
