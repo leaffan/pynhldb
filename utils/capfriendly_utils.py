@@ -183,11 +183,11 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
     """
     existing_contracts_found = 0
 
-    i = 1
+    page = 1
 
     # TODO: reduce complexity and length of this function
     while existing_contracts_found < max_existing_contracts_found:
-        url = LATEST_SIGNINGS_TEMPLATE % i
+        url = LATEST_SIGNINGS_TEMPLATE % page
         r = requests.get(url)
         doc = html.fromstring(r.json()['html'])
 
@@ -298,4 +298,4 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
             if existing_contracts_found >= max_existing_contracts_found:
                 break
 
-        i += 1
+        page += 1
