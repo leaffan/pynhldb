@@ -27,7 +27,7 @@ if __name__ == '__main__':
         help='source type for player search')
     parser.add_argument(
         '--draft_year', dest='draft_year', action='store', default=2017,
-        help='draft year to retrieve players from')
+        help='draft year to retrieve players from', type=int)
     parser.add_argument(
         '--roster_season', dest='roster_season', action='store', default=None,
         help='season to retrieve roster players for')
