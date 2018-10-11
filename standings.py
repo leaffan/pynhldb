@@ -450,7 +450,7 @@ if __name__ == '__main__':
         description='NHL official and regulation standings for given season')
     parser.add_argument(
         'season', metavar='season', help='Season selection for standings.',
-        default=2017, nargs='?', type=int)
+        default=2018, nargs='?', type=int)
     parser.add_argument(
         '-f', '--from', dest='from_date', required=False,
         metavar='first date to retrieve standings for',
