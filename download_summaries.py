@@ -68,6 +68,13 @@ if __name__ == '__main__':
                     except Exception as e:
                         pass
 
+        if not all_dates:
+            print("+ No data downloaded yet for this season")
+            print(
+                "+ Start downloading data by specifiying first date " +
+                "of the season")
+            sys.exit()
+
         from_date = (sorted(all_dates)[-1] + relativedelta(days=1)).strftime(
             "%B %d, %Y")
 
