@@ -35,6 +35,9 @@ class PlayerGame(Base):
             else:
                 if attr in ("captain", "alternate_captain", "starting"):
                     setattr(self, attr, False)
+                # TODO: activate when database has been updated
+                # elif attr in ("primary_assists", "secondary_assists"):
+                #     setattr(self, attr, 0)
                 else:
                     setattr(self, attr, None)
 
@@ -94,8 +97,8 @@ class PlayerGame(Base):
         return (
             (
                 self.no, self.position, self.goals, self.assists,
-                self.primary_assists, self.secondary_assists, self.points,
-                self.plus_minus, self.penalties, self.pim,
+                # self.primary_assists, self.secondary_assists,
+                self.points, self.plus_minus, self.penalties, self.pim,
                 self.toi_overall, self.toi_pp, self.toi_sh, self.toi_ev,
                 self.avg_shift, self.no_shifts, self.shots_on_goal,
                 self.shots_blocked, self.shots_missed, self.hits,
@@ -106,8 +109,8 @@ class PlayerGame(Base):
                 # self.on_ice_shots_blocked
                 ) == (
                 other.no, other.position, other.goals, other.assists,
-                other.primary_assists, other.secondary_assists, other.points,
-                other.plus_minus, other.penalties, other.pim,
+                # other.primary_assists, other.secondary_assists,
+                other.points, other.plus_minus, other.penalties, other.pim,
                 other.toi_overall, other.toi_pp, other.toi_sh, other.toi_ev,
                 other.avg_shift, other.no_shifts, other.shots_on_goal,
                 other.shots_blocked, other.shots_missed, other.hits,

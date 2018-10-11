@@ -22,6 +22,7 @@ from db.giveaway import Giveaway
 from db.takeaway import Takeaway
 from db.shootout_attempt import ShootoutAttempt
 from db.shot_attempt import ShotAttempt
+from db.player_game import PlayerGame
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,8 @@ class EventParser():
         self.score = defaultdict(int)
         # class-wide variable for score differential
         self.score_diff = 0
+        # class-wide variable to hold assistant information
+        self.assistants = defaultdict(dict)
 
     def create_events(self, game, rosters):
         """
@@ -162,6 +165,9 @@ class EventParser():
                 # re-calculating score differential after a goal
                 if event.type == 'GOAL':
                     self.score_diff = self.score['home'] - self.score['road']
+
+        # finally updating primary/secondary assists in player games
+        self.update_assists_in_player_games()
 
     def specify_event(self, event):
         """
@@ -745,6 +751,10 @@ class EventParser():
                 # retrieving player that was the assistant
                 assistant = self.rosters[team_gf_key][no].player_id
                 goal_data_dict["assist_%d" % assist_cnt] = assistant
+                # counting primary/secondary assists per player
+                if assistant not in self.assistants:
+                    self.assistants[assistant] = defaultdict(int)
+                self.assistants[assistant][assist_cnt] += 1
 
         # retrieving goal with same event id from database
         db_goal = Goal.find_by_event_id(event.event_id)
@@ -1232,6 +1242,27 @@ class EventParser():
                 '(10 min)'):
                     infraction = " ".join((infraction.strip(), '(10 min)'))
         return infraction
+
+    def update_assists_in_player_games(self):
+        """
+        Updates primary and secondary assists in player games items.
+        """
+        for player_id in self.assistants:
+            # retrieving player game element for assistant
+            pg = PlayerGame.find(self.game.game_id, player_id)
+
+            for assist_cnt in self.assistants[player_id]:
+                # setting target attribute
+                if assist_cnt == 1:
+                    target_attribute = 'primary_assists'
+                elif assist_cnt == 2:
+                    target_attribute = 'secondary_assists'
+
+                if pg is not None:
+                    setattr(
+                        pg, target_attribute,
+                        self.assistants[player_id][assist_cnt])
+                    commit_db_item(pg)
 
     def load_data(self):
         """
