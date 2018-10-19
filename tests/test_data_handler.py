@@ -6,8 +6,8 @@ import json
 from utils.data_handler import DataHandler
 
 
-src_rs = R"D:\nhl\official_and_json\2015-16\2016-04\2016-04-10.zip"
-src_po = R"D:\nhl\official_and_json\2015-16\2016-04\2016-04-13.zip"
+src_rs = R"C:\dev\python3\pynhldb\tests\data\2018-10-07.zip"
+src_po = R"C:\dev\python3\pynhldb\tests\data\2016-04-13.zip"
 
 
 def test_find_html_data():
@@ -17,7 +17,7 @@ def test_find_html_data():
     html_files_rs = dh_rs._get_contents()
     html_files_po = dh_po._get_contents()
 
-    assert len(html_files_rs) == 16
+    assert len(html_files_rs) == 24
     assert len(html_files_po) == 24
 
 
@@ -28,7 +28,7 @@ def test_find_json_data():
     json_files_rs = dh_rs._get_contents('json')
     json_files_po = dh_po._get_contents('.JSON')
 
-    assert len(json_files_rs) == 4
+    assert len(json_files_rs) == 6
     assert len(json_files_po) == 6
 
 
