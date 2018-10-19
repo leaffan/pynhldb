@@ -60,7 +60,9 @@ def get_player_with_dob(url):
     # retrieving date of birth
     dob_url = doc.xpath("//a[contains(@href, '?dob=')]/@href").pop()
     url_comps = urlparse(dob_url)
-    dob = url_comps.query.split("=")[-1]
+    for item in url_comps.query.split('&'):
+        if 'dob' in item:
+            dob = item.split("=")[-1]
 
     # retrieving first and last name
     title = doc.xpath("//title/text()").pop()
