@@ -14,7 +14,7 @@ from db.team_game import TeamGame
 from db.event import Event
 from db.goal import Goal
 
-season = 2017
+season = 2018
 
 
 with session_scope() as session:

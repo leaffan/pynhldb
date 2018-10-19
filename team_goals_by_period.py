@@ -30,7 +30,7 @@ def determine_format_string(value):
 
 if __name__ == '__main__':
 
-    season = 2017
+    season = 2018
 
     with session_scope() as session:
         # retrieving all teams for specified season
