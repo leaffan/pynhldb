@@ -250,7 +250,7 @@ if __name__ == '__main__':
     import sys
     year = sys.argv[1]
 
-    src = R"D:\sync\hockey\nhl_transactions\transactions_%s.txt" % year
+    src = R"C:\docs\nhl_transactions\transactions_%s.txt" % year
 
     curr_date = ''
 
@@ -285,7 +285,7 @@ if __name__ == '__main__':
                     plr, other_team = retrieve_waiver_claim(transaction)
                     print(
                         "%s Claim: %s - %s -> %s" % (
-                            curr_date, plr, team, other_team))
+                            curr_date, plr, other_team, team))
                 elif action == 'signed':
                     plrs = retrieve_signing(transaction)
                     for plr in plrs:
