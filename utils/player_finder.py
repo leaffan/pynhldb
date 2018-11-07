@@ -154,7 +154,7 @@ class PlayerFinder():
         cf_links = list()
         cf_names = list()
         for group in [
-                'FORWARDS', 'DEFENSE', 'GOALTENDERS', 'INJURED', 'NON-ROSTER']:
+                'FORWARDS', 'DEFENSE', 'GOALIES', 'INJURED']:
                     cf_links += doc.xpath(
                         "//table[@id='team']/tbody/tr[@class='column_head c'" +
                         "]/td[contains(text(), '%s')]/parent::tr/" % group +
