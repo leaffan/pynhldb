@@ -544,7 +544,7 @@ if __name__ == '__main__':
             print(MAX_LINE_LENGTH * "-")
             print()
 
-        if standings in ['all', 'divisions']:
+        if standings in ['all', 'division']:
             # printing division records
             get_division_standings(
                 grouped_records, ranking_type, divisions, from_date, to_date,
