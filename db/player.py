@@ -77,6 +77,7 @@ class Player(Base):
 
     @classmethod
     def find_by_full_name(self, full_name, position=None):
+        # TODO: check for alternate names, too
         with session_scope() as session:
             try:
                 if position:
@@ -124,23 +125,25 @@ class Player(Base):
                 player = session.query(Player).filter(
                     and_(
                         or_(
-                            Player.first_name == first_name.title(),
-                            # here we're capitalizing the input first name to
-                            # check whether it's registered in a (potential)
-                            # list of alternate names
-                            # this is an incomplete (eg. not working for *TJ*)
-                            # but necessary hack as it is unknown
-                            # whether it is currently possible to apply a
-                            # function like func.lower() to all values of an
-                            # array column within a query filter - like
-                            # func.lower(Player.alternate_first_names)
-                            Player.alternate_first_names.any(
-                                first_name.title())
+                            # lower-case first names match?
+                            func.lower(
+                                Player.first_name) == first_name.lower(),
+                            # lower-case first name to be found in comma-joined
+                            # string of all alternate first names? 
+                            func.lower(
+                                func.array_to_string(
+                                    Player.alternate_first_names, ',')).like(
+                                        "%%%s%%" % first_name.lower())
                         ),
                         or_(
-                            Player.last_name == last_name.title(),
-                            # dto above, but for last names
-                            Player.alternate_last_names.any(last_name.title())
+                            # lower-case last names match?
+                            func.lower(Player.last_name) == last_name.lower(),
+                            # lower-case last name to be found in comma-joined
+                            # string of all alternate last names? 
+                            func.lower(
+                                func.array_to_string(
+                                    Player.alternate_last_names, ',')).like(
+                                        "%%%s%%" % last_name.lower())
                         )
                     )
                 ).one()
