@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 import json
 
 from utils.data_handler import DataHandler
 
 
-src_rs = R"C:\dev\python3\pynhldb\tests\data\2018-10-07.zip"
-src_po = R"C:\dev\python3\pynhldb\tests\data\2016-04-13.zip"
+src_rs = os.path.join(os.path.dirname(__file__), 'data', '2018-10-07.zip')
+src_po = os.path.join(os.path.dirname(__file__), 'data', '2016-04-13.zip')
+
+# src_rs = R"C:\dev\python3\pynhldb\tests\data\2018-10-07.zip"
+# src_po = R"C:\dev\python3\pynhldb\tests\data\2016-04-13.zip"
 
 
 def test_find_html_data():
