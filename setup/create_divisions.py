@@ -18,6 +18,9 @@ def create_divisions(div_src_file=None):
     lines = [l.strip() for l in open(div_src_file).readlines()]
 
     with session_scope() as session:
+
+        session.query(Division).delete(synchronize_session=False)
+
         try:
             for line in lines:
                 if line.startswith("#"):
@@ -42,6 +45,6 @@ def create_divisions(div_src_file=None):
 
             session.commit()
 
-        except:
+        except Exception as e:
             session.rollback()
             traceback.print_exc()
