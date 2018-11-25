@@ -250,9 +250,15 @@ class EventParser():
                 single_play_dict = self.json_dict[play_key][0]
                 # checking whether there are non-null values stored as
                 # coordinates first
-                if single_play_dict['x']:
+                if (
+                    'x' in single_play_dict and
+                    single_play_dict['x'] is not None
+                ):
                     event_data_dict['x'] = int(single_play_dict['x'])
-                if single_play_dict['y']:
+                if (
+                    'y' in single_play_dict and
+                    single_play_dict['y'] is not None
+                ):
                     event_data_dict['y'] = int(single_play_dict['y'])
 
         # creating event id as combination of game id and in-game event count
