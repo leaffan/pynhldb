@@ -137,7 +137,7 @@ class DataHandler():
         for f in self.tmp_files:
             try:
                 os.unlink(f)
-            except:
+            except Exception as e:
                 print("+ Unable to delete temporary file %s" % f)
                 logger.warn("+ Unable to delete temporary file %s" % f)
         else:
