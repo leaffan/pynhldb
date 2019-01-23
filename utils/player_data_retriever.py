@@ -170,6 +170,9 @@ class PlayerDataRetriever():
             return plr_season_dict
 
         for person in plr_json['people']:
+            if 'primaryPosition' not in person:
+                print("Player with id %d not found" % player_id)
+                continue
             # retrieving players' primary position
             plr_season_dict['position'] = person['primaryPosition']['code']
             for stats_type in person['stats']:
