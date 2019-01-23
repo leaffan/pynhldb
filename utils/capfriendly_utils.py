@@ -25,7 +25,7 @@ CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
 CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
 
 LATEST_SIGNINGS_TEMPLATE = (
-    "http://www.capfriendly.com/ajax/new_additions_load_more?p=%d")
+    "https://www.capfriendly.com/signings/all&ajax=1&p=%d")
 
 
 def retrieve_capfriendly_ids(team_id):
@@ -189,7 +189,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
     while existing_contracts_found < max_existing_contracts_found:
         url = LATEST_SIGNINGS_TEMPLATE % page
         r = requests.get(url)
-        doc = html.fromstring(r.json()['html'])
+        doc = html.fromstring(r.json()['data']['html'])
 
         # retrieving links to pages of recently signed players
         recently_signed_player_links = doc.xpath(
