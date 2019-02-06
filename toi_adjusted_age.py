@@ -86,15 +86,13 @@ def calculate_mean_age(
 #     plt.scatter(x, y)
 
 
-def process_team(season, team_abbr):
-    team = Team.find(team_abbr)
+def process_team(season, team):
     games = Game.find_by_season_team(season, team)
 
     std_ages = list()
     weighted_ages = list()
     output = list()
-
-    print(len(games))
+    output.append("team,game_id,std_mean_age,weighted_mean_age")
 
     for g in games:
         print(g.game_id)
@@ -106,37 +104,34 @@ def process_team(season, team_abbr):
             team.name, str(g.game_id), "%.4f" % (std_age.days / 365.),
             "%.4f" % (int(weighted_age.days) / 365.))))
 
-    open(R"d:\test2.csv", 'w').write("\n".join(output))
+    open(R"d:\%d_%s.csv" % (season, team.abbr), 'w').write("\n".join(output))
 
     # plot_stuff(std_ages, weighted_ages)
 
 
 if __name__ == '__main__':
 
-    season = 2017
-    game_id = "020001"
+    season = 2016
+    # game_id = "020001"
 
-    team = Team.find('TOR')
-    games = Game.find_by_season_team(season, team)
+    # team = Team.find('TOR')
+    # games = Game.find_by_season_team(season, team)
 
-    process_team(season, "WPG")
+    for team in sorted(Team.find_teams_for_season(season))[:]:
+        if not team.abbr == 'TOR':
+            continue
+        print(team)
+        process_team(season, team)
     # process_team(season, "NJD")
 
     # plt.show()
 
-    import sys
-    sys.exit()
-
-    x = list()
-    y = list()
-    # s = list()
-
-    for g in games:
-        std_mean_age, weighted_mean_age = calculate_mean_age(
-            season, g.nhl_id, query_team=team)
-        x.append(std_mean_age.days)
-        y.append(weighted_mean_age.days)
-        # s.append(abs(weighted_mean_age.days - std_mean_age.days))
+    # for g in games:
+    #     std_mean_age, weighted_mean_age = calculate_mean_age(
+    #         season, g.nhl_id, query_team=team)
+    #     x.append(std_mean_age.days)
+    #     y.append(weighted_mean_age.days)
+    #     # s.append(abs(weighted_mean_age.days - std_mean_age.days))
 
     # plot_stuff(x, y)
     # plot_stuff(a, b)
