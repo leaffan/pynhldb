@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 BASE_HREF = "http://www.hockey-reference.com"
 MORE_REGEX = re.compile("More\s(.+)\sPages")
 
+ROSTER_SIZE_ADJUSTMENT = True
+ROSTER_PER_SEASON = json.loads(
+    open("analysis/rosters_per_season.json").read())
+
 
 def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
     """
@@ -23,23 +27,23 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
     goals_per_season_data = json.load(open(goals_per_season_src))
 
     # TODO: automatically determine whether we're currently in mid-season
-    # if 'overall' in goals_per_season_data:
-    #     del goals_per_season_data['overall']
+    if 'overall' in goals_per_season_data:
+        del goals_per_season_data['overall']
     # last_full_season = sorted(
     #     [int(s.split("-")[0]) for s in goals_per_season_data.keys()]).pop()
 
     adjusted_data = list()
 
-    for plr in sorted(players_data, key=itemgetter('url')):
+    for plr in sorted(players_data, key=itemgetter('url'))[:5]:
         plr_name = plr['name']
         plr_link = plr['url']
         # retrieving regular goal data from player stats page, thereby
         # optionally excluding the most recent season, usually an on-going one
         # TODO: see above
-        # full_name, regular_goal_data = retrieve_regular_goal_totals(
-        #     plr_name, plr_link, exlude_most_recents_season=True)
         full_name, regular_goal_data = retrieve_regular_goal_totals(
-            plr_name, plr_link)
+            plr_name, plr_link, exclude_most_recent_season=True)
+        # full_name, regular_goal_data = retrieve_regular_goal_totals(
+        #     plr_name, plr_link)
         # adjusting goal scoring totals per season
         adjusted_goal_data = calculate_adjusted_goals(
             regular_goal_data, goals_per_season_data)
@@ -67,9 +71,15 @@ def calculate_adjusted_goals(goal_data, goals_per_season_data):
         if season not in goals_per_season_data:
             continue
 
-        # calculating season-adjusted goal total
+        # calculating seasonally adjusted goal total
         adjusted_goals = round(
             goals_per_season_data[season]['adjustment_factor'] * goals, 4)
+        if ROSTER_SIZE_ADJUSTMENT:
+            # adjusting goal total by roster size
+            adjusted_goals = round(
+                ROSTER_PER_SEASON[season]['adjustment_factor'] *
+                adjusted_goals, 4)
+
         goal_data['adjusted_goals'].append(adjusted_goals)
         # adding adjusted goal total for season to sum of adjusted goals
         sum_adjusted_goals += adjusted_goals
@@ -167,7 +177,7 @@ def retrieve_regular_goal_totals(
     # currently in mid-season (for which one an adjustment factor has not
     # been provided yet)
     # TODO: dynamic way of finding current season
-    if exclude_most_recent_season and seasons_played[-1] == "2016-17":
+    if exclude_most_recent_season and seasons_played[-1] == "2018-19":
         seasons_played = seasons_played[:-1]
         games_played = games_played[:-1]
         goals_scored = goals_scored[:-1]
