@@ -39,7 +39,7 @@ if __name__ == '__main__':
 
     # retrieving goals per season and season adjustment factors
     if setup_steps in ['1', 'all']:
-        season_data = retrieve_goals_per_season()
+        season_data = retrieve_goals_per_season(1917, 2017)
         calculate_adjustment_factors(season_data)
 
         open(goals_per_season_path, 'w').write(
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         # retrieving all players with at least 300 career goals
         career_goal_leaders = retrieve_career_leaders(300)
         # retrieving top five goalscorers per season
-        yearly_top = retrieve_yearly_top(5)
+        yearly_top = retrieve_yearly_top(5, 1917, 2017)
 
         # retrieving urls to player pages for goal-scoring career leaders
         career_leaders_urls = [d['url'] for d in career_goal_leaders]
