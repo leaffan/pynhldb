@@ -58,6 +58,10 @@ class TeamParser():
         else:
             return self.teams
 
+    def create_teams_from_json(self):
+        # TODO: create teams from JSON structure
+        pass
+
     def load_data(self):
         """
         Loads raw data from html and pre-processes it.
