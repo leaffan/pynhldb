@@ -2,9 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-from datetime import date
-
-from sqlalchemy import and_
 
 from db.common import session_scope
 from db.game import Game
@@ -12,17 +9,16 @@ from parsers.main_parser import MainParser
 
 base_dir = R"D:\nhl\official_and_json"
 
+GAME_IDS = [
+    2016020032, 2016020272, 2016020312, 2016020701, 2016021112, 2017020675
+]
 
 if __name__ == '__main__':
 
     # retrieving games to be updated
     with session_scope() as session:
         games = session.query(Game).filter(
-            and_(
-                Game.home_team_id.in_([8, 9]),
-                Game.date >= date(2011, 10, 11),
-                Game.date <= date(2014, 4, 12)
-            )
+            Game.game_id.in_(GAME_IDS)
         ).all()
 
     # updating games by re-parsing corresponding summaries
@@ -38,5 +34,9 @@ if __name__ == '__main__':
 
         print(src_path, game_id)
 
-        mp = MainParser(src_path, [game_id])
-        mp.parse_games_sequentially(['events', 'shifts'])
+        try:
+            mp = MainParser(src_path, [game_id])
+            mp.parse_games_sequentially(['shifts', 'events'])
+        except Exception as e:
+            print(e)
+            continue
