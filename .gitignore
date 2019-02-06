@@ -94,3 +94,4 @@ ENV/
 # project-related stuff
 _config.yml
 utils/uppers.txt
+tests/data/*
