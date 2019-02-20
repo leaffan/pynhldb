@@ -6,7 +6,7 @@ import re
 import unicodedata
 import logging
 import logging.handlers
-from datetime import timedelta
+from datetime import timedelta, date
 
 import yaml
 from lxml import html, etree
@@ -20,7 +20,7 @@ def remove_null_strings(list_of_strings):
     return [s for s in list_of_strings if s.strip()]
 
 
-def retrieve_season(date):
+def retrieve_season(date_of_interest=None):
     """
     Identifies season based on month of given date, anything until June
     belongs to the season ending in the date's year, anything after
@@ -28,10 +28,12 @@ def retrieve_season(date):
     NB: Season's are identified by the year they're beginning in, even for
     those that are shortened, i.e. 2012/13.
     """
-    if date.month < 7:
-        season = date.year - 1
+    if date_of_interest is None:
+        date_of_interest = date.today()
+    if date_of_interest.month < 7:
+        season = date_of_interest.year - 1
     else:
-        season = date.year
+        season = date_of_interest.year
 
     return season
 
