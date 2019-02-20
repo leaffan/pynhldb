@@ -11,6 +11,7 @@ from lxml import html
 from db import commit_db_item
 from db.player import Player
 from db.team import Team
+from utils import retrieve_season
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +19,18 @@ logger = logging.getLogger(__name__)
 class PlayerFinder():
     # url components to retrieve current player rosters
     NHL_SITE_PREFIX = "https://www.nhl.com"
+    # stats api prefix
+    API_SITE_PREFIX = "https://statsapi.web.nhl.com/api/v1"
     NHL_SITE_ROSTER_SUFFIX = "roster"
     # url components to retrieve current in-the-system player information
     TEAM_SITE_PREFIX = "http://%s.nhl.com"
     TEAM_SITE_ROSTER_SUFFIX = "/club/roster.htm?type=prospect"
     # url components to retrieve information about currently contracted players
     CAPFRIENDLY_SITE_PREFIX = "https://www.capfriendly.com/teams/"
+    # url prefix for json structure with team information
+    API_TEAM_SITE_PREFIX = '/'.join((API_SITE_PREFIX, 'teams/'))
     # url prefix for json structure with player information
-    PEOPLE_SITE_PREFIX = "http://statsapi.web.nhl.com/api/v1/people/"
+    PEOPLE_SITE_PREFIX = '/'.join((API_SITE_PREFIX, 'people/'))
     # url components for json structure with player name search suggestions
     SUGGEST_SITE_PREFIX = (
         "http://suggest.svc.nhl.com/svc/suggest/v1/minplayers/")
@@ -46,7 +51,7 @@ class PlayerFinder():
         print("+ Searching %s players for %s" % (src, team))
 
         if src == 'roster':
-            players = self.get_roster_players(team, season)
+            players = self.get_roster_players_via_api(team, season)
         elif src == 'system':
             players = self.get_system_players(team)
         elif src == 'contract':
@@ -54,6 +59,54 @@ class PlayerFinder():
 
         return players
 
+    def get_roster_players_via_api(self, team, season=None):
+        """
+        Retrieves roster players for specified team and season using the NHL
+        stats api.
+        """
+        # setting up empty list of players
+        players = list()
+
+        if season is None:
+            season = str(retrieve_season())
+
+        # creating stats api url with optional season parameter
+        url = "".join((self.API_TEAM_SITE_PREFIX, str(team.team_id)))
+        url_params = {
+            'expand': 'team.roster',
+            'season': "%s%d" % (season, int(season) + 1)
+        }
+        # retrieving data
+        r = requests.get(url, params=url_params)
+        team_data = r.json()
+
+        if 'teams' not in team_data:
+            logging.warn(
+                "+ %s not part of the league in %s/%d" % (
+                    team, season, int(season) + 1))
+            return players
+
+        team_data = team_data['teams'][0]
+
+        if 'roster' not in team_data:
+            logging.warn(
+                "+ No roster found for %s/%d %s" % (
+                    season, int(season) + 1, team))
+            return players
+
+        roster = team_data['roster']['roster']
+
+        for plr_src in roster:
+            # retrieving player if of current player in roster
+            plr_id = plr_src['person']['id']
+            # searching and optionally creating player with found player id
+            plr = self.search_player_by_id(plr_id)
+            players.append(plr)
+
+        return players
+
+    # previous function to retrieve roster players
+    # TODO: deprecate, remove
     def get_roster_players(self, team, season=None):
         """
         Retrieves basic player information from team roster page. Checks
@@ -303,7 +356,7 @@ class PlayerFinder():
             req = requests.get(url, params={
                 'expand': 'person.stats',
                 'stats': 'yearByYear,yearByYearPlayoffs'})
-            plr_json = json.loads(req.text)
+            plr_json = req.json()
 
             if len(plr_json['people']):
                 person = plr_json['people'][0]
@@ -313,6 +366,7 @@ class PlayerFinder():
 
                 plr = self.create_player(
                     plr_id, last_name, first_name, position)
+                logging.info("+ %s created" % plr)
 
         return plr
 
