@@ -195,7 +195,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
         recently_signed_player_links = doc.xpath(
             "tr/td/a[contains(@href, 'players')]/@href")
         # retrieving names of recently signed players
-        recently_signed_player_names = doc.xpath("tr/td/a/text()")
+        recently_signed_player_names = doc.xpath("tr/td/a[2]/text()")
         # retrieving positions of recently signed players
         recently_signed_player_positions = doc.xpath("tr/td[3]/text()")
         # retrieving signing dates of recently signed players
