@@ -28,23 +28,21 @@ def migrate_players(plr_src_file=None):
 
     for player_id in sorted(migration_data.keys())[:]:
 
+        # populating mandatory attributes
         last_name = migration_data[player_id]['last_name']
         first_name = migration_data[player_id]['first_name']
         position = migration_data[player_id]['position']
 
-        alternate_last_names = migration_data[player_id].get(
-            'alternate_last_names', None)
-        alternate_first_names = migration_data[player_id].get(
-            'alternate_first_names', None)
-        alternate_positions = migration_data[player_id].get(
-            'alternate_positions', None)
+        # setting up and populating optional keyword attributes
+        kw_args = dict()
+        for key in [
+            'alternate_last_names', 'alternate_first_names',
+            'alternate_positions', 'capfriendly_id'
+        ]:
+            kw_args[key] = migration_data[player_id].get(key, None)
 
         plr = Player(
-            player_id, last_name, first_name, position,
-            alternate_last_names=alternate_last_names,
-            alternate_first_names=alternate_first_names,
-            alternate_positions=alternate_positions
-        )
+            player_id, last_name, first_name, position, **kw_args)
 
         print("Working on %s" % plr)
 
