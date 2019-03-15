@@ -13,9 +13,8 @@ class Player(Base):
     HUMAN_READABLE = 'player'
 
     ALTERNATE_VALUE_KEYWORDS = [
-        'alternate_last_names',
-        'alternate_first_names',
-        'alternate_positions',
+        'alternate_last_names', 'alternate_first_names',
+        'alternate_positions', 'capfriendly_id'
     ]
 
     def __init__(self, nhl_id, last_name, first_name, position, **kwargs):
@@ -31,8 +30,11 @@ class Player(Base):
     def set_keyword_argument(self, keyword, value):
         if not value:
             value = None
-        if value is not None and type(value) is not list:
-            value = [value]
+        if keyword == 'capfriendly_id':
+            pass
+        else:
+            if value is not None and type(value) is not list:
+                value = [value]
         setattr(self, keyword, value)
 
     @property
@@ -129,7 +131,7 @@ class Player(Base):
                             func.lower(
                                 Player.first_name) == first_name.lower(),
                             # lower-case first name to be found in comma-joined
-                            # string of all alternate first names? 
+                            # string of all alternate first names?
                             func.lower(
                                 func.array_to_string(
                                     Player.alternate_first_names, ',')).like(
@@ -139,7 +141,7 @@ class Player(Base):
                             # lower-case last names match?
                             func.lower(Player.last_name) == last_name.lower(),
                             # lower-case last name to be found in comma-joined
-                            # string of all alternate last names? 
+                            # string of all alternate last names?
                             func.lower(
                                 func.array_to_string(
                                     Player.alternate_last_names, ',')).like(
