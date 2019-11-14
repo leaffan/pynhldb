@@ -31,55 +31,55 @@ class EventParser():
 
     # regular expressions for retrieving...
     # ... the zone where an event happened
-    ZONE_REGEX = re.compile(",?\s((Off|Def|Neu)\.)\sZone")
+    ZONE_REGEX = re.compile(R",?\s((Off|Def|Neu)\.)\sZone")
     # ... number of a player shooting on goal
-    PLAYER_REGEX = re.compile("(ONGOAL - |#)(\d{1,2})\s(\w+\'?\s?\w+),?")
+    PLAYER_REGEX = re.compile(R"(ONGOAL - |#)(\d{1,2})\s(\w+\'?\s?\w+),?")
     # ... shot type and distance from goal for a shot
-    SHOT_REGEX = re.compile(",\s(.+),.+,\s(.+)\sft\.(Assist)?")
+    SHOT_REGEX = re.compile(R",\s(.+),.+,\s(.+)\sft\.(Assist)?")
     # ... shot type and distance from goal for a shot when no zone is specified
-    SHOT_WO_ZONE_REGEX = re.compile(",\s(.+),\s(.+)\sft\.(Assist)?")
+    SHOT_WO_ZONE_REGEX = re.compile(R",\s(.+),\s(.+)\sft\.(Assist)?")
     # ... missed shot properties
     MISS_REGEX = re.compile(
-        ",\s((?:.+),\s(?:Wide of Net|Hit Crossbar|Goalpost|Over Net)?" +
-        ").*,\s(.+)\sft\.")
+        R",\s((?:.+),\s(?:Wide of Net|Hit Crossbar|Goalpost|Over Net)?" +
+        R").*,\s(.+)\sft\.")
     # ... the distance from goal for a shot
-    DISTANCE_REGEX = re.compile("(\d+)\sft\.")
+    DISTANCE_REGEX = re.compile(R"(\d+)\sft\.")
     # ... assistants to a goal
-    ASSIST_REGEX = re.compile("Assists?:\s(.+)(?:;\s(.+))?")
+    ASSIST_REGEX = re.compile(R"Assists?:\s(.+)(?:;\s(.+))?")
     # ... the number of player scoring a goal or assist
-    SCORER_NO_REGEX = re.compile("#(\d+)?")
+    SCORER_NO_REGEX = re.compile(R"#(\d+)?")
     # ... a penalty infraction for a player
     INFRACTION_REGEX = re.compile(
-        "#\d+.{1}[A-Z]+(\'| |\.|\-){0,2}(?:[A-Z ]+)?\.?.{1}([A-Z].+)\(\d")
+        R"#\d+.{1}[A-Z]+(\'| |\.|\-){0,2}(?:[A-Z ]+)?\.?.{1}([A-Z].+)\(\d")
     # ... a penalty infraction for a team
-    TEAM_INFRACTION_REGEX = re.compile("(.{3})\s(?:TEAM)?(.+)\(\d")
+    TEAM_INFRACTION_REGEX = re.compile(R"(.{3})\s(?:TEAM)?(.+)\(\d")
     # ... a penalty infraction for a team but without anyone serving it
-    ANONYMOUS_TEAM_INFRACTION_REGEX = re.compile("Team(.+)\-.+bench")
+    ANONYMOUS_TEAM_INFRACTION_REGEX = re.compile(R"Team(.+)\-.+bench")
     # ... a penalty infraction for a coach
-    COACH_INFRACTION_REGEX = re.compile("#(.+coach)\(\d+")
+    COACH_INFRACTION_REGEX = re.compile(R"#(.+coach)\(\d+")
     # ... the number penalty minutes assessed for an infraction
-    PIM_REGEX = re.compile("\((\d+)\smin\)")
+    PIM_REGEX = re.compile(R"\((\d+)\smin\)")
     # ... the number of player taking a penalty
-    PENALTY_NO_REGEX = re.compile("^.{3}\s#(\d+)")
+    PENALTY_NO_REGEX = re.compile(R"^.{3}\s#(\d+)")
     # ... number and team of player drawing a penalty
-    PENALTY_DRAWN_REGEX = re.compile("Drawn By:\s(.{3}).+#(\d+)")
+    PENALTY_DRAWN_REGEX = re.compile(R"Drawn By:\s(.{3}).+#(\d+)")
     # ...  number of player serving a penalty
-    SERVED_BY_REGEX = re.compile("Served By:\s#(\d+)\s(.+)")
+    SERVED_BY_REGEX = re.compile(R"Served By:\s#(\d+)\s(.+)")
     # ... teams and numbers of players involved in hit/blocked shot
     HIT_BLOCK_REGEX = re.compile(
-        "(.{3})\s#(\d{1,2})\s.+(?:(?:HIT)|" +
-        "(?:BLOCKED BY))\s+(.{3})\s#(\d{1,2})\s.+")
+        R"(.{3})\s#(\d{1,2})\s.+(?:(?:HIT)|" +
+        R"(?:BLOCKED BY))\s+(.{3})\s#(\d{1,2})\s.+")
     # ... teams involved in hit, number of player taking the hit
-    ONLY_HIT_TAKEN_REGEX = re.compile("HIT\s+(.{3})\s#(\d{1,2})\s.+")
+    ONLY_HIT_TAKEN_REGEX = re.compile(R"HIT\s+(.{3})\s#(\d{1,2})\s.+")
     # ... teams involved in hit, number of player hitting
     ONLY_HIT_GIVEN_REGEX = re.compile(
-        "(.{3})\s#(\d{1,2})\s.+HIT\s+(.{3})\s#.+")
+        R"(.{3})\s#(\d{1,2})\s.+HIT\s+(.{3})\s#.+")
     # ... number and team of player blocking a shot
-    ONLY_BLOCKED_BY_REGEX = re.compile("BLOCKED BY\s+(.{3})\s#(\d{1,2})\s.+")
+    ONLY_BLOCKED_BY_REGEX = re.compile(R"BLOCKED BY\s+(.{3})\s#(\d{1,2})\s.+")
     # ... shot type of a blocked shot
-    BLOCKED_SHOT_TYPE_REGEX = re.compile(",\s(.+),")
+    BLOCKED_SHOT_TYPE_REGEX = re.compile(R",\s(.+),")
     # ... numbers of players participating in a faceoff
-    FACEOFF_NO_REGEX = re.compile(".{3}\s#(\d{1,2}).+.{3}\s#(\d{1,2})")
+    FACEOFF_NO_REGEX = re.compile(R".{3}\s#(\d{1,2}).+.{3}\s#(\d{1,2})")
 
     # official game information json data uses other type denominators than the
     # official play-by-play summaries (and subsequently the database)
@@ -325,7 +325,7 @@ class EventParser():
             try:
                 so_attempt_props, distance = self.SHOT_REGEX.search(
                     event.raw_data).group(1, 2)
-            except Exception as e:
+            except Exception:
                 so_attempt_props = None
                 distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
                 logger.warn(
@@ -550,7 +550,7 @@ class EventParser():
             if "," in shot_type:
                 shot_type = shot_type.split(",")[-1].strip()
             shot_data_dict['shot_type'] = shot_type
-        except Exception as e:
+        except Exception:
             logger.warn(
                 "Unable to retrieve shot type from " +
                 "raw data: %s" % event.raw_data)
@@ -592,7 +592,7 @@ class EventParser():
         try:
             taken_by_no = int(re.search(
                 self.PENALTY_NO_REGEX, event.raw_data).group(1))
-        except Exception as e:
+        except Exception:
             taken_by_no = None
 
         # retrieving number of player serving the penalty (if applicable)
@@ -600,7 +600,7 @@ class EventParser():
             served_by_no, served_by_name = re.search(
                 self.SERVED_BY_REGEX, event.raw_data).group(1, 2)
             served_by_no = int(served_by_no)
-        except Exception as e:
+        except Exception:
             served_by_no = None
 
         # retrieving team and number of player drawing the penalty (if
@@ -610,7 +610,7 @@ class EventParser():
                 self.PENALTY_DRAWN_REGEX, event.raw_data).group(1, 2)
             drawn_by_no = int(drawn_by_no)
             drawn_by_team = Team.find_by_abbr(drawn_by_team)
-        except Exception as e:
+        except Exception:
             drawn_by_no = None
             drawn_by_team = None
 
@@ -786,7 +786,7 @@ class EventParser():
             blocked_player_no, team, player_no = re.search(
                 self.HIT_BLOCK_REGEX, event.raw_data).group(2, 3, 4)
             blocked_player_no = int(blocked_player_no)
-        except Exception as e:
+        except Exception:
             logger.warn(
                 "Couldn't retrieve blocked player" +
                 "from raw data: %s" % event.raw_data)
@@ -1052,7 +1052,7 @@ class EventParser():
         team = Team.find_by_abbr(event.raw_data[0:3])
         try:
             zone = re.search(self.ZONE_REGEX, event.raw_data).group(1)[0:3]
-        except Exception as e:
+        except Exception:
             logger.warn(
                 "Couldn't retrieve zone from raw data: %s" % event.raw_data)
             if event.type in ['MISS', 'SHOT', 'GOAL']:
@@ -1076,7 +1076,7 @@ class EventParser():
             # retrieving players on ice for current event
             poi_data['road'], poi_data['home'] = event_data_item.xpath(
                 "td/table")
-        except Exception as e:
+        except Exception:
             return players_on_ice, goalies_on_ice
 
         for key in ['road', 'home']:
@@ -1097,7 +1097,7 @@ class EventParser():
                 # retrieving actual player from rosters of current game
                 try:
                     player = self.rosters[key][no]
-                except KeyError as e:
+                except KeyError:
                     # TODO: propper logging
                     print(
                         "Unable to retrieve player on ice with number " +
@@ -1175,18 +1175,18 @@ class EventParser():
             for player in play['players']:
                 # 'active', e.g. blocking, hitting, faceoff-winning player
                 if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
-                        0]:
-                            single_play_dict['active'] = player[
-                                'player']['id']
-                            single_play_dict['active_name'] = player[
-                                'player']['fullName']
+                    0
+                ]:
+                    single_play_dict['active'] = player['player']['id']
+                    single_play_dict['active_name'] = player[
+                        'player']['fullName']
                 # 'passive', e.g. blocked, hit, faceoff-losing player
                 elif player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
-                        1]:
-                            single_play_dict['passive'] = player[
-                                'player']['id']
-                            single_play_dict['passive_name'] = player[
-                                'player']['fullName']
+                    1
+                ]:
+                    single_play_dict['passive'] = player['player']['id']
+                    single_play_dict['passive_name'] = player[
+                        'player']['fullName']
             # adding penalty minutes to single play dictionary (if applicable)
             if play_type == 'PENL':
                 single_play_dict['pim'] = play[
@@ -1242,11 +1242,13 @@ class EventParser():
         if severity == 'major' and not infraction.strip().endswith('(maj)'):
             infraction = " ".join((infraction.strip(), '(maj)'))
         if severity == 'bench minor' and not infraction.strip().endswith(
-                'bench'):
-                    infraction = " - ".join((infraction.strip(), 'bench'))
+            'bench'
+        ):
+            infraction = " - ".join((infraction.strip(), 'bench'))
         if severity == 'misconduct' and not infraction.strip().endswith(
-                '(10 min)'):
-                    infraction = " ".join((infraction.strip(), '(10 min)'))
+            '(10 min)'
+        ):
+            infraction = " ".join((infraction.strip(), '(10 min)'))
         return infraction
 
     def update_assists_in_player_games(self):
@@ -1287,7 +1289,7 @@ class EventParser():
                     logger.warn(
                         "Unexpected number of table cells in play-by-play" +
                         "table row: %d" % len(tr.xpath("td")))
-            except Exception as e:
+            except Exception:
                 logger.debug(
                     "Skipping row in play-by-play table")
                 continue
