@@ -24,10 +24,11 @@ class PlayerContractRetriever():
 
     CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
     CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
-    CAPFRIENDLY_CLAUSE_REGEX = re.compile("^\:\s")
-    CAPFRIENDLY_AMOUNT_REGEX = re.compile("\$|\-|,|\u2013")
-    CT_LENGTH_REGEX = re.compile("LENGTH\:\s(\d+)\sYEARS?")
-    EXPIRY_STATUS_REGEX = re.compile("(UFA \(NO QO\))|(RFA)|(UFA)")
+    CAPFRIENDLY_CLAUSE_REGEX = re.compile(R"^\:\s")
+    CAPFRIENDLY_AMOUNT_REGEX = re.compile(R"\$|\-|,|\u2013")
+    CT_LENGTH_REGEX = re.compile(R"LENGTH\:\s(\d+)\sYEARS?")
+    EXPIRY_STATUS_REGEX = re.compile(
+        R"(UFA \(NO QO\))|(RFA)|(UFA)|(10.2\(c\))")
 
     def __init__(self):
         pass
@@ -130,7 +131,7 @@ class PlayerContractRetriever():
         doc = html.fromstring(r.text)
 
         contract_elements = doc.xpath(
-            "//div[@class='column_head3 rel cntrct']")
+            "//div[@class='contract_data rel cntrct']")
 
         for element in contract_elements:
             # setting up dictionary for current contract
