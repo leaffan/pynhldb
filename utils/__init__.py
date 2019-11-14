@@ -152,7 +152,7 @@ def get_target_directory_from_config_file(cfg_src):
     """
     # reading complete configuration
     with open(cfg_src, 'r') as yml_file:
-        cfg = yaml.load(yml_file)
+        cfg = yaml.safe_load(yml_file)
 
     try:
         tgt_dir = cfg['downloading']['tgt_dir']
@@ -161,7 +161,7 @@ def get_target_directory_from_config_file(cfg_src):
             "Unable to retrieve parameter '%s' "
             "from configuration file." % e.args[0])
         return
-    except Exception as e:
+    except Exception:
         print("Unable to read configuration file")
         return
 
@@ -176,7 +176,7 @@ def get_connection_string_from_config_file(cfg_src, db_cfg_key):
     """
     # reading complete configuration
     with open(cfg_src, 'r') as yml_file:
-        cfg = yaml.load(yml_file)
+        cfg = yaml.safe_load(yml_file)
 
     # looking for specified connection name
     for connection_cfg in cfg['connections']:
@@ -196,7 +196,7 @@ def get_connection_string_from_config_file(cfg_src, db_cfg_key):
             "Unable to retrieve parameter '%s' "
             "from configuration file." % e.args[0])
         return
-    except Exception as e:
+    except Exception:
         print("Unable to read configuration file")
         return
 
@@ -214,7 +214,7 @@ class WhitespaceRemovingFormatter(logging.Formatter):
     Defines a special logging formatter that removes '+ ' from the beginning
     of the logged message.
     """
-    REGEX = re.compile("^\+?\s")
+    REGEX = re.compile(R"^\+?\s")
 
     def format(self, record):
         record.msg = record.msg.strip()
@@ -293,7 +293,7 @@ def compare_json_data(source_data_a, source_data_b):
     cf. http://bit.ly/2A2yMTA.
     """
     def compare(data_a, data_b):
-        # type: list
+        # comparing lists
         if (type(data_a) is list):
             # is [data_b] a list and of same length as [data_a]?
             if (
@@ -311,7 +311,7 @@ def compare_json_data(source_data_a, source_data_b):
             # list identical
             return True
 
-        # type: dictionary
+        # comparing dictionaries
         if (type(data_a) is dict):
             # is [data_b] a dictionary?
             if (type(data_b) != dict):
@@ -340,3 +340,13 @@ def compare_json_data(source_data_a, source_data_b):
         compare(source_data_a, source_data_b) and
         compare(source_data_b, source_data_a)
     )
+
+
+def order_dict(dictionary):
+    result = {}
+    for k, v in sorted(dictionary.items()):
+        if isinstance(v, dict):
+            result[k] = order_dict(v)
+        else:
+            result[k] = v
+    return result
