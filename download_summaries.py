@@ -65,7 +65,7 @@ if __name__ == '__main__':
                     try:
                         curr_date = parse(os.path.basename(file.split(".")[0]))
                         all_dates.append(curr_date)
-                    except Exception as e:
+                    except Exception:
                         pass
 
         if not all_dates:
