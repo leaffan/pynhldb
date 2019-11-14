@@ -52,7 +52,7 @@ class PlayerDataRetriever():
     DB_KEY_DATE_OF_BIRTH = "date_of_birth"
     DB_KEY_PLACE_OF_BIRTH = "place_of_birth"
 
-    FT_IN_REGEX = re.compile("(\d+)'\s(\d+)")
+    FT_IN_REGEX = re.compile(R"(\d+)'\s(\d+)")
 
     def __init__(self):
         self.lock = threading.Lock()
@@ -190,7 +190,7 @@ class PlayerDataRetriever():
                         stats_type['type'][
                             'displayName'] == "yearByYearPlayoffs"
                     ):
-                            season_type = 'PO'
+                        season_type = 'PO'
 
                     # retrieving season and team of current statline
                     season = int(split['season'][:4])

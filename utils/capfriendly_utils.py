@@ -287,12 +287,13 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                         contract = Contract(plr.player_id, raw_contract)
                         commit_db_item(contract)
                         for raw_contract_year in raw_contract[
-                                'contract_years']:
-                                    contract_year = ContractYear(
-                                        plr.player_id,
-                                        contract.contract_id,
-                                        raw_contract_year)
-                                    commit_db_item(contract_year)
+                            'contract_years'
+                        ]:
+                            contract_year = ContractYear(
+                                plr.player_id,
+                                contract.contract_id,
+                                raw_contract_year)
+                            commit_db_item(contract_year)
                         break
 
             if existing_contracts_found >= max_existing_contracts_found:
