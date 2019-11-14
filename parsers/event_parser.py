@@ -1276,7 +1276,7 @@ class EventParser():
         """
         self.event_data = list()
         # finding all table rows on play-by-play page
-        for tr in self.raw_data.xpath("body/table/tr"):
+        for tr in self.raw_data.xpath("body/descendant::table/tr"):
             # adding table row to play-by-play info if the first entry is a
             # digit, i.e. an in-game event id
             try:
