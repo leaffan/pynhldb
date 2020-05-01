@@ -226,8 +226,16 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                     if plr:
                         break
 
-            # TODO: try to find player by name in case no valid capfriendly
-            # id exists
+            # second try:
+            # usually player names consist of first name and last name
+            # if this is the case here, try to find player by an extended name
+            # search including alternate first and last names
+            if plr is None:
+                name_tokens = signee.split()
+                if len(name_tokens) == 2:
+                    first_name, last_name = name_tokens
+                    plr = Player.find_by_name_extended(first_name, last_name)
+
             if plr is None:
                 print(
                     "+ Contracted player (%s) not found in database" % signee)
@@ -237,7 +245,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                     last_name, first_name)
                 if len(suggested_players) == 1:
                     (
-                        nhl_id, pos, sugg_last_name, sugg_first_name, dob
+                        nhl_id, pos, sugg_last_name, sugg_first_name, _
                     ) = suggested_players.pop()
                     if (
                         first_name, last_name
