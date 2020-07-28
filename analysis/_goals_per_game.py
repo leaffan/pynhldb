@@ -9,10 +9,10 @@ import requests
 from lxml import html
 
 logger = logging.getLogger(__name__)
-URL_TEMPLATE = "http://www.hockey-reference.com/leagues/NHL_%d.html"
+URL_TEMPLATE = "https://www.hockey-reference.com/leagues/NHL_%d.html"
 
 
-def retrieve_goals_per_season(start_season=1917, end_season=2016):
+def retrieve_goals_per_season(start_season=1917, end_season=2018):
     """
     Retrieves goals scored for each NHL season.
     """
@@ -44,9 +44,11 @@ def retrieve_goals_per_season(start_season=1917, end_season=2016):
             sub = html.fromstring(str(comment)[3:-3])
             if not sub.xpath("//table/caption/text()"):
                 continue
-            if sub.xpath(
-                    "//table/caption/text()")[0] == "Team Statistics Table":
-                        team_stats = sub
+            if (
+                sub.xpath("//table/caption/text()")[0] ==
+                "Team Statistics Table"
+            ):
+                team_stats = sub
 
         # retrieving games played by each team as list
         season_games_played = [
