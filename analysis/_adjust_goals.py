@@ -11,7 +11,7 @@ from lxml import html
 
 logger = logging.getLogger(__name__)
 BASE_HREF = "http://www.hockey-reference.com"
-MORE_REGEX = re.compile("More\s(.+)\sPages")
+MORE_REGEX = re.compile(R"More\s(.+)\sPages")
 
 ROSTER_SIZE_ADJUSTMENT = True
 ROSTER_PER_SEASON = json.loads(
@@ -34,7 +34,7 @@ def retrieve_and_adjust_goal_totals(players_src, goals_per_season_src):
 
     adjusted_data = list()
 
-    for plr in sorted(players_data, key=itemgetter('url'))[:5]:
+    for plr in sorted(players_data, key=itemgetter('url'))[:]:
         plr_name = plr['name']
         plr_link = plr['url']
         # retrieving regular goal data from player stats page, thereby
