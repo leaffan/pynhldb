@@ -138,20 +138,23 @@ class PlayerFinder():
         positions = [x[:1] for x in doc.xpath(
             "//td[@class='position-col fixed-width-font']/text()")]
 
-        for (first_name, last_name, url, position) in zip(
-                first_names, last_names, urls, positions):
-                    # retrieving nhl id from player page url
-                    plr_id = int(url.split("-")[-1])
+        for (
+            first_name, last_name, url, position
+        ) in zip(
+            first_names, last_names, urls, positions
+        ):
+            # retrieving nhl id from player page url
+            plr_id = int(url.split("-")[-1])
 
-                    # trying to find player in database
-                    plr = Player.find_by_id(plr_id)
-                    # creating player if not already in database
-                    if plr is None:
-                        plr = self.create_player(
-                            plr_id, last_name, first_name, position)
-                        logging.info("+ %s created" % plr)
+            # trying to find player in database
+            plr = Player.find_by_id(plr_id)
+            # creating player if not already in database
+            if plr is None:
+                plr = self.create_player(
+                    plr_id, last_name, first_name, position)
+                logging.info("+ %s created" % plr)
 
-                    players.append(plr)
+            players.append(plr)
 
         return players
 
@@ -207,15 +210,16 @@ class PlayerFinder():
         cf_links = list()
         cf_names = list()
         for group in [
-                'FORWARDS', 'DEFENSE', 'GOALIES', 'INJURED']:
-                    cf_links += doc.xpath(
-                        "//table[@id='team']/tbody/tr[@class='column_head c'" +
-                        "]/td[contains(text(), '%s')]/parent::tr/" % group +
-                        "following-sibling::tr/td[1]/a/@href")
-                    cf_names += doc.xpath(
-                        "//table[@id='team']/tbody/tr[@class='column_head c'" +
-                        "]/td[contains(text(), '%s')]/parent::tr/" % group +
-                        "following-sibling::tr/td[1]/a/text()")
+            'FORWARDS', 'DEFENSE', 'GOALIES', 'INJURED'
+        ]:
+            cf_links += doc.xpath(
+                "//table[@id='team']/tbody/tr[@class='column_head c'" +
+                "]/td[contains(text(), '%s')]/parent::tr/" % group +
+                "following-sibling::tr/td[1]/a/@href")
+            cf_names += doc.xpath(
+                "//table[@id='team']/tbody/tr[@class='column_head c'" +
+                "]/td[contains(text(), '%s')]/parent::tr/" % group +
+                "following-sibling::tr/td[1]/a/text()")
 
         for lnk, name in zip(cf_links, cf_names):
             # retrieving capfriendly id from player page link
@@ -230,7 +234,7 @@ class PlayerFinder():
                 for suggested_player in suggested_players:
                     (
                         sugg_plr_id, sugg_pos,
-                        sugg_last_name, sugg_first_name, sugg_dob
+                        sugg_last_name, sugg_first_name, _
                     ) = (
                         suggested_player
                     )
@@ -297,22 +301,23 @@ class PlayerFinder():
         players = list()
 
         for (
-            first_name, last_name, url, number, position,
-            hand, weight, height, dob, hometown) in zip(
-                first_names, last_names, urls, numbers, positions,
-                hands, weights, heights, dobs, hometowns):
-                    # retrieving nhl id from player page url
-                    plr_id = int(url.split("-")[-1])
+            first_name, last_name, url, _, position, _, _, _, _, _
+        ) in zip(
+            first_names, last_names, urls, numbers, positions,
+            hands, weights, heights, dobs, hometowns
+        ):
+            # retrieving nhl id from player page url
+            plr_id = int(url.split("-")[-1])
 
-                    # trying to find player in database
-                    plr = Player.find_by_id(plr_id)
-                    # creating player if not already in database
-                    if plr is None:
-                        plr = self.create_player(
-                            plr_id, last_name, first_name, position)
-                        print("%s created..." % plr)
+            # trying to find player in database
+            plr = Player.find_by_id(plr_id)
+            # creating player if not already in database
+            if plr is None:
+                plr = self.create_player(
+                    plr_id, last_name, first_name, position)
+                print("%s created..." % plr)
 
-                    players.append(plr)
+            players.append(plr)
 
         return players
 
@@ -358,15 +363,26 @@ class PlayerFinder():
                 'stats': 'yearByYear,yearByYearPlayoffs'})
             plr_json = req.json()
 
-            if len(plr_json['people']):
+            if 'people' in plr_json and len(plr_json['people']):
                 person = plr_json['people'][0]
-                last_name = person['lastName']
-                first_name = person['firstName']
-                position = person['primaryPosition']['code']
 
-                plr = self.create_player(
-                    plr_id, last_name, first_name, position)
-                logging.info("+ %s created" % plr)
+                if all(k in person for k in (
+                    'lastName', 'firstName', 'primaryPosition'
+                )):
+                    last_name = person['lastName']
+                    first_name = person['firstName']
+                    position = person['primaryPosition']['code']
+
+                    if position == 'N/A':
+                        position = None
+
+                    plr = self.create_player(
+                        plr_id, last_name, first_name, position)
+                    logging.warn("+ %s created" % plr)
+                else:
+                    logging.warn("+ Insufficient information to create player")
+            else:
+                logging.warn("+ No player with id %d" % plr_id)
 
         return plr
 
