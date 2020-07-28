@@ -79,7 +79,7 @@ def search_players(src_type, teams=None, season=None):
                 threads.submit(
                     plr_r.retrieve_player_seasons,
                     plr.player_id): plr for plr in team_players}
-            for future in as_completed(future_tasks):
+            for _ in as_completed(future_tasks):
                 try:
                     # TODO: think of something to do with the result here
                     # data = future.result()
@@ -87,6 +87,19 @@ def search_players(src_type, teams=None, season=None):
                 except Exception as e:
                     print
                     print("Conccurrent task generated an exception: %s" % e)
+
+
+def create_players_by_unused_ids(min_id, max_id):
+    """
+    Takes specified range of ids and checks for each instance whether a player
+    already exists or otherwise tries to create one.
+    """
+    pf = PlayerFinder()
+
+    for potential_plr_id in range(min_id, max_id):
+        plr = pf.search_player_by_id(potential_plr_id)
+        if plr:
+            print(plr)
 
 
 def create_players_for_draft_year(draft_year):
@@ -101,7 +114,7 @@ def create_players_for_draft_year(draft_year):
         # TODO: use named tuple
         (
             plr_id, position, last_name,
-            first_name, dob, alt_last_name
+            first_name, _, alt_last_name
         ) = suggested_plr
 
         # checking if player already exists
