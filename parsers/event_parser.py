@@ -138,7 +138,7 @@ class EventParser():
             event = self.get_event(event_data_item)
 
             # specifying event further
-            if self.game.type == 2 and event.period == 5:
+            if self.game.shootout_game and event.period == 5:
                 # shootout attempts are either goals, saved shots or misses all
                 # occurring in the fifth period of a regular season game
                 specific_event = self.get_shootout_attempt(event)
@@ -597,7 +597,7 @@ class EventParser():
 
         # retrieving number of player serving the penalty (if applicable)
         try:
-            served_by_no, served_by_name = re.search(
+            served_by_no, _ = re.search(
                 self.SERVED_BY_REGEX, event.raw_data).group(1, 2)
             served_by_no = int(served_by_no)
         except Exception:
