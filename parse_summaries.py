@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta
 
 from parsers.main_parser import MainParser
 
-FILENAME_REGEX = re.compile("^\d{4}\-\d{2}\-\d{2}$")
+FILENAME_REGEX = re.compile(R'^\d{4}\-\d{2}\-\d{2}$')
 
 if __name__ == '__main__':
 
