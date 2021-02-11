@@ -76,7 +76,7 @@ class MainParser():
                     # TODO: think of something to do with the result here
                     data = future.result()
                     print(data)
-                except Exception as e:
+                except Exception:
                     pass
 
     def parse_single_game(self, game_id, exclude):
@@ -165,17 +165,13 @@ class MainParser():
         # GS data prefix, i.e. game summary data is necessary as the parser
         # collects all periods a goal was scored in
         # this information is only retrievable from GS type summaries
-        self.gp = GameParser(
-            game_id,
-            self.raw_data[game_id]['GS'])
+        self.gp = GameParser(game_id, self.raw_data[game_id]['GS'])
         # retrieving essential game information, i.e. venue, attendance, score
         # using previously parsed team information
         game = self.gp.create_game(teams)
         # creating team/game item using raw game summary data and (if
         # available) raw shootout summary data
-        self.gp.create_team_games(
-            game,
-            self.raw_data[game_id]['GS'], self.read_on_demand(game_id, 'SO'))
+        self.gp.create_team_games(game, self.raw_data[game_id]['GS'], self.read_on_demand(game_id, 'SO'))
 
         return game, teams
 
@@ -216,19 +212,10 @@ class MainParser():
         """
         Retrieves shift information.
         """
-        # first trying to retrieve json shift data from downloaded raw data
-        # for current game
-        json_shift_data = self.read_json_data(game_id, data_type='shift_chart')
-
-        # if available using JSON shift data as source per default
-        if json_shift_data:
-            sp = ShiftParser(json_shift_data)
-            sp.create_shifts_from_json(
-                self.parsed_data[game_id]['game'],
-                self.parsed_data[game_id]['rosters'])
-        # otherwise using shift data from HTML reports available for both road
-        # and home team
-        else:
+        # JSON shift data is less reliable than the HTML reports
+        # that is why we're switching back here to the latter ones
+        # which are available separately for both road and home team
+        try:
             for prefix in ['TV', 'TH']:
                 # reading time-on-ice data anew if necessary
                 self.read_on_demand(game_id, prefix)
@@ -241,18 +228,26 @@ class MainParser():
                     home_road_type = 'home'
                 # retrieving shift information
                 sp.create_shifts(
+                    self.parsed_data[game_id]['game'], self.parsed_data[game_id]['rosters'][home_road_type])
+        except Exception:
+            print("Unable to retrieve shift information from HTML reports, trying JSON data instead")
+
+            json_shift_data = self.read_json_data(game_id, data_type='shift_chart')
+            if json_shift_data:
+                sp = ShiftParser(json_shift_data)
+                sp.create_shifts_from_json(
                     self.parsed_data[game_id]['game'],
-                    self.parsed_data[game_id]['rosters'][home_road_type])
+                    self.parsed_data[game_id]['rosters'])
 
     def read_json_data(self, game_id, data_type='game_feed'):
         """
         Reads JSON game feed or shift chart data for game with specified id.
         """
         json_file = self.dh.get_game_json_data(game_id, data_type)
-        
+
         if json_file is None:
             return
-        
+
         return json.loads(open(json_file).read())
 
     def read_on_demand(self, game_id, prefix):
