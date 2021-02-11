@@ -11,8 +11,7 @@ from db import create_or_update_db_item
 from db.game import Game
 from db.team import Team
 from db.team_game import TeamGame
-from utils import (
-    remove_null_strings, retrieve_season, str_to_timedelta, ordinal)
+from utils import remove_null_strings, retrieve_season, str_to_timedelta, ordinal
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ class GameParser():
               'BST':   3600}
 
     # regular expression to retrieve attendance figure
-    ATTENDANCE_AT_VENUE_REGEX = re.compile("\s(@|at)\s")
+    ATTENDANCE_AT_VENUE_REGEX = re.compile("@|at")
 
     # retrieving per period ordinal strings
     PER_PERIOD_ORDINALS = [ordinal(i) for i in range(1, 4)]
@@ -92,9 +91,8 @@ class GameParser():
         game_data['type'] = int(self.game_id[:2])
         # retrieving last modification date of original data
         try:
-            game_data['data_last_modified'] = parser.parse(
-                self.raw_data.xpath("//p[@id='last_modified']/text()")[0])
-        except Exception as e:
+            game_data['data_last_modified'] = parser.parse(self.raw_data.xpath("//p[@id='last_modified']/text()")[0])
+        except Exception:
             game_data['data_last_modified'] = None
 
         return game_data
@@ -105,22 +103,28 @@ class GameParser():
         """
         # retrieving combined attendance and venue from string,
         # i.e. *Ass./Att. 21,273 @ Centre Bell*
+
+        # setting default/fall back attendance to 0
+        attendance = 0
+
+        # splitting raw data at 'at' or '@' (if applicable)
         if any(s in self.game_data[1] for s in ['@', 'at']):
-            attendance_venue = self.game_data[1].split(" ", 3)
+            attendance_venue = re.split(self.ATTENDANCE_AT_VENUE_REGEX, self.game_data[1], 1)
         else:
             attendance_venue = self.game_data[1].split(" ")
 
-        # trying to convert attendance string into integer value
-        try:
-            attendance = int(attendance_venue[1].replace(",", ""))
-        except Exception as e:
-            logger.warn(
-                "+ Unable to convert '%s' to integer" % attendance_venue[1] +
-                " attendance value")
-            attendance = 0
+        # trying retrieve numeric attendance from extracted tokens
+        for item in attendance_venue:
+            for token in item.split():
+                if token.replace(",", "").isnumeric():
+                    attendance = int(token.replace(",", ""))
+                    break
 
         # retrieving venue from last element of string split above
-        venue = attendance_venue[-1]
+        venue = attendance_venue[-1].strip()
+
+        # removing superfluous 'at ' at the beginning of neutral site names
+        venue = re.sub("^at ", "", venue)
 
         return attendance, venue
 
@@ -158,8 +162,7 @@ class GameParser():
         # some games may end after midnight
         if int(start_time.split(":")[0]) != 12:
             if int(end_time.split(":")[0]) < int(start_time.split(":")[0]):
-                logging.warn("Game %s ending after midnight: %s" % (
-                    self.game_id, start_end[-1]))
+                logging.warn("Game %s ending after midnight: %s" % (self.game_id, start_end[-1]))
                 end_time_suffix = "AM"
                 end_date = game_date + timedelta(days=1)
 
@@ -171,8 +174,7 @@ class GameParser():
         end_date_time_stamp = datetime.combine(
             end_date, time(
                 end_time_stamp.hour, end_time_stamp.minute,
-                end_time_stamp.second, end_time_stamp.microsecond,
-                end_time_stamp.tzinfo))
+                end_time_stamp.second, end_time_stamp.microsecond, end_time_stamp.tzinfo))
 
         return start_date_time_stamp, end_date_time_stamp
 
@@ -204,9 +206,14 @@ class GameParser():
 
         # checking playoff game...
         elif game_type == 3:
+            # since 2020 round-robin games are typed as playoff games but could
+            # end in a shootout we have to check for a shootout goal here, too
+            if last_score_period == 'SO':
+                shootout_game = True
+                overtime_game = True
             # ...for an overtime goal, e.g. if there was a goal scored
             # in a period later than the third
-            if int(last_score_period) > 3:
+            elif int(last_score_period) > 3:
                 overtime_game = True
 
         return overtime_game, shootout_game
@@ -455,7 +462,7 @@ class GameParser():
             pp_ovr_goals, pp_ovr_opps = [
                 int(x) for x in pp_overall[pp_idx].split("/")[0].split("-")]
             pp_ovr_time = str_to_timedelta(pp_overall[pp_idx].split("/")[-1])
-        except Exception as e:
+        except Exception:
             pp_ovr_goals = 0
             pp_ovr_opps = 0
             pp_ovr_time = str_to_timedelta("00:00")
@@ -476,7 +483,7 @@ class GameParser():
                 pp_goals, pp_opps = [
                     int(x) for x in pp_raw[pp_idx].split("/")[0].split("-")]
                 pp_time = str_to_timedelta(pp_raw[pp_idx].split("/")[-1])
-            except Exception as e:
+            except Exception:
                 pp_goals = 0
                 pp_opps = 0
                 pp_time = str_to_timedelta("00:00")
@@ -591,7 +598,6 @@ class GameParser():
         Loads structured raw data and pre-processes it.
         """
         # finding content of html element with *GameInfo*-id
-        game_data_str = self.raw_data.xpath(
-            "//table[@id='GameInfo']/tr/td/text()")
-        game_data_str = [re.sub("\s+", " ", s) for s in game_data_str]
+        game_data_str = self.raw_data.xpath("//table[@id='GameInfo']/tr/td/text()")
+        game_data_str = [re.sub(R"\s+", " ", s) for s in game_data_str]
         self.game_data = remove_null_strings(game_data_str)[-5:]
