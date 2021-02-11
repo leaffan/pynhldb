@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
 CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
 
-LATEST_SIGNINGS_TEMPLATE_URL = (
-    "https://www.capfriendly.com/signings/all?ajax=1&p=%d")
+# LATEST_SIGNINGS_TEMPLATE_URL = "https://www.capfriendly.com/signings/all?ajax=1&p=%d"
+LATEST_SIGNINGS_TEMPLATE_URL = "https://www.capfriendly.com/ajax/signings/?p=%d"
 
 
 def retrieve_capfriendly_ids(team_id):
@@ -188,6 +188,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
     # TODO: reduce complexity and length of this function
     while existing_contracts_found < max_existing_contracts_found:
         url = LATEST_SIGNINGS_TEMPLATE_URL % page
+        print(url)
         r = requests.get(url)
         doc = html.fromstring(r.json()['data']['html'])
 
