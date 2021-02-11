@@ -25,7 +25,7 @@ def retrieve_season(date_of_interest=None):
     Identifies season based on month of given date, anything until June
     belongs to the season ending in the date's year, anything after
     June belongs to the season beginning in the date's year.
-    NB: Season's are identified by the year they're beginning in, even for
+    NB: Seasons are identified by the year they're beginning in, even for
     those that are shortened, i.e. 2012/13.
     """
     if date_of_interest is None:
@@ -33,7 +33,10 @@ def retrieve_season(date_of_interest=None):
     if date_of_interest.month < 7:
         season = date_of_interest.year - 1
     else:
-        season = date_of_interest.year
+        if date_of_interest.year == 2020:
+            season = 2019
+        else:
+            season = date_of_interest.year
 
     return season
 
