@@ -21,10 +21,9 @@ class SummaryDownloader(MultiFileDownloader):
     # base url for official schedule json page
     SCHEDULE_URL_BASE = "http://statsapi.web.nhl.com/api/v1/schedule"
     # url template for official json gamefeed page
-    JSON_GAME_FEED_URL_TEMPLATE = (
-        "http://statsapi.web.nhl.com/api/v1/game/%s/feed/live")
-    JSON_SHIFT_CHART_URL_TEMPLATE = (
-        "http://www.nhl.com/stats/rest/shiftcharts?cayenneExp=gameId=%s")
+    JSON_GAME_FEED_URL_TEMPLATE = "http://statsapi.web.nhl.com/api/v1/game/%s/feed/live"
+    # JSON_SHIFT_CHART_URL_TEMPLATE = "http://www.nhl.com/stats/rest/shiftcharts?cayenneExp=gameId=%s"
+    JSON_SHIFT_CHART_URL_TEMPLATE = "https://api.nhle.com/stats/rest/en/shiftcharts?cayenneExp=gameId=%s"
     # url parameter for json scoreboard page
     LINESCORE_CONTENT_KEY = "schedule.linescore"
 
@@ -37,12 +36,9 @@ class SummaryDownloader(MultiFileDownloader):
     REPORT_TYPES = ['GS', 'ES', 'FC', 'PL', 'TV', 'TH', 'RO', 'SS', 'SO']
     GAME_TYPES = ['P', 'R']
 
-    def __init__(
-            self, tgt_dir, date, to_date='',
-            zip_summaries=True, workers=0, cleanup=True, exclude=None):
+    def __init__(self, tgt_dir, date, to_date='', zip_summaries=True, workers=0, cleanup=True, exclude=None):
         # constructing base class instance
-        super(self.__class__, self).__init__(
-            tgt_dir, zip_summaries, workers, cleanup)
+        super().__init__(tgt_dir, zip_summaries, workers, cleanup)
         # parsing start date for summary retrieval
         self.date = parse(date)
         # retrieving end date for summary retrieval
@@ -51,8 +47,7 @@ class SummaryDownloader(MultiFileDownloader):
         else:
             self.to_date = self.date
         # preparing list of dates to download summary data for
-        self.game_dates = list(
-            rrule(DAILY, dtstart=self.date, until=self.to_date))
+        self.game_dates = list(rrule(DAILY, dtstart=self.date, until=self.to_date))
         # storing datasets to be excluded from downloading
         self.exclude = list()
         if exclude is not None:
@@ -62,8 +57,7 @@ class SummaryDownloader(MultiFileDownloader):
         self.mod_timestamp_src = os.path.join(tgt_dir, '_mod_timestamps.json')
         # loading dictionary of previously downloaded summaries (if available)
         if os.path.isfile(self.mod_timestamp_src):
-            self.mod_timestamps = json.loads(
-                open(self.mod_timestamp_src).read())
+            self.mod_timestamps = json.loads(open(self.mod_timestamp_src).read())
         else:
             self.mod_timestamps = dict()
 
@@ -71,24 +65,19 @@ class SummaryDownloader(MultiFileDownloader):
         """
         Returns target directory according to current date.
         """
-        return os.path.join(
-            self.base_tgt_dir, self.current_date.strftime("%Y-%m"))
+        return os.path.join(self.base_tgt_dir, self.current_date.strftime("%Y-%m"))
 
     def get_zip_name(self):
         """
         Returns file name of zipped downloads for current date.
         """
-        return "%04d-%02d-%02d" % (
-            self.current_date.year,
-            self.current_date.month,
-            self.current_date.day)
+        return "%04d-%02d-%02d" % (self.current_date.year, self.current_date.month, self.current_date.day)
 
     def get_zip_path(self):
         """
         Returns path to file of zipped downloaded files for current date.
         """
-        return os.path.join(
-            self.get_tgt_dir(), ".".join((self.get_zip_name(), 'zip')))
+        return os.path.join(self.get_tgt_dir(), ".".join((self.get_zip_name(), 'zip')))
 
     def find_files_to_download(self):
         """
@@ -97,22 +86,13 @@ class SummaryDownloader(MultiFileDownloader):
         # making sure that the list of files to download is empty
         self.files_to_download = list()
         # preparing formatted date string as necessary for scoreboard retrieval
-        fmt_date = "%d-%02d-%02d" % (
-            self.current_date.year,
-            self.current_date.month,
-            self.current_date.day)
+        fmt_date = "%d-%02d-%02d" % (self.current_date.year, self.current_date.month, self.current_date.day)
 
         # retrieving schedule for current date in json format
-        req = requests.get(
-            self.SCHEDULE_URL_BASE, params={
-                'startDate': fmt_date,
-                'endDate': fmt_date,
-                'expand': self.LINESCORE_CONTENT_KEY
-            }
-        )
+        req = requests.get(self.SCHEDULE_URL_BASE, params={
+            'startDate': fmt_date, 'endDate': fmt_date, 'expand': self.LINESCORE_CONTENT_KEY})
         json_scoreboard = json.loads(req.text)
-        self.files_to_download = self.get_files_to_download_from_scoreboard(
-            json_scoreboard)
+        self.files_to_download = self.get_files_to_download_from_scoreboard(json_scoreboard)
 
     def get_files_to_download_from_scoreboard(self, json_scoreboard):
         """
@@ -137,28 +117,18 @@ class SummaryDownloader(MultiFileDownloader):
                         # if the current game ended in a shootout
                         if rt == 'SO' and not game['linescore']['hasShootout']:
                             continue
-                        htmlreport_url = "".join((
-                            self.HTML_REPORT_PREFIX,
-                            season,
-                            "/",
-                            rt,
-                            str(game_id),
-                            ".HTM"))
+                        htmlreport_url = "".join((self.HTML_REPORT_PREFIX, season, "/", rt, str(game_id), ".HTM"))
                         files_to_download.append((htmlreport_url, None))
                 # setting upd json game feed url and adding it to list of
                 # files to be downloaded
                 if 'game_feed' not in self.exclude:
-                    feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(
-                        full_game_id)
-                    files_to_download.append(
-                        (feed_json_url, ".".join((game_id, "json"))))
+                    feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(full_game_id)
+                    files_to_download.append((feed_json_url, ".".join((game_id, "json"))))
                 # setting upd json shift chart url and adding it to list of
                 # files to be downloaded
                 if 'shift_chart' not in self.exclude:
-                    chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(
-                        full_game_id)
-                    files_to_download.append(
-                        (chart_json_url, "".join((game_id, "_sc.json"))))
+                    chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(full_game_id)
+                    files_to_download.append((chart_json_url, "".join((game_id, "_sc.json"))))
 
         return files_to_download
 
@@ -262,8 +232,7 @@ class SummaryDownloader(MultiFileDownloader):
         if req.status_code == 200:
             json_data = req.json()
             # retrieving time stamp for downloaded data
-            act_time_stamp = parse(
-                json_data['metaData']['timeStamp'].replace("_", " "))
+            act_time_stamp = parse(json_data['metaData']['timeStamp'].replace("_", " "))
             # checking whether json data that is due to update an existing data
             # set contains any play information at all and bailing out if that
             # is not the case - by doing so we avoid overwriting existing
@@ -298,16 +267,14 @@ class SummaryDownloader(MultiFileDownloader):
         """
         # retrieving timestamp of last modification in case data has been
         # downloaded before
-        existing_data_hash = self.get_last_modification_timestamp(
-            url, tgt_path)
+        existing_data_hash = self.get_last_modification_timestamp(url, tgt_path)
 
         req = requests.get(url)
 
         if req.status_code == 200:
             json_data = req.json()
             # calculating MD5 hash for downloaded data
-            json_data_hash = hashlib.md5(
-                json.dumps(json_data).encode('utf-8')).hexdigest()
+            json_data_hash = hashlib.md5(json.dumps(json_data).encode('utf-8')).hexdigest()
             # comparing hashes of downloaded and already exising data
             if not existing_data_hash == json_data_hash:
                 sys.stdout.write("+")
@@ -324,9 +291,7 @@ class SummaryDownloader(MultiFileDownloader):
         """
         for date in self.game_dates:
             self.current_date = date
-            print(
-                "+ Downloading summaries for %s" % self.current_date.strftime(
-                    "%A, %B %d, %Y"))
+            print("+ Downloading summaries for %s" % self.current_date.strftime("%A, %B %d, %Y"))
             self.find_files_to_download()
             self.zip_path = self.get_zip_path()
             self.download_files(self.get_tgt_dir())
@@ -334,6 +299,4 @@ class SummaryDownloader(MultiFileDownloader):
             if self.zip_downloaded_files:
                 self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
-        json.dump(
-            self.mod_timestamps, open(self.mod_timestamp_src, 'w'),
-            indent=2, sort_keys=True)
+        json.dump(self.mod_timestamps, open(self.mod_timestamp_src, 'w'), indent=2, sort_keys=True)
