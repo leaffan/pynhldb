@@ -29,36 +29,31 @@ class ShiftParser():
         self.load_data()
 
         # retrieving team
-        team_name = self.raw_data.xpath(
-            "//td[@class='teamHeading + border']/text()")[0]
+        team_name = self.raw_data.xpath("//td[@class='teamHeading + border']/text()")[0]
         team = Team.find_by_name(team_name)
 
         for no in sorted(self.shift_data.keys()):
             # retrieving player with jersey number
             try:
                 player = roster[no].get_player()
-            except KeyError as e:
+            except KeyError:
                 # TODO: propper logging
                 print(
                     "Unable to get player with number %d from team " % no +
                     "roster for %s. Skipping shift creation." % team)
                 continue
             # retrieving all shifts for current player
-            shifts = self.get_shifts_for_player(self.shift_data[no], player)
+            shifts = self.get_shifts_for_player(self.shift_data[no], player, game)
 
             # converting each single shift into a database item
             for shift_data_dict in shifts:
                 shift_data_dict['no'] = no
 
                 # setting up new shift item
-                shift = Shift(
-                    game.game_id, team.team_id, player.player_id,
-                    shift_data_dict)
+                shift = Shift(game.game_id, team.team_id, player.player_id, shift_data_dict)
 
                 # trying to find shift item in database
-                db_shift = Shift.find(
-                    game.game_id, player.player_id,
-                    shift_data_dict['in_game_shift_cnt'])
+                db_shift = Shift.find(game.game_id, player.player_id, shift_data_dict['in_game_shift_cnt'])
 
                 # creating new or updating existing shift item
                 create_or_update_db_item(db_shift, shift)
@@ -74,44 +69,63 @@ class ShiftParser():
             for no in rosters[home_road]:
                 rosters_by_player_id[rosters[home_road][no].player_id] = no
 
-        # iterating over all shift data items in the JSON structure
-        for shift_item in self.raw_data['data']:
+        for player_id in rosters_by_player_id:
+            # retrieving and sorting raw shifts for current player
+            raw_plr_shifts = list(filter(lambda sh: sh['playerId'] == player_id, self.raw_data['data']))
+            raw_plr_shifts = sorted(raw_plr_shifts, key=lambda shf: (shf['period'], shf['startTime'], shf['endTime']))
 
-            # skipping shift if it has a null duration
-            if shift_item['duration'] is None:
+            if not raw_plr_shifts:
                 continue
 
-            shift_data_dict = dict()
-            # retrieving basic data
-            shift_data_dict['player_id'] = shift_item['playerId']
-            shift_data_dict['team_id'] = shift_item['teamId']
-            # retrieving sweater number by utilizing previously created dict
-            shift_data_dict['no'] = rosters_by_player_id[
-                shift_data_dict['player_id']]
-            # retrieving actual single shift data
-            shift_data_dict['in_game_shift_cnt'] = shift_item['shiftNumber']
-            shift_data_dict['period'] = shift_item['period']
-            shift_data_dict['start'] = str_to_timedelta(
-                shift_item['startTime'])
-            shift_data_dict['end'] = str_to_timedelta(
-                shift_item['endTime'])
-            shift_data_dict['duration'] = str_to_timedelta(
-                shift_item['duration'])
+            shf_cnt = 0
+            shf_characteristics = set()
 
-            # setting up new shift item
-            shift = Shift(
-                game.game_id, shift_data_dict['team_id'],
-                shift_data_dict['player_id'], shift_data_dict)
+            # preparing container for extracted shift information
+            prep_shifts = list()
 
-            # trying to find current shift item in database
-            db_shift = Shift.find(
-                game.game_id, shift_data_dict['player_id'],
-                shift_data_dict['in_game_shift_cnt'])
+            for raw_shift in raw_plr_shifts:
+                # creating hashes
+                # a) using period, start and end time of shift
+                shf_hash = tuple([raw_shift['period'], raw_shift['startTime'], raw_shift['endTime']])
+                # b) using period and start time of shift
+                shf_start_hash = tuple([raw_shift['period'], raw_shift['startTime']])
+                if shf_hash in shf_characteristics:
+                    print("Shift for %d already registered: %s" % (player_id, str(shf_hash)))
+                    continue
+                if shf_start_hash in shf_characteristics:
+                    print("Another shift for %d starting at %s in period %s already registered" % (
+                        player_id, raw_shift['startTime'], raw_shift['period']))
+                    continue
+                shf_cnt += 1
+                shf_characteristics.add(shf_hash)
+                shf_characteristics.add(shf_start_hash)
 
-            # creating new or updating existing shift item
-            create_or_update_db_item(db_shift, shift)
+                shift_data_dict = dict()
+                # retrieving basic data
+                shift_data_dict['player_id'] = player_id
+                shift_data_dict['team_id'] = raw_shift['teamId']
+                # retrieving sweater number by utilizing previously created dict
+                shift_data_dict['no'] = rosters_by_player_id[player_id]
+                # retrieving actual single shift data
+                shift_data_dict['in_game_shift_cnt'] = raw_shift['shiftNumber']
+                shift_data_dict['period'] = raw_shift['period']
+                shift_data_dict['start'] = str_to_timedelta(raw_shift['startTime'])
+                shift_data_dict['end'] = str_to_timedelta(raw_shift['endTime'])
+                shift_data_dict['duration'] = str_to_timedelta(raw_shift['duration'])
+                prep_shifts.append(shift_data_dict)
 
-    def get_shifts_for_player(self, shift_data_trs, player):
+            # finally creating/updating shift information in database
+            for prep_shift in prep_shifts:
+                # setting up new shift item
+                shift = Shift(game.game_id, prep_shift['team_id'], prep_shift['player_id'], prep_shift)
+
+                # trying to find current shift item in database
+                db_shift = Shift.find(game.game_id, prep_shift['player_id'], prep_shift['in_game_shift_cnt'])
+
+                # creating new or updating existing shift item
+                create_or_update_db_item(db_shift, shift)
+
+    def get_shifts_for_player(self, shift_data_trs, player, game):
         """
         Gets all shifts in a game for a single player.
         """
@@ -134,14 +148,12 @@ class ShiftParser():
             shift['start'] = str_to_timedelta(tokens[2].split("/")[0].strip())
             # retrieving shift end time
             try:
-                shift['end'] = str_to_timedelta(
-                    tokens[3].split("/")[0].strip())
+                shift['end'] = str_to_timedelta(tokens[3].split("/")[0].strip())
             # sometimes no end time is specified
-            except Exception as e:
+            except Exception:
                 logger.warning(
                     "Unable to extract time interval from raw" +
-                    "data: %s (game id: %s, %s)" % (
-                        tokens[3], self.game.game_id, player.name))
+                    "data: %s (game id: %s, %s)" % (tokens[3], game.game_id, player.name))
                 shift['end'] = None
             # retrieving shift duration
             shift['duration'] = str_to_timedelta(tokens[4])
@@ -160,10 +172,8 @@ class ShiftParser():
         """
         # retrieving all headings and spacers from html data, shift data for
         # each player is located between these two elements
-        headings = self.raw_data.xpath(
-            "//td[@class='playerHeading + border']/parent::tr")
-        spacers = self.raw_data.xpath(
-            "//td[@class='spacer + bborder + lborder + rborder']/parent::tr")
+        headings = self.raw_data.xpath("//td[@class='playerHeading + border']/parent::tr")
+        spacers = self.raw_data.xpath("//td[@class='spacer + bborder + lborder + rborder']/parent::tr")
 
         # setting up tree to generate explicit xpath expressions for
         # considered elements
@@ -173,7 +183,7 @@ class ShiftParser():
             # retrieving player's jersey number
             try:
                 no = int(h.xpath("td/text()")[0].split()[0])
-            except Exception as e:
+            except Exception:
                 print("unable to get player number from shift table heading")
                 continue
             # retrieving explicit xpath expressions for both
