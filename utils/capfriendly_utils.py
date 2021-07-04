@@ -188,7 +188,6 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
     # TODO: reduce complexity and length of this function
     while existing_contracts_found < max_existing_contracts_found:
         url = LATEST_SIGNINGS_TEMPLATE_URL % page
-        print(url)
         r = requests.get(url)
         doc = html.fromstring(r.json()['data']['html'])
 
@@ -253,11 +252,10 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                     ) == (
                         sugg_first_name, sugg_last_name
                     ):
-                        pfr.create_player(
-                            nhl_id, sugg_last_name, sugg_first_name,
-                            pos, capfriendly_id=capfriendly_id)
-                        plr = Player.find_by_capfriendly_id(capfriendly_id)
-                        print("+ Player %s created in database" % plr)
+                        # either finding existing player (by id) or
+                        # creating a new one
+                        plr = pfr.search_player_by_id(nhl_id)
+                        print("+ Player %s found/created in database" % plr)
                     # TODO: error handling, date of birth checking
                     else:
                         continue
