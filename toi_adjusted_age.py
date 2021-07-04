@@ -95,7 +95,9 @@ def process_team(season, team):
     output.append("team,game_id,std_mean_age,weighted_mean_age")
 
     for g in games:
-        print(g.game_id)
+        # if not g.game_id == 2019020951:
+        #     continue
+        print(g.game_id, g.date)
         std_age, weighted_age = calculate_mean_age(
             season, g.game_id, query_team=team)
         std_ages.append(std_age)
@@ -104,21 +106,21 @@ def process_team(season, team):
             team.name, str(g.game_id), "%.4f" % (std_age.days / 365.),
             "%.4f" % (int(weighted_age.days) / 365.))))
 
-    open(R"d:\%d_%s.csv" % (season, team.abbr), 'w').write("\n".join(output))
+    open(R"results\%d_%s.csv" % (season, team.abbr), 'w').write("\n".join(output))
 
     # plot_stuff(std_ages, weighted_ages)
 
 
 if __name__ == '__main__':
 
-    season = 2016
+    season = 2019
     # game_id = "020001"
 
     # team = Team.find('TOR')
     # games = Game.find_by_season_team(season, team)
 
     for team in sorted(Team.find_teams_for_season(season))[:]:
-        if not team.abbr == 'TOR':
+        if not team.abbr == 'CLB':
             continue
         print(team)
         process_team(season, team)
