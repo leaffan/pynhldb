@@ -207,19 +207,10 @@ class PlayerFinder():
 
         # collecting player names and links to capfriendly pages for different
         # player groups
-        cf_links = list()
-        cf_names = list()
-        for group in [
-            'FORWARDS', 'DEFENSE', 'GOALIES', 'INJURED'
-        ]:
-            cf_links += doc.xpath(
-                "//table[@id='team']/tbody/tr[@class='column_head c'" +
-                "]/td[contains(text(), '%s')]/parent::tr/" % group +
-                "following-sibling::tr/td[1]/a/@href")
-            cf_names += doc.xpath(
-                "//table[@id='team']/tbody/tr[@class='column_head c'" +
-                "]/td[contains(text(), '%s')]/parent::tr/" % group +
-                "following-sibling::tr/td[1]/a/text()")
+        cf_links = doc.xpath(
+            "//table[@id='team']/tr[@class='column_head c']/td/parent::tr/following-sibling::tr/td[1]/a/@href")
+        cf_names = doc.xpath(
+            "//table[@id='team']/tr[@class='column_head c']/td/parent::tr/following-sibling::tr/td[1]/a/text()")
 
         for lnk, name in zip(cf_links, cf_names):
             # retrieving capfriendly id from player page link
