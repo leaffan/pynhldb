@@ -59,7 +59,7 @@
     "abbr": "MTL", 
     "first_year_of_play": 1917, 
     "last_year_of_play": null, 
-    "name": "Montréal Canadiens", 
+    "name": "MontrÃ©al Canadiens", 
     "orig_abbr": "MTL", 
     "team_name": "Canadiens"
   }, 
@@ -432,12 +432,12 @@
     "team_name": "Golden Knights"
   }, 
   "55": {
-    "abbr": "OAK", 
-    "first_year_of_play": 1967, 
-    "last_year_of_play": 1970, 
-    "name": "Oakland Seals", 
-    "orig_abbr": "OAK", 
-    "team_name": "Seals"
+    "abbr": "SEA", 
+    "first_year_of_play": 2021, 
+    "last_year_of_play": null, 
+    "name": "Seattle Kraken", 
+    "orig_abbr": "SEA", 
+    "team_name": "Kraken"
   }, 
   "56": {
     "abbr": "CSE",
@@ -462,5 +462,13 @@
     "name": "Toronto St. Patricks", 
     "orig_abbr": "TSP", 
     "team_name": "St. Patricks"
-  }
+  },
+  "59": {
+    "abbr": "OAK", 
+    "first_year_of_play": 1967, 
+    "last_year_of_play": 1970, 
+    "name": "Oakland Seals", 
+    "orig_abbr": "OAK", 
+    "team_name": "Seals"
+  } 
 }
