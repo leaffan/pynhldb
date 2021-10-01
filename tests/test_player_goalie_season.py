@@ -39,4 +39,4 @@ def test_find_all_goalie_seasons():
     selected goaltender.
     """
     goalie_seasons = GoalieSeason.find_all(8448382)
-    assert len(goalie_seasons) == 32
+    assert len(goalie_seasons) == 33

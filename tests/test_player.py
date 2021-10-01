@@ -44,7 +44,7 @@ def test_find_by_name_extended_caps():
 
 def test_find_by_name_extended_caps_not_working_yet():
     plr = Player.find_by_name_extended("TJ", "GALIARDI")
-    assert plr is None
+    assert plr.player_id == 8474001
 
 
 def test_name_property():
