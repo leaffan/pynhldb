@@ -35,6 +35,9 @@ if __name__ == '__main__':
         '--teams', dest='teams', nargs='+', action='store',
         default=None, help='teams to retrieve roster players/contracts for')
     parser.add_argument(
+        '--players', dest='players', nargs='+', action='store', type=int,
+        default=None, help='players (as ids) to retrieve contracts for')
+    parser.add_argument(
         '--contract_count', dest='contract_count', action='store',
         type=int, default=5, help='number of latest signings to retrieve')
     args = parser.parse_args()
@@ -63,8 +66,9 @@ if __name__ == '__main__':
     if setup_steps in ['pd', 'a']:
         cpd.create_player_data()
     # retrieving contract data for all players in database
+    # (optionally only for players specified on command line)
     if setup_steps in ['c']:
-        cpd.create_player_contracts()
+        cpd.create_player_contracts(args.players)
     # retrieving contract data for all players contracted
     if setup_steps in ['ct']:
         cpd.create_player_contracts_by_team(args.teams)

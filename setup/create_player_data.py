@@ -71,7 +71,7 @@ def create_player_data():
                 print("Concurrent task generated an exception: %s" % e)
 
 
-def create_player_contracts():
+def create_player_contracts(player_ids=None):
     """
     Creates player contract items in database.
     """
@@ -79,6 +79,9 @@ def create_player_contracts():
 
     with session_scope() as session:
         players = sorted(session.query(Player).all())[:]
+
+    if player_ids:
+        players = list(filter(lambda p: p.player_id in player_ids, players))
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as threads:
         future_tasks = {
