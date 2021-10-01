@@ -27,8 +27,7 @@ class PlayerContractRetriever():
     CAPFRIENDLY_CLAUSE_REGEX = re.compile(R"^\:\s")
     CAPFRIENDLY_AMOUNT_REGEX = re.compile(R"\$|\-|,|\u2013")
     CT_LENGTH_REGEX = re.compile(R"LENGTH\:\s(\d+)\sYEARS?")
-    EXPIRY_STATUS_REGEX = re.compile(
-        R"(UFA \(NO QO\))|(RFA)|(UFA)|(10.2\(c\))")
+    EXPIRY_STATUS_REGEX = re.compile(R"(UFA \(N(?:O|o) QO\))|(RFA)|(UFA)|(10.2\(c\))")
 
     def __init__(self):
         pass
@@ -49,19 +48,15 @@ class PlayerContractRetriever():
         # retrieving raw, i.e. list of dictionaries, contract and historical
         # salary information
         plr_contract_list = self.retrieve_raw_contract_data(player_id)
-        historical_salaries = self.retrieve_raw_historical_salary_data(
-            player_id)
+        historical_salaries = self.retrieve_raw_historical_salary_data(player_id)
 
         # creating or updating contract database item
         for plr_contract_dict in plr_contract_list:
             contract = Contract(player_id, plr_contract_dict)
             contract_db = Contract.find_with_team(
-                player_id,
-                plr_contract_dict['start_season'],
-                plr_contract_dict['signing_team_id'])
+                player_id, plr_contract_dict['start_season'], plr_contract_dict['signing_team_id'])
 
-            contract_db = self.create_or_update_database_item(
-                contract, contract_db)
+            contract_db = self.create_or_update_database_item(contract, contract_db)
 
             # creating/retrieving buyout item in/from database (if applicable
             # to current contract)
@@ -77,13 +72,9 @@ class PlayerContractRetriever():
                 if buyout:
                     if contract_year_dict['season'] >= buyout.start_season:
                         contract_year_dict['bought_out'] = True
-                contract_year = ContractYear(
-                    player_id, contract_db.contract_id, contract_year_dict)
-                contract_year_db = ContractYear.find(
-                    player_id, contract_db.contract_id,
-                    contract_year_dict['season'])
-                self.create_or_update_database_item(
-                    contract_year, contract_year_db)
+                contract_year = ContractYear(player_id, contract_db.contract_id, contract_year_dict)
+                contract_year_db = ContractYear.find(player_id, contract_db.contract_id, contract_year_dict['season'])
+                self.create_or_update_database_item(contract_year, contract_year_db)
 
         # creating or updating historical salary data in database
         for hist_salary_year in historical_salaries:
@@ -177,7 +168,7 @@ class PlayerContractRetriever():
                 "tr[@class='even' or @class='odd']")
             # retrieving contract notes, i.e. buyout notifications or clause
             # details
-            contract_dict['notes'] = self.get_contract_notes(ct_notes)
+            contract_dict['notes'] = " ".join(ct_notes).replace(" :", ":").replace("  ", " ")
             # setting buyout flag
             contract_dict['bought_out'] = self.get_contract_buyout_status(
                 contract_dict)
@@ -188,8 +179,7 @@ class PlayerContractRetriever():
                 re.search(self.CT_LENGTH_REGEX, ct_length).group(1))
             # retrieving player status after contract expires, e.g. RFA, UFA
             # or UFA (NO QO)
-            contract_dict['expiry_status'] = re.search(
-                self.EXPIRY_STATUS_REGEX, exp_status).group(0)
+            contract_dict['expiry_status'] = re.search(self.EXPIRY_STATUS_REGEX, exp_status).group(0).upper()
             # retrieving id of signing team
             contract_dict[
                 'signing_team_id'] = self.get_contract_buyout_signing_team(
@@ -318,28 +308,25 @@ class PlayerContractRetriever():
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
-        # retrieving raw length, value and team of buyout
-        buyout_length, buyout_team = doc.xpath(
-            "//div[@class='mt4 mb2']/div[@class='l cont_t']/text()")
-        buyout_value, buyout_date = doc.xpath(
-            "//div[@class='mt2 mb4 cb']/div[@class='l cont_t']/text()")
+        # retrieving raw length, value, team, date and type of buyout
+        # TODO: add buyout type to data model
+        buyout_data = doc.xpath(
+            "//h4[text() = 'BUYOUT HISTORY']/following-sibling::div/descendant::div[@class='l cont_t']/" +
+            "descendant-or-self::div/text()")
+        buyout_length, _, buyout_team, buyout_value, buyout_date, buyout_type = buyout_data
 
         # retrieving buyout length
-        buyout_dict['length'] = int(
-            re.search(self.CT_LENGTH_REGEX, buyout_length).group(1))
+        buyout_dict['length'] = int(re.search(self.CT_LENGTH_REGEX, buyout_length).group(1))
         # retrieving buyout value
-        buyout_dict['value'] = int(
-            buyout_value.split(":")[-1].strip()[1:].replace(",", ""))
+        buyout_dict['value'] = int(buyout_value.split(":")[-1].strip()[1:].replace(",", ""))
+
         # retrieving id of buyout team
-        buyout_dict['buyout_team_id'] = self.get_contract_buyout_signing_team(
-            buyout_team)
-        buyout_dict['buyout_date'] = self.get_contract_buyout_date(
-            buyout_date)
+        buyout_dict['buyout_team_id'] = self.get_contract_buyout_signing_team(buyout_team)
+        buyout_dict['buyout_date'] = self.get_contract_buyout_date(buyout_date)
 
         # retrieving table rows each representing a year of the buyout
         raw_buyout_years = doc.xpath(
-            "//div[@class='mt4 mb2']/ancestor::div/" +
-            "following-sibling::table/tbody/tr[@class='even' or @class='odd']")
+            "//div[@class='mt4 mb2']/ancestor::div/following-sibling::table/tbody/tr[@class='even' or @class='odd']")
 
         buyout_years = list()
 
@@ -351,15 +338,12 @@ class PlayerContractRetriever():
             # retrieving buyout cost
             buyout_year_dict['cost'] = int(cost.strip()[1:].replace(",", ""))
             # retrieving buyout cap hit
-            buyout_year_dict['cap_hit'] = int(
-                cap_hit.replace(",", "").replace("$", "").strip())
+            buyout_year_dict['cap_hit'] = int(cap_hit.replace(",", "").replace("$", "").strip())
             buyout_years.append(buyout_year_dict)
 
         buyout_dict['buyout_years'] = buyout_years
-        buyout_dict['start_season'] = min(
-            [buyout_year['season'] for buyout_year in buyout_years])
-        buyout_dict['end_season'] = max(
-            [buyout_year['season'] for buyout_year in buyout_years])
+        buyout_dict['start_season'] = min([buyout_year['season'] for buyout_year in buyout_years])
+        buyout_dict['end_season'] = max([buyout_year['season'] for buyout_year in buyout_years])
 
         return buyout_dict
 
