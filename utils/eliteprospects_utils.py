@@ -105,10 +105,9 @@ def get_alternate_last_name(doc, first_name, last_name):
     and given player's first and last names.
     """
     alt_last_name = ''
-    aka_element = doc.xpath("//small[starts-with(text(), ' a.k.a.')]/text()")
+    aka_element = doc.xpath("//div[@class='ep-entity-header__alternative-name']/text()")
     if aka_element:
-        aka = aka_element.pop().strip().replace(
-            "a.k.a.", "").replace('"', "").strip()
+        aka = aka_element.pop().strip().replace("a.k.a.", "").replace('"', "").strip()
         # retrieving all available alternate names
         akas = [a.strip() for a in aka.split(",")]
         tmp_alt_last_names = list()
