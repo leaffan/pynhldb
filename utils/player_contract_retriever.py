@@ -158,7 +158,7 @@ class PlayerContractRetriever():
                 ct_source = ""
             # retrieving raw contract notes
             ct_notes = element.xpath(
-                "following-sibling::div[contains(@class, 'clause')]/" +
+                "ancestor::div[@class='rel cntrct']/following-sibling::div[contains(@class, 'clause')]/" +
                 "descendant-or-self::*/text()")
             # retrieving table rows with raw contract years
             raw_ct_years_trs = element.xpath(
