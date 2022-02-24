@@ -121,17 +121,15 @@ class PlayerContractRetriever():
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
-        contract_elements = doc.xpath(
-            "//div[@class='contract_data rel cntrct']")
-
+        contract_elements = doc.xpath("//div[@class='contract_data']")
+ 
         for element in contract_elements:
             # setting up dictionary for current contract
             contract_dict = dict()
             # retrieving raw contract length, expiry status and signing team
             # as list of text elements
             raw_length_exp_status_sign_team = element.xpath(
-                "div/div[@class='l cont_t mt4 mb2']/" +
-                "descendant-or-self::*/text()")
+                "div/div[@class='l cont_t mb2']/descendant-or-self::*/text()")
             # retrieving raw contract length from first entry in previously
             # created list
             ct_length = raw_length_exp_status_sign_team[0]
@@ -164,7 +162,7 @@ class PlayerContractRetriever():
                 "descendant-or-self::*/text()")
             # retrieving table rows with raw contract years
             raw_ct_years_trs = element.xpath(
-                "following-sibling::table/tbody/" +
+                "ancestor::div[@class='rel cntrct']/following-sibling::table/tbody/" +
                 "tr[@class='even' or @class='odd']")
             # retrieving contract notes, i.e. buyout notifications or clause
             # details
