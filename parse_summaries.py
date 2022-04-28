@@ -6,6 +6,8 @@ import re
 import sys
 import argparse
 
+from datetime import timedelta
+
 from dateutil.parser import parse
 from dateutil.relativedelta import relativedelta
 
@@ -75,13 +77,7 @@ if __name__ == '__main__':
         sys.exit()
 
     # finding all dates between first and second specified date
-    all_dates = set()
-    all_dates.add(from_date)
-    curr_date = from_date
-
-    while curr_date != to_date:
-        curr_date = curr_date + relativedelta(days=1)
-        all_dates.add(curr_date)
+    all_dates = set([from_date + timedelta(days=i) for i in range((to_date - from_date).days + 1)])
 
     print("+ Parsing summaries for the following dates:")
     for date in sorted(all_dates):
