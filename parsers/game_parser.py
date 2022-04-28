@@ -7,7 +7,7 @@ from datetime import datetime, time, timedelta
 
 from dateutil import parser
 
-from db import create_or_update_db_item
+from db import create_or_update_db_item, delete_db_item
 from db.game import Game
 from db.team import Team
 from db.team_game import TeamGame
@@ -69,6 +69,12 @@ class GameParser():
         db_game = Game.find_by_id(game_data['game_id'])
         # creating new game
         game = Game(game_data['game_id'], game_data)
+        
+        # deleting existing game in database (if already present)
+        # currently necessary to avoid confusion with re-created events 
+        if db_game:
+            delete_db_item(db_game)
+        
         # updating existing or creating new game item in database
         create_or_update_db_item(db_game, game)
 
