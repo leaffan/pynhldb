@@ -8,6 +8,12 @@ from .common import session_scope
 logger = logging.getLogger()
 
 
+def delete_db_item(db_item):
+    with session_scope() as session:
+        session.delete(db_item)
+        session.commit()
+
+
 def commit_db_item(db_item, add=False):
     with session_scope() as session:
         if add:
