@@ -95,3 +95,6 @@ ENV/
 _config.yml
 utils/uppers.txt
 tests/data/*
+
+sandbox/
+results/
