@@ -37,7 +37,7 @@ class GameParser():
         self.game_id = game_id
         self.raw_data = raw_data
 
-    def create_game(self, teams):
+    def create_game(self, teams, delete_existing=True):
         # loading and pre-processing raw data
         self.load_data()
         game_data = dict()
@@ -72,7 +72,7 @@ class GameParser():
         
         # deleting existing game in database (if already present)
         # currently necessary to avoid confusion with re-created events 
-        if db_game:
+        if db_game and delete_existing:
             delete_db_item(db_game)
         
         # updating existing or creating new game item in database
