@@ -1132,6 +1132,8 @@ class EventParser():
             # converting regular season overtime to *fourth* period
             if period == 'OT':
                 period = '4'
+            if period == 'SO':
+                continue
             (
                 # using a tuple of period and time interval as key
                 self.cached_goals[(int(period), str_to_timedelta(time))]
@@ -1172,7 +1174,7 @@ class EventParser():
             single_play_dict['y'] = coords.get('y', None)
             single_play_dict['description'] = play['result']['description']
             # adding players participating in play
-            for player in play['players']:
+            for player in play.get('players', list()):
                 # 'active', e.g. blocking, hitting, faceoff-winning player
                 if player['playerType'] == self.PLAY_PLAYER_TYPES[play_type][
                     0
