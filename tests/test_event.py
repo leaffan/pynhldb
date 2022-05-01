@@ -75,7 +75,7 @@ def get_event_parser(dir, game_id):
     teams = tp.create_teams()
     # using game parser to retrieve basic game information
     gp = GameParser(game_id, game_report_doc)
-    game = gp.create_game(teams)
+    game = gp.create_game(teams, False)
     # using roster parser to retrieve team rosters
     rp = RosterParser(event_summary_doc)
     rosters = rp.create_roster(game, teams, roster_report_doc)
