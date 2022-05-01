@@ -1,18 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from sqlalchemy import distinct
+
+from db.shot import Shot
+from db.common import session_scope
+
 from utils.summary_downloader import SummaryDownloader
 from .test_event import get_event_parser
 
+from tests import VALID_SHOT_TYPES
+from tests import VALID_ZONES
 
 def test_shot(tmpdir):
-
+    """
+    Downloads a play-by-play summary and checks whether shot data can be parsed.
+    """
     date = "Oct 12, 2016"
     game_id = "020001"
     event_idx = 7
 
-    sdl = SummaryDownloader(
-        tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
+    sdl = SummaryDownloader(tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
     sdl.run()
     dld_dir = sdl.get_tgt_dir()
 
@@ -31,3 +39,26 @@ def test_shot(tmpdir):
     assert not shot.scored
 
     tmpdir.remove()
+
+def test_shot_type():
+    """
+    Tests all existing shot types in database for their validity.
+    """
+    with session_scope() as session:
+        all_shot_types = session.query(distinct(Shot.shot_type)).all()
+        all_shot_types = [shot_type for (shot_type,) in all_shot_types]
+        for shot_type in all_shot_types:
+            # null is an acceptable shot type, too
+            if shot_type is None:
+                continue
+            assert shot_type in VALID_SHOT_TYPES
+
+def test_shot_zone():
+    """
+    Tests all existing shot zones in database for their validity.
+    """
+    with session_scope() as session:
+        all_shot_zones = session.query(distinct(Shot.zone)).all()
+        all_shot_zones = [shot_zone for (shot_zone,) in all_shot_zones]
+        for shot_zone in all_shot_zones:
+            assert shot_zone in VALID_ZONES
