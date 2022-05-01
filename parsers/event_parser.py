@@ -541,7 +541,12 @@ class EventParser():
             shot_data_dict['penalty_shot'] = True
         # retrieving shot type and distance from goal
         try:
-            if ". Zone," in event.raw_data:
+            if "Own Goal" in event.raw_data:
+                adj_raw_data = event.raw_data.replace("Own Goal, ", "")
+                shot_type, distance = self.SHOT_REGEX.search(
+                    adj_raw_data).group(1, 2)
+                print(shot_type)
+            elif ". Zone," in event.raw_data:
                 shot_type, distance = self.SHOT_REGEX.search(
                     event.raw_data).group(1, 2)
             else:
