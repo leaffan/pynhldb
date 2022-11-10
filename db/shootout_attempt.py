@@ -50,3 +50,6 @@ class ShootoutAttempt(Base, SpecificEvent):
             return "Shootout Shot: %s (%s) %s, %d ft. vs. %s (%s)" % (
                 player.name, plr_team.abbr, self.shot_type, self.distance,
                 goalie.name, goalie_team.abbr)
+        elif self.attempt_type == 'FAIL':
+            return "Shootout Fail: %s (%s) vs. %s (%s)" % (
+                player.name, plr_team.abbr, goalie.name, goalie_team.abbr)
