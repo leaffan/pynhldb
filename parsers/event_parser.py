@@ -223,8 +223,7 @@ class EventParser():
         event_data_dict['type'] = tokens[5]
         event_data_dict['raw_data'] = tokens[6]
         if tokens[7].strip():
-            event_data_dict['raw_data'] = "|".join((
-                event_data_dict['raw_data'], tokens[7]))
+            event_data_dict['raw_data'] = "|".join((event_data_dict['raw_data'], tokens[7]))
 
         # stoppages in play are registered as property of the according event
         if event_data_dict['type'] == 'STOP':
@@ -262,19 +261,16 @@ class EventParser():
                     event_data_dict['y'] = int(single_play_dict['y'])
 
         # creating event id as combination of game id and in-game event count
-        event_id = "{0:d}{1:04d}".format(
-            self.game.game_id, event_data_dict['in_game_event_cnt'])
+        event_id = "{0:d}{1:04d}".format(self.game.game_id, event_data_dict['in_game_event_cnt'])
 
         # setting up new event item
         event = Event(event_id, event_data_dict)
         # trying to find existing event item in database
-        db_event = Event.find(
-            self.game.game_id, event_data_dict['in_game_event_cnt'])
+        db_event = Event.find(self.game.game_id, event_data_dict['in_game_event_cnt'])
         # updating existing or creating new event item
         create_or_update_db_item(db_event, event)
 
-        return Event.find(
-            self.game.game_id, event_data_dict['in_game_event_cnt'])
+        return Event.find(self.game.game_id, event_data_dict['in_game_event_cnt'])
 
     def get_shootout_attempt(self, event):
         """
@@ -314,50 +310,43 @@ class EventParser():
             plr_key, goalie_key = goalie_key, plr_key
 
         shootout_data_dict['player_id'] = self.rosters[plr_key][no].player_id
-        shootout_data_dict['goalie_id'] = getattr(
-            event, "%s_goalie" % goalie_key)
-        shootout_data_dict['goalie_team_id'] = getattr(
-            self.game, "%s_team_id" % goalie_key)
+        shootout_data_dict['goalie_id'] = getattr(event, "%s_goalie" % goalie_key)
+        shootout_data_dict['goalie_team_id'] = getattr(self.game, "%s_team_id" % goalie_key)
 
         # retrieving shot properties
         # TODO: re-factor (?)
-        if ". Zone," in event.raw_data:
+        if "Failed Attempt" in event.raw_data:
+            shootout_data_dict['attempt_type'] = 'FAIL'
+            so_attempt_props = None
+            distance = None
+        elif ". Zone," in event.raw_data:
             try:
-                so_attempt_props, distance = self.SHOT_REGEX.search(
-                    event.raw_data).group(1, 2)
+                so_attempt_props, distance = self.SHOT_REGEX.search(event.raw_data).group(1, 2)
             except Exception:
                 so_attempt_props = None
                 distance = self.DISTANCE_REGEX.search(event.raw_data).group(1)
-                logger.warn(
-                    "Couldn't retrieve shootout attempt properties " +
-                    "from raw data: %s" % event.raw_data)
+                logger.warn("Couldn't retrieve shootout attempt properties from raw data: %s" % event.raw_data)
         else:
-            so_attempt_props, distance = self.SHOT_WO_ZONE_REGEX.search(
-                event.raw_data).group(1, 2)
+            so_attempt_props, distance = self.SHOT_WO_ZONE_REGEX.search(event.raw_data).group(1, 2)
 
         if so_attempt_props is not None:
             if shootout_data_dict['on_goal']:
                 shootout_data_dict['shot_type'] = so_attempt_props
             else:
-                shot_miss_types = [
-                    token.strip() for token in so_attempt_props.split(',')]
+                shot_miss_types = [token.strip() for token in so_attempt_props.split(',')]
                 if len(shot_miss_types) == 2:
-                    (
-                        shootout_data_dict['shot_type'],
-                        shootout_data_dict['miss_type']) = shot_miss_types
+                    shootout_data_dict['shot_type'], shootout_data_dict['miss_type'] = shot_miss_types
                 else:
                     shootout_data_dict['shot_type'] = so_attempt_props
-                    logger.warn(
-                        "Couldn't retrieve shootout attempt miss " +
-                        "type from raw data: %s" % event.raw_data)
+                    logger.warn("Couldn't retrieve shootout attempt miss type from raw data: %s" % event.raw_data)
 
-        shootout_data_dict['distance'] = int(distance)
+        if distance is not None:
+            shootout_data_dict['distance'] = int(distance)
 
         # retrieving shootout attempt with same event id from database
         db_shootout_attempt = ShootoutAttempt.find_by_event_id(event.event_id)
         # creating new shootout attempt
-        new_shootout_attempt = ShootoutAttempt(
-            event.event_id, shootout_data_dict)
+        new_shootout_attempt = ShootoutAttempt(event.event_id, shootout_data_dict)
         # creating or updating shootout attempt item in database
         create_or_update_db_item(db_shootout_attempt, new_shootout_attempt)
 
@@ -1167,6 +1156,8 @@ class EventParser():
             # converting json play type to play-by-play summary event type
             if play_type in self.PLAY_EVENT_TYPE_MAP:
                 play_type = self.PLAY_EVENT_TYPE_MAP[play_type]
+            else:
+                continue
             # setting up dictionary for single play
             single_play_dict = dict()
             # adding play type to single play dictionary
