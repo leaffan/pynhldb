@@ -12,8 +12,7 @@ def test_download_unzipped(tmpdir):
 
     date, files = set_up_comparison_files()
 
-    sdl = SummaryDownloader(
-        tmpdir.mkdir('sdl').strpath, date, zip_summaries=False)
+    sdl = SummaryDownloader(tmpdir.mkdir('sdl').strpath, date, zip_summaries=False)
     sdl.run()
     tgt_dir = sdl.get_tgt_dir()
 
@@ -49,8 +48,7 @@ def set_up_comparison_files():
 
     # setting up list of all HTML report files that should be downloaded for
     # specified date
-    files = ["".join(c) + ".HTM" for c in list(
-        itertools.product(prefixes, game_ids))]
+    files = ["".join(c) + ".HTM" for c in list(itertools.product(prefixes, game_ids))]
     # adding JSON game feed files
     files.extend(["".join((gid, ".json")) for gid in game_ids])
     # adding JSON shift chart files

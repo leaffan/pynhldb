@@ -5,8 +5,7 @@ from db.player import Player
 
 
 def test_constructor():
-    plr = Player(
-        8467353, "Antropov", "Nik", "C", alternate_first_names=['Nikolai'])
+    plr = Player(8467353, "Antropov", "Nik", "C", alternate_first_names=['Nikolai'])
     assert plr.player_id == 8467353
     assert plr.first_name == "Nik"
     assert plr.last_name == "Antropov"

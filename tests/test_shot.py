@@ -12,6 +12,7 @@ from .test_event import get_event_parser
 from tests import VALID_SHOT_TYPES
 from tests import VALID_ZONES
 
+
 def test_shot(tmpdir):
     """
     Downloads a play-by-play summary and checks whether shot data can be parsed.
@@ -40,6 +41,7 @@ def test_shot(tmpdir):
 
     tmpdir.remove()
 
+
 def test_shot_type():
     """
     Tests all existing shot types in database for their validity.
@@ -52,6 +54,7 @@ def test_shot_type():
             if shot_type is None:
                 continue
             assert shot_type in VALID_SHOT_TYPES
+
 
 def test_shot_zone():
     """

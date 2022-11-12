@@ -12,14 +12,14 @@ from .test_event import get_event_parser
 from tests import VALID_SHOT_TYPES
 from tests import VALID_ZONES
 
+
 def test_miss(tmpdir):
 
     date = "Oct 12, 2016"
     game_id = "020001"
     event_idx = 9
 
-    sdl = SummaryDownloader(
-        tmpdir.mkdir('miss').strpath, date, zip_summaries=False)
+    sdl = SummaryDownloader(tmpdir.mkdir('miss').strpath, date, zip_summaries=False)
     sdl.run()
     dld_dir = sdl.get_tgt_dir()
 
@@ -43,6 +43,7 @@ def test_miss(tmpdir):
 
     tmpdir.remove()
 
+
 def test_miss_shot_type():
     """
     Tests all existing shot types in database for their validity.
@@ -55,6 +56,7 @@ def test_miss_shot_type():
             if shot_type is None:
                 continue
             assert shot_type in VALID_SHOT_TYPES
+
 
 def test_miss_zone():
     """

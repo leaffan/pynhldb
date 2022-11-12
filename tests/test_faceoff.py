@@ -11,8 +11,7 @@ def test_faceoff(tmpdir):
     game_id = "020001"
     event_idx = 1
 
-    sdl = SummaryDownloader(
-        tmpdir.mkdir('faceoff').strpath, date, zip_summaries=False)
+    sdl = SummaryDownloader(tmpdir.mkdir('faceoff').strpath, date, zip_summaries=False)
     sdl.run()
     dld_dir = sdl.get_tgt_dir()
 

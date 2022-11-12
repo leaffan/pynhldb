@@ -20,10 +20,7 @@ def test_contract_creation():
 
     for plr_contract_dict in plr_contract_list:
         contract = Contract(player_id, plr_contract_dict)
-        contract_db = Contract.find(
-            player_id,
-            plr_contract_dict['start_season'],
-            plr_contract_dict['end_season'])
+        contract_db = Contract.find(player_id, plr_contract_dict['start_season'], plr_contract_dict['end_season'])
 
         assert contract == contract_db
 
@@ -37,8 +34,7 @@ def test_find_contract():
     assert contract.start_season == 2014
     assert contract.end_season == 2017
     assert contract.expiry_status == 'UFA'
-    assert contract.signing_team_id == Team.find_by_name(
-        "New York Islanders").team_id
+    assert contract.signing_team_id == Team.find_by_name("New York Islanders").team_id
     assert contract.value == 16750000
 
 
@@ -50,17 +46,11 @@ def test_contract_year_creation():
     plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
 
     for plr_contract_dict in plr_contract_list:
-        contract_db = Contract.find(
-            player_id,
-            plr_contract_dict['start_season'],
-            plr_contract_dict['end_season'])
+        contract_db = Contract.find(player_id, plr_contract_dict['start_season'], plr_contract_dict['end_season'])
 
         for contract_year_dict in plr_contract_dict['contract_years']:
-            contract_year = ContractYear(
-                player_id, contract_db.contract_id, contract_year_dict)
-            contract_year_db = ContractYear.find(
-                player_id, contract_db.contract_id,
-                contract_year_dict['season'])
+            contract_year = ContractYear(player_id, contract_db.contract_id, contract_year_dict)
+            contract_year_db = ContractYear.find(player_id, contract_db.contract_id, contract_year_dict['season'])
 
             assert contract_year == contract_year_db
 
@@ -73,17 +63,11 @@ def test_contract_year_creation_with_slide():
     plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
 
     for plr_contract_dict in plr_contract_list:
-        contract_db = Contract.find(
-            player_id,
-            plr_contract_dict['start_season'],
-            plr_contract_dict['end_season'])
+        contract_db = Contract.find(player_id, plr_contract_dict['start_season'], plr_contract_dict['end_season'])
 
         for contract_year_dict in plr_contract_dict['contract_years']:
-            contract_year = ContractYear(
-                player_id, contract_db.contract_id, contract_year_dict)
-            contract_year_db = ContractYear.find(
-                player_id, contract_db.contract_id,
-                contract_year_dict['season'])
+            contract_year = ContractYear(player_id, contract_db.contract_id, contract_year_dict)
+            contract_year_db = ContractYear.find(player_id, contract_db.contract_id, contract_year_dict['season'])
 
             assert contract_year == contract_year_db
 
@@ -97,10 +81,7 @@ def test_contract_expiration_due_to_no_qualifying_offer():
 
     for plr_contract_dict in plr_contract_list:
         contract = Contract(player_id, plr_contract_dict)
-        contract_db = Contract.find(
-            player_id,
-            plr_contract_dict['start_season'],
-            plr_contract_dict['end_season'])
+        contract_db = Contract.find(player_id, plr_contract_dict['start_season'], plr_contract_dict['end_season'])
 
         assert contract == contract_db
 
@@ -125,10 +106,7 @@ def test_buyout_creation():
     plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
 
     for plr_contract_dict in plr_contract_list:
-        contract_db = Contract.find(
-            player_id,
-            plr_contract_dict['start_season'],
-            plr_contract_dict['end_season'])
+        contract_db = Contract.find(player_id, plr_contract_dict['start_season'], plr_contract_dict['end_season'])
 
         if contract_db.bought_out:
             buyout_dict = pcr.retrieve_raw_buyout_data(player_id)
@@ -147,8 +125,7 @@ def test_find_buyout():
     assert buyout.length == 4
     assert buyout.start_season == 2014
     assert buyout.end_season == 2017
-    assert buyout.buyout_team_id == Team.find_by_name(
-        "Toronto Maple Leafs").team_id
+    assert buyout.buyout_team_id == Team.find_by_name("Toronto Maple Leafs").team_id
     assert buyout.value == 5333333
 
 
@@ -160,20 +137,15 @@ def test_buyout_year_creation():
     plr_contract_list = pcr.retrieve_raw_contract_data(player_id)
 
     for plr_contract_dict in plr_contract_list:
-        contract_db = Contract.find(
-            player_id,
-            plr_contract_dict['start_season'],
-            plr_contract_dict['end_season'])
+        contract_db = Contract.find(player_id, plr_contract_dict['start_season'], plr_contract_dict['end_season'])
 
         if contract_db.bought_out:
             buyout_dict = pcr.retrieve_raw_buyout_data(player_id)
             buyout_db = Buyout.find(contract_db.contract_id)
 
             for buyout_year_data_dict in buyout_dict['buyout_years']:
-                buyout_year = BuyoutYear(
-                    player_id, buyout_db.buyout_id, buyout_year_data_dict)
-                buyout_year_db = BuyoutYear.find(
-                    buyout_db.buyout_id, buyout_year_data_dict['season'])
+                buyout_year = BuyoutYear(player_id, buyout_db.buyout_id, buyout_year_data_dict)
+                buyout_year_db = BuyoutYear.find(buyout_db.buyout_id, buyout_year_data_dict['season'])
 
                 assert buyout_year == buyout_year_db
 

@@ -27,25 +27,18 @@ def test_2016():
     # last modification date is only added to downloaded and archived data
     assert game_data['data_last_modified'] is None
 
-    (
-        game_data['attendance'],
-        game_data['venue']) = gp.retrieve_game_attendance_venue()
+    game_data['attendance'], game_data['venue'] = gp.retrieve_game_attendance_venue()
     assert game_data['attendance'] == 19092
     assert game_data['venue'] == "Amalie Arena"
 
-    game_data['start'], game_data['end'] = gp.retrieve_game_start_end(
-        game_data['date'], game_data['type'])
+    game_data['start'], game_data['end'] = gp.retrieve_game_start_end(game_data['date'], game_data['type'])
     assert game_data['start'] == datetime.combine(
-        game_data['date'], time(19, 8, 0, 0, tzinfo=dateutil.tz.tzoffset(
-            'EST', -18000)))
+        game_data['date'], time(19, 8, 0, 0, tzinfo=dateutil.tz.tzoffset('EST', -18000)))
     assert game_data['end'] == datetime.combine(
-        game_data['date'], time(22, 9, 0, 0, tzinfo=dateutil.tz.tzoffset(
-            'EST', -18000)))
+        game_data['date'], time(22, 9, 0, 0, tzinfo=dateutil.tz.tzoffset('EST', -18000)))
 
-    (
-        game_data['overtime_game'],
-        game_data['shootout_game']
-    ) = gp.retrieve_overtime_shootout_information(game_data['type'])
+    game_data['overtime_game'], game_data['shootout_game'] = gp.retrieve_overtime_shootout_information(
+        game_data['type'])
     assert game_data['overtime_game'] is True
     assert game_data['shootout_game'] is True
 
@@ -67,25 +60,18 @@ def test_playoff_game():
     # last modification date is only added to downloaded and archived data
     assert game_data['data_last_modified'] is None
 
-    (
-        game_data['attendance'],
-        game_data['venue']) = gp.retrieve_game_attendance_venue()
+    game_data['attendance'], game_data['venue'] = gp.retrieve_game_attendance_venue()
     assert game_data['attendance'] == 22237
     assert game_data['venue'] == "United Center"
 
-    game_data['start'], game_data['end'] = gp.retrieve_game_start_end(
-        game_data['date'], game_data['type'])
+    game_data['start'], game_data['end'] = gp.retrieve_game_start_end(game_data['date'], game_data['type'])
     assert game_data['start'] == datetime.combine(
-        game_data['date'], time(19, 20, 0, 0, tzinfo=dateutil.tz.tzoffset(
-            'CDT', -18000)))
+        game_data['date'], time(19, 20, 0, 0, tzinfo=dateutil.tz.tzoffset('CDT', -18000)))
     assert game_data['end'] == datetime.combine(
-        game_data['date'], time(23, 2, 0, 0, tzinfo=dateutil.tz.tzoffset(
-            'CDT', -18000)))
+        game_data['date'], time(23, 2, 0, 0, tzinfo=dateutil.tz.tzoffset('CDT', -18000)))
 
-    (
-        game_data['overtime_game'],
-        game_data['shootout_game']
-    ) = gp.retrieve_overtime_shootout_information(game_data['type'])
+    game_data['overtime_game'], game_data['shootout_game'] = gp.retrieve_overtime_shootout_information(
+        game_data['type'])
     assert game_data['overtime_game'] is True
     assert game_data['shootout_game'] is False
 
@@ -107,25 +93,18 @@ def test_bilingual():
     # last modification date is only added to downloaded and archived data
     assert game_data['data_last_modified'] is None
 
-    (
-        game_data['attendance'],
-        game_data['venue']) = gp.retrieve_game_attendance_venue()
+    game_data['attendance'], game_data['venue'] = gp.retrieve_game_attendance_venue()
     assert game_data['attendance'] == 21273
     assert game_data['venue'] == "Centre Bell"
 
-    game_data['start'], game_data['end'] = gp.retrieve_game_start_end(
-        game_data['date'], game_data['type'])
+    game_data['start'], game_data['end'] = gp.retrieve_game_start_end(game_data['date'], game_data['type'])
     assert game_data['start'] == datetime.combine(
-        game_data['date'], time(19, 10, 0, 0, tzinfo=dateutil.tz.tzoffset(
-            'EST', -18000)))
+        game_data['date'], time(19, 10, 0, 0, tzinfo=dateutil.tz.tzoffset('EST', -18000)))
     assert game_data['end'] == datetime.combine(
-        game_data['date'], time(21, 30, 0, 0, tzinfo=dateutil.tz.tzoffset(
-            'EST', -18000)))
+        game_data['date'], time(21, 30, 0, 0, tzinfo=dateutil.tz.tzoffset('EST', -18000)))
 
-    (
-        game_data['overtime_game'],
-        game_data['shootout_game']
-    ) = gp.retrieve_overtime_shootout_information(game_data['type'])
+    game_data['overtime_game'], game_data['shootout_game'] = gp.retrieve_overtime_shootout_information(
+        game_data['type'])
     assert game_data['overtime_game'] is False
     assert game_data['shootout_game'] is False
 

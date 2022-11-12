@@ -42,6 +42,7 @@ def test_block(tmpdir):
 
     tmpdir.remove()
 
+
 def test_blocked_shot_type():
     """
     Tests all existing blocked shot types in database for their validity.
@@ -54,6 +55,7 @@ def test_blocked_shot_type():
             if shot_type is None:
                 continue
             assert shot_type in VALID_SHOT_TYPES
+
 
 def test_blocked_shot_zone():
     """

@@ -15,9 +15,8 @@ def test_division_import():
     Tests whether team abbreviations used in division configuration file
     correspond with team abbreviations used by team definitions in database.
     """
-    div_src = os.path.join(
-        os.path.dirname(__file__), 'test_division_config.txt')
-    lines = [l.strip() for l in open(div_src).readlines()]
+    div_src = os.path.join(os.path.dirname(__file__), 'test_division_config.txt')
+    lines = [line.strip() for line in open(div_src).readlines()]
 
     team_abbs = set()
 
