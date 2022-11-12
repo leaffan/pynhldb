@@ -50,9 +50,12 @@ if __name__ == '__main__':
 
     # bailing out if target directory doesn't exist
     if not os.path.isdir(tgt_dir):
-        print("+ Download target directory '%s' does not exist" % tgt_dir)
-        print("+ Update configuration or specify via -d/--tgt_dir option")
-        sys.exit()
+        try:
+            os.makedirs(tgt_dir)
+        except Exception:
+            print("+ Download target directory '%s' doesn't exist and could not be created" % tgt_dir)
+            print("+ Update configuration or specify via -d/--tgt_dir option")
+            sys.exit()
 
     # setting first date to download summaries for if not specified
     if from_date is None:
