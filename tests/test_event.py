@@ -6,6 +6,9 @@ import datetime
 import json
 from lxml import html
 
+from db.common import session_scope
+from db.event import Event
+
 from utils.summary_downloader import SummaryDownloader
 from utils.data_handler import DataHandler
 from parsers.team_parser import TeamParser
@@ -19,8 +22,7 @@ def test_event(tmpdir):
     date = "Oct 12, 2016"
     game_id = "020001"
 
-    sdl = SummaryDownloader(
-        tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
+    sdl = SummaryDownloader(tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
     sdl.run()
     dld_dir = sdl.get_tgt_dir()
 
@@ -33,18 +35,15 @@ def test_event(tmpdir):
     assert event.type == 'FAC'
     assert event.period == 1
     assert event.time == datetime.timedelta(0)
-    assert event.road_on_ice == [
-        8475172, 8473463, 8470599, 8476853, 8475716, 8475883]
-    assert event.home_on_ice == [
-        8474250, 8473544, 8471676, 8470602, 8476879, 8467950]
+    assert event.road_on_ice == [8475172, 8473463, 8470599, 8476853, 8475716, 8475883]
+    assert event.home_on_ice == [8474250, 8473544, 8471676, 8470602, 8476879, 8467950]
     assert event.road_score == 0
     assert event.home_score == 0
     assert event.x == 0
     assert event.y == 0
     assert event.road_goalie == 8475883
     assert event.home_goalie == 8467950
-    assert event.raw_data == (
-        "TOR won Neu. Zone - TOR #43 KADRI vs OTT #19 BRASSARD")
+    assert event.raw_data == ("TOR won Neu. Zone - TOR #43 KADRI vs OTT #19 BRASSARD")
 
 
 def get_document(dir, game_id, prefix):
@@ -66,8 +65,7 @@ def get_event_parser(dir, game_id):
     game_report_doc = html.fromstring(get_document(dir, game_id, 'GS'))
     event_summary_doc = html.fromstring(get_document(dir, game_id, 'ES'))
     roster_report_doc = html.fromstring(get_document(dir, game_id, 'RO'))
-    play_by_play_report_doc = html.fromstring(
-        get_document(dir, game_id, 'PL'))
+    play_by_play_report_doc = html.fromstring(get_document(dir, game_id, 'PL'))
     game_feed_json_doc = get_json_document(dir, game_id)
 
     # using team parser to retrieve teams
@@ -81,9 +79,17 @@ def get_event_parser(dir, game_id):
     rosters = rp.create_roster(game, teams, roster_report_doc)
 
     # using event parser to retrieve all raw events
-    ep = EventParser(
-        play_by_play_report_doc, game_feed_json_doc, game_report_doc)
+    ep = EventParser(play_by_play_report_doc, game_feed_json_doc, game_report_doc)
     ep.load_data()
     (ep.game, ep.rosters) = (game, rosters)
     ep.cache_plays_with_coordinates()
     return ep
+
+
+def test_event_types_not_being_null():
+    """
+    Tests whether there are events in the database with a null type.
+    """
+    with session_scope() as session:
+        null_type_events = session.query(Event).filter(Event.type.is_(None)).all()
+        assert not null_type_events
