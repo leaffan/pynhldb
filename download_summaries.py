@@ -73,13 +73,10 @@ if __name__ == '__main__':
 
         if not all_dates:
             print("+ No data downloaded yet for this season")
-            print(
-                "+ Start downloading data by specifiying first date " +
-                "of the season")
+            print("+ Start downloading data by specifiying first date of the season")
             sys.exit()
 
-        from_date = (sorted(all_dates)[-1] + relativedelta(days=1)).strftime(
-            "%B %d, %Y")
+        from_date = (sorted(all_dates)[-1] + relativedelta(days=1)).strftime("%B %d, %Y")
 
     # setting last date to download summaries for...
     if to_date is None:
@@ -88,9 +85,7 @@ if __name__ == '__main__':
             to_date = from_date
         # ...to date before current one otherwise
         else:
-            to_date = (datetime.now() + relativedelta(days=-1)).strftime(
-                "%B %d, %Y")
+            to_date = (datetime.now() + relativedelta(days=-1)).strftime("%B %d, %Y")
 
-    downloader = SummaryDownloader(
-        tgt_dir, from_date, to_date, workers=8, exclude=args.exclude)
+    downloader = SummaryDownloader(tgt_dir, from_date, to_date, workers=8, exclude=args.exclude)
     downloader.run()

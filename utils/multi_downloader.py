@@ -20,12 +20,11 @@ class MultiFileDownloader():
     TMP_DIR = tempfile.gettempdir()
     WORKERS = 8
 
-    def __init__(
-            self, tgt_dir, zip_downloaded_files=True, workers=0, cleanup=True):
+    def __init__(self, tgt_dir, zip_downloaded_files=True, workers=WORKERS, cleanup=True):
         if not os.path.isdir(tgt_dir):
             try:
                 os.makedirs(tgt_dir)
-            except Exception as e:
+            except Exception:
                 logger.warn(
                     "Couldn't create target directory '%s', using " % tgt_dir +
                     "system temporary directory %s instead" % self.TMP_DIR)
@@ -54,8 +53,7 @@ class MultiFileDownloader():
         """
         raise NotImplementedError
 
-    def download_files(
-            self, tgt_dir=None, files_to_download=None):
+    def download_files(self, tgt_dir=None, files_to_download=None):
 
         # clearing list of downloaded files first
         self.downloaded_files = list()
@@ -77,16 +75,14 @@ class MultiFileDownloader():
         if self.workers > 1:
             with ThreadPoolExecutor(max_workers=self.workers) as dld_threads:
                 tasks = {dld_threads.submit(
-                    self.download_task,
-                    url,
-                    tgt_dir,
-                    tgt_file): (
-                        url, tgt_file) for url, tgt_file in files_to_download}
+                    self.download_task, url, tgt_dir, tgt_file
+                    ): (
+                        url, tgt_file
+                    ) for url, tgt_file in files_to_download}
                 for completed_task in as_completed(tasks):
                     try:
                         if completed_task.result():
-                            self.downloaded_files.append(
-                                completed_task.result())
+                            self.downloaded_files.append(completed_task.result())
                     except Exception as e:
                         print()
                         print("Task generated an exception: %s" % e)
@@ -132,8 +128,7 @@ class MultiFileDownloader():
 
         files_in_zip, files_in_zip_info = self.analyze_zip_file(zip_path)
 
-        files_to_zip = self.prepare_zip_contents(
-            files_in_zip, files_in_zip_info)
+        files_to_zip = self.prepare_zip_contents(files_in_zip, files_in_zip_info)
 
         self.create_new_zip_file(zip_path, files_to_zip, files_in_zip_info)
 
@@ -189,9 +184,7 @@ class MultiFileDownloader():
             files_to_zip.append(f)
 
         # adjusting path of files to be zipped to include temporary directory
-        files_to_zip = [
-            os.path.join(self.TMP_DIR, f) if not os.path.isfile(
-                f) else f for f in files_to_zip]
+        files_to_zip = [os.path.join(self.TMP_DIR, f) if not os.path.isfile(f) else f for f in files_to_zip]
 
         return files_to_zip
 
@@ -209,8 +202,7 @@ class MultiFileDownloader():
             # retrieving modification date, either ...
             if os.path.basename(f) in files_in_zip_info:
                 # for an existing file
-                date_time = time.localtime(
-                    time.mktime(files_in_zip_info[os.path.basename(f)]))
+                date_time = time.localtime(time.mktime(files_in_zip_info[os.path.basename(f)]))
             else:
                 # for a downloaded file
                 date_time = time.localtime(os.path.getmtime(f))
@@ -239,7 +231,7 @@ class MultiFileDownloader():
                 try:
                     try_delete_count += 1
                     os.unlink(f)
-                except Exception as e:
+                except Exception:
                     print(f)
                     # TODO: log
                     pass
