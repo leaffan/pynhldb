@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import sys
 import json
 import hashlib
@@ -35,6 +36,8 @@ class SummaryDownloader(MultiFileDownloader):
     # defining valid game and report types
     REPORT_TYPES = ['GS', 'ES', 'FC', 'PL', 'TV', 'TH', 'RO', 'SS', 'SO']
     GAME_TYPES = ['P', 'R']
+
+    GAME_ID_PATTERN = R"\d{2}\d{4}"
 
     def __init__(self, tgt_dir, date, to_date='', zip_summaries=True, workers=0, cleanup=True, exclude=None):
         # constructing base class instance
@@ -179,6 +182,9 @@ class SummaryDownloader(MultiFileDownloader):
         # retrieving timestamp of last modification in case data has been
         # downloaded before
         mod_time_stamp = self.get_last_modification_timestamp(url, tgt_path)
+        # print(url, tgt_path, mod_time_stamp)
+        # import sys
+        # sys.exit()
 
         # setting up http headers using modification time stamp
         headers = dict()
@@ -285,6 +291,16 @@ class SummaryDownloader(MultiFileDownloader):
                 sys.stdout.write(".")
                 sys.stdout.flush()
 
+    def get_downloaded_game_ids(self):
+        """
+        Gets game ids of games that have been downloaded.
+        """
+        game_ids = set([
+            m.group(0) for f in list(map(os.path.basename, self.downloaded_files)) for
+            m in [re.search(self.GAME_ID_PATTERN, f)] if m])
+
+        return game_ids
+
     def run(self):
         """
         Runs downloading process for all registered game dates.
@@ -296,6 +312,12 @@ class SummaryDownloader(MultiFileDownloader):
             self.zip_path = self.get_zip_path()
             self.download_files(self.get_tgt_dir())
             print()
+
+            downloaded_game_ids = self.get_downloaded_game_ids()
+            if downloaded_game_ids:
+                print("Downloaded data for the following game IDs:")
+                print(" ".join(sorted(list(downloaded_game_ids))))
+
             if self.zip_downloaded_files:
                 self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
