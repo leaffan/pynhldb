@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 CAPFRIENDLY_PLAYER_PREFIX = "http://www.capfriendly.com/players/"
 CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
 
-# LATEST_SIGNINGS_TEMPLATE_URL = "https://www.capfriendly.com/signings/all?ajax=1&p=%d"
 LATEST_SIGNINGS_TEMPLATE_URL = "https://www.capfriendly.com/ajax/signings/?p=%d"
 
 
@@ -35,17 +34,14 @@ def retrieve_capfriendly_ids(team_id):
     """
     team = Team.find_by_id(team_id)
 
-    logger.info(
-        "+ Retrieving capfriendly ids for all players of the %s" % team)
+    logger.info("+ Retrieving capfriendly ids for all players of the %s" % team)
 
-    url = "".join((
-        CAPFRIENDLY_TEAM_PREFIX,
-        team.team_name.replace(" ", "").lower()))
+    url = "".join((CAPFRIENDLY_TEAM_PREFIX, team.team_name.replace(" ", "").lower()))
 
     r = requests.get(url)
     doc = html.fromstring(r.text)
 
-    player_name_trs = doc.xpath("//tr[@class='even c' or @class='odd c']")
+    player_name_trs = doc.xpath("//table[contains(@class, 'teamProfileRosterSection')]/tbody/tr/td[1]/a/ancestor::tr")
 
     for tr in player_name_trs:
         player_name = tr.xpath("td/a/text()").pop(0)
@@ -60,20 +56,15 @@ def retrieve_capfriendly_ids(team_id):
         plr = Player.find_by_name_extended(first_name, last_name)
         # new capfriendly id
         if plr and plr.capfriendly_id is None:
-            print(
-                "+ Found capfriendly id for %s: %s" % (plr, capfriendly_id))
+            print("+ Found capfriendly id for %s: %s" % (plr, capfriendly_id))
             add_capfriendly_id_to_player(plr, capfriendly_id)
         # updated capfriendly id
         if plr and plr.capfriendly_id != capfriendly_id:
-            print(
-                "+ Found updated capfriendly id for %s: %s (was %s)" % (
-                    plr, capfriendly_id, plr.capfriendly_id))
+            print("+ Found updated capfriendly id for %s: %s (was %s)" % (plr, capfriendly_id, plr.capfriendly_id))
             add_capfriendly_id_to_player(plr, capfriendly_id)
         # no unique player found
         if plr is None:
-            print(
-                "+ No (unique) player for capfriendly id: %s (%s %s)" % (
-                    capfriendly_id, first_name, last_name))
+            print("+ No (unique) player for capfriendly id: %s (%s %s)" % (capfriendly_id, first_name, last_name))
 
 
 def retrieve_capfriendly_id(player_id):
