@@ -26,8 +26,8 @@ class PlayerContractRetriever():
     CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
     CAPFRIENDLY_CLAUSE_REGEX = re.compile(R"^\:\s")
     CAPFRIENDLY_AMOUNT_REGEX = re.compile(R"\$|\-|,|\u2013")
-    CT_LENGTH_REGEX = re.compile(R"LENGTH\:\s(\d+)\sYEARS?")
-    EXPIRY_STATUS_REGEX = re.compile(R"(UFA \(N(?:O|o) QO\))|(RFA)|(UFA)|(10.2\(c\))")
+    CT_LENGTH_REGEX = re.compile(R"Length\:\s(\d+)\syears?")
+    EXPIRY_STATUS_REGEX = re.compile(R"(UFA \(N(?:O|o) QO\))|(UFA \(Group 6\))|(RFA \(Arb\))|(RFA)|(UFA)|(10.2\(c\))")
 
     def __init__(self):
         pass
@@ -121,82 +121,35 @@ class PlayerContractRetriever():
         r = requests.get(url)
         doc = html.fromstring(r.text)
 
-        contract_elements = doc.xpath("//div[@class='contract_data']")
- 
+        contract_elements = doc.xpath("//div[@class='cf_playerContract']")
+
         for element in contract_elements:
             # setting up dictionary for current contract
             contract_dict = dict()
-            # retrieving raw contract length, expiry status and signing team
-            # as list of text elements
-            raw_length_exp_status_sign_team = element.xpath(
-                "div/div[@class='l cont_t mb2']/descendant-or-self::*/text()")
-            # retrieving raw contract length from first entry in previously
-            # created list
-            ct_length = raw_length_exp_status_sign_team[0]
-            # retrieving expiry status from various entries in previously
-            # created list (dependant on potential additional information)
-            if len(raw_length_exp_status_sign_team) == 3:
-                exp_status = raw_length_exp_status_sign_team[1]
+
+            # retrieving contract meta data
+            self.retrieve_contract_meta_data(element, contract_dict)
+
+            # retrieving contract notes, i.e. buyout notifications or clause details
+            contract_note_data = element.xpath("div[@class='cf_playerContract__notes']/div")
+            contract_notes = list()
+            for contract_note_data_item in contract_note_data:
+                single_raw_contract_note = "".join(
+                    contract_note_data_item.xpath("descendant-or-self::*/text()")).strip()
+                contract_notes.append(single_raw_contract_note)
+            if contract_notes:
+                contract_dict['notes'] = "; ".join(contract_notes)
             else:
-                exp_status = "".join(raw_length_exp_status_sign_team[1:4])
-            # retrieving signing team separately from last entry in previously
-            # created list
-            sign_team = raw_length_exp_status_sign_team[-1]
-            # retrieving raw contract value, cap hit percentage, signing date
-            # and source
-            raw_value_cap_hit_pct_date_source = element.xpath(
-                "div/div[@class='l cont_t mb5']/text()")
-            if len(raw_value_cap_hit_pct_date_source) == 5:
-                ct_value, _, cap_hit_pct, sign_date, ct_source = (
-                    raw_value_cap_hit_pct_date_source)
-            # at times we're trying to retrieve basic contract data even w/o
-            # a verified source, e.g. for contracts signed very recently
-            else:
-                ct_value, _, cap_hit_pct, sign_date = (
-                    raw_value_cap_hit_pct_date_source
-                )
-                ct_source = ""
-            # retrieving raw contract notes
-            ct_notes = element.xpath(
-                "ancestor::div[@class='rel cntrct']/following-sibling::div[contains(@class, 'clause')]/" +
-                "descendant-or-self::*/text()")
+                contract_dict['notes'] = None
+
             # retrieving table rows with raw contract years
-            raw_ct_years_trs = element.xpath(
-                "ancestor::div[@class='rel cntrct']/following-sibling::table/tbody/" +
-                "tr[@class='even' or @class='odd']")
-            # retrieving contract notes, i.e. buyout notifications or clause
-            # details
-            contract_dict['notes'] = " ".join(ct_notes).replace(" :", ":").replace("  ", " ")
+            raw_ct_years_trs = element.xpath("descendant-or-self::table/tbody/tr")
             # setting buyout flag
-            contract_dict['bought_out'] = self.get_contract_buyout_status(
-                contract_dict)
+            contract_dict['bought_out'] = self.get_contract_buyout_status(contract_dict)
             # retrieving contract type, i.e. standard, entry level or 35+
             contract_dict['type'] = element.xpath("div/h6/text()").pop(0)
-            # retrieving contract length
-            contract_dict['length'] = int(
-                re.search(self.CT_LENGTH_REGEX, ct_length).group(1))
-            # retrieving player status after contract expires, e.g. RFA, UFA
-            # or UFA (NO QO)
-            contract_dict['expiry_status'] = re.search(self.EXPIRY_STATUS_REGEX, exp_status).group(0).upper()
-            # retrieving id of signing team
-            contract_dict[
-                'signing_team_id'] = self.get_contract_buyout_signing_team(
-                    sign_team)
-            # retrieving overall contract value
-            contract_dict['value'] = int(
-                ct_value.split(":")[-1].strip()[1:].replace(",", ""))
-            # retrieving cap hit percentage
-            contract_dict['cap_hit_percentage'] = float(
-                cap_hit_pct.split()[-1])
-            # retrieving source for contract data
-            contract_dict['source'] = ct_source.split(":")[-1].strip()
-            # retrieving contract signing date
-            contract_dict['signing_date'] = self.get_contract_buyout_date(
-                sign_date)
-
             # retrieving seasons and contract years
-            seasons, contract_years = self.retrieve_raw_contract_years(
-                raw_ct_years_trs)
+            seasons, contract_years = self.retrieve_raw_contract_years(raw_ct_years_trs)
 
             # retrieving first and last season of the contract from
             contract_dict['start_season'] = min(seasons)
@@ -208,6 +161,37 @@ class PlayerContractRetriever():
             contract_list.append(contract_dict)
 
         return contract_list
+
+    def retrieve_contract_meta_data(self, element, contract_dict: dict):
+        """
+        Gets contact meta data from provided HTML element and stores it in specified dictionary.
+        """
+        contract_meta_data = element.xpath("descendant-or-self::div[@class='cf_playerContract__meta rel']/div/div")
+        assert len(contract_meta_data) == 7
+
+        for contract_meta_data_item in contract_meta_data:
+            raw_data = "".join(contract_meta_data_item.xpath("descendant-or-self::*/text()"))
+            # retrieving contract length
+            if raw_data.startswith('Length'):
+                contract_dict['length'] = int(re.search(self.CT_LENGTH_REGEX, raw_data).group(1))
+            # retrieving overall contract value
+            elif raw_data.startswith('Value'):
+                contract_dict['value'] = int(raw_data.split(":")[-1].strip()[1:].replace(",", ""))
+            # retrieving cap hit percentage
+            elif raw_data.startswith('Cap %'):
+                contract_dict['cap_hit_percentage'] = float(raw_data.split()[-1])
+            # retrieving id of signing team
+            elif raw_data.startswith('Signing Team'):
+                contract_dict['signing_team_id'] = self.get_contract_buyout_signing_team(raw_data)
+            # retrieving contract signing date
+            elif raw_data.startswith('Signing Date'):
+                contract_dict['signing_date'] = self.get_contract_buyout_date(raw_data)
+            # retrieving source for contract data
+            elif raw_data.startswith('Source'):
+                contract_dict['source'] = raw_data.split(":")[-1].strip()
+            # retrieving player status after contract expires, e.g. RFA, UFA or UFA (NO QO)
+            elif raw_data.startswith('Expiry Status'):
+                contract_dict['expiry_status'] = re.search(self.EXPIRY_STATUS_REGEX, raw_data).group(0).upper()
 
     def retrieve_raw_contract_data(self, player_id):
         """
@@ -427,9 +411,8 @@ class PlayerContractRetriever():
         # by default contracts are not bought out
         buyout_status = False
         # but some are, it's then marked in the contract notes
-        if 'notes' in contract_dict:
-            if "Contract was bought out".lower() in contract_dict['notes']:
-                buyout_status = True
+        if contract_dict.get('notes') and "Contract was bought out".lower() in contract_dict.get('notes', ''):
+            buyout_status = True
         return buyout_status
 
     def get_contract_buyout_signing_team(self, sign_team_info):
