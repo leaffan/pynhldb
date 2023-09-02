@@ -30,11 +30,11 @@ def test_download_zipped(tmpdir):
     sdl.run()
     zip_path = sdl.get_zip_path()
 
-    zip = ZipFile(zip_path)
+    zip_file = ZipFile(zip_path)
 
-    assert sorted(zip.namelist()) == sorted(files)
+    assert sorted(zip_file.namelist()) == sorted(files)
 
-    zip.close()
+    zip_file.close()
 
     # deactivated due to performance reasons
     # tmpdir.remove()
