@@ -477,8 +477,12 @@ class EventParser():
         if "penalty shot" in event.raw_data.lower():
             miss_data_dict['penalty_shot'] = True
         # retrieving combined missed shot properties from raw data
-        miss_props, distance = self.MISS_REGEX.search(
-            event.raw_data).group(1, 2)
+        match = self.MISS_REGEX.search(event.raw_data)
+        if match:
+            miss_props, distance = match.group(1, 2)
+        else:
+            miss_props = ""
+            distance = 0
         # splitting up missed shot properties
         miss_props_tokens = [s.strip() for s in miss_props.split(',')]
         # sorting out missed shot properties to retrieve shot/miss type
