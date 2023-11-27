@@ -66,9 +66,8 @@ class EventParser():
     # ...  number of player serving a penalty
     SERVED_BY_REGEX = re.compile(R"Served By:\s#(\d+)\s(.+)")
     # ... teams and numbers of players involved in hit/blocked shot
-    HIT_BLOCK_REGEX = re.compile(
-        R"(.{3})\s#(\d{1,2})\s.+(?:(?:HIT)|" +
-        R"(?:BLOCKED BY))\s+(.{3})\s#(\d{1,2})\s.+")
+    # HIT_BLOCK_REGEX = re.compile(R"(.{3})\s#(\d{1,2})\s.+(?:HIT|BLOCKED BY)\s+(.{3})\s#(\d{1,2})\s.+")
+    HIT_BLOCK_REGEX = re.compile(R"(.{3})\s#(\d{1,2})\s.+(?:HIT|BLOCKED BY)\s+(?:(TEAMMATE)|(.{3})\s#(\d{1,2})\s).+")
     # ... teams involved in hit, number of player taking the hit
     ONLY_HIT_TAKEN_REGEX = re.compile(R"HIT\s+(.{3})\s#(\d{1,2})\s.+")
     # ... teams involved in hit, number of player hitting
@@ -781,17 +780,19 @@ class EventParser():
 
         # trying to retrieve blocking team and numbers of players involved
         try:
-            blocked_player_no, team, player_no = re.search(
-                self.HIT_BLOCK_REGEX, event.raw_data).group(2, 3, 4)
+            match = re.search(self.HIT_BLOCK_REGEX, event.raw_data)
+            blocked_player_no, team, player_no = match.group(2, 4, 5)
             blocked_player_no = int(blocked_player_no)
+            if match.group(3) is None:
+                player_no = int(player_no)
+            # since 2023-24 shots are indicated accordingly if blocked by a teammate of the shooter
+            else:
+                player_no = None
+                team = blocked_team.abbr
         except Exception:
-            logger.warn(
-                "Couldn't retrieve blocked player" +
-                "from raw data: %s" % event.raw_data)
-            team, player_no = re.search(
-                self.ONLY_BLOCKED_BY_REGEX, event.raw_data).group(1, 2)
+            logger.warn(f"Couldn't retrieve blocked player from raw data: {event.raw_data}")
+            team, player_no = re.search(self.ONLY_BLOCKED_BY_REGEX, event.raw_data).group(1, 2)
             blocked_player_no = None
-        player_no = int(player_no)
 
         # retrieving blocking team
         team = Team.find(team)
@@ -799,25 +800,21 @@ class EventParser():
         # assuming blocker is from home and blocked player is from road team
         block_key, blocked_key = "home", "road"
         # otherwise swapping keys
-        if team.team_id == self.game.road_team_id:
+        if blocked_team.team_id == self.game.home_team_id:
             block_key, blocked_key = blocked_key, block_key
         # retrieving blocker's player id
-        block_data_dict['player_id'] = self.rosters[
-            block_key][player_no].player_id
+        if player_no is not None:
+            block_data_dict['player_id'] = self.rosters[block_key][player_no].player_id
         # retrieving blocked player's player id
-        if blocked_player_no:
-            block_data_dict['blocked_player_id'] = self.rosters[
-                blocked_key][blocked_player_no].player_id
+        if blocked_player_no is not None:
+            block_data_dict['blocked_player_id'] = self.rosters[blocked_key][blocked_player_no].player_id
 
         # retrieving type of the blocked shot
         try:
-            shot_type = re.search(
-                self.BLOCKED_SHOT_TYPE_REGEX, event.raw_data).group(1)
+            shot_type = re.search(self.BLOCKED_SHOT_TYPE_REGEX, event.raw_data).group(1)
             block_data_dict['shot_type'] = shot_type
         except AttributeError:
-            logger.warn(
-                "Couldn't retrieve blocked shot type " +
-                "from raw data: %s" % event.raw_data)
+            logger.warn(f"Couldn't retrieve blocked shot type from raw data: {event.raw_data}")
 
         # retrieving blocked shot with same event id from database
         db_block = Block.find_by_event_id(event.event_id)
@@ -890,7 +887,7 @@ class EventParser():
         # trying to retrieve involved players' numbers and team taking the hit
         if self.HIT_BLOCK_REGEX.search(event.raw_data):
             plr_no, team_taken, plr_no_taken = self.HIT_BLOCK_REGEX.search(
-                event.raw_data).group(2, 3, 4)
+                event.raw_data).group(2, 4, 5)
             plr_no = int(plr_no)
             plr_no_taken = int(plr_no_taken)
         # sometimes only one of the involved players is retrievable
@@ -1148,15 +1145,13 @@ class EventParser():
         self.json_dict = defaultdict(list)
 
         # events are called plays in json game summaries
-        for play in self.json_data['liveData']['plays']['allPlays']:
-            coords = play['coordinates']
-            # we're only interested in plays that have coordinates
-            if not coords:
+        for play in self.json_data['plays']:
+            if 'details' not in play:
                 continue
             # retrieving period and time of the play
-            play_period = play['about']['period']
-            play_time = str_to_timedelta(play['about']['periodTime'])
-            play_type = play['result']['eventTypeId']
+            play_period = play['period']
+            play_time = str_to_timedelta(play['timeInPeriod'])
+            play_type = play['typeDescKey']
             # converting json play type to play-by-play summary event type
             if play_type in self.PLAY_EVENT_TYPE_MAP:
                 play_type = self.PLAY_EVENT_TYPE_MAP[play_type]
@@ -1167,12 +1162,12 @@ class EventParser():
             # adding play type to single play dictionary
             single_play_dict['play_type'] = play_type
             # adding coordinates and description to single play dictionary
-            single_play_dict['period_type'] = play['about']['periodType']
+            single_play_dict['period_type'] = play['periodDescriptor']['periodType']
             # setting coordinates to null per default since at times single
             # x or y values are missing (e.g. in game 2010020237)
-            single_play_dict['x'] = coords.get('x', None)
-            single_play_dict['y'] = coords.get('y', None)
-            single_play_dict['description'] = play['result']['description']
+            single_play_dict['x'] = play['details'].get('xCoord', None)
+            single_play_dict['y'] = play['details'].get('yCoord', None)
+            # single_play_dict['description'] = play['result']['description']
             # adding players participating in play
             for player in play.get('players', list()):
                 # 'active', e.g. blocking, hitting, faceoff-winning player
