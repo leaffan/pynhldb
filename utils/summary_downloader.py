@@ -16,13 +16,15 @@ from .multi_downloader import MultiFileDownloader
 from .summary_data_injector import add_nhl_ids_to_content
 from utils import adjust_html_response
 
+BASE_URL = 'https://api-web.nhle.com'
+
 
 class SummaryDownloader(MultiFileDownloader):
 
     # base url for official schedule json page
-    SCHEDULE_URL_BASE = "http://statsapi.web.nhl.com/api/v1/schedule"
+    SCHEDULE_URL_BASE = f"{BASE_URL}/v1/schedule"
     # url template for official json gamefeed page
-    JSON_GAME_FEED_URL_TEMPLATE = "http://statsapi.web.nhl.com/api/v1/game/%s/feed/live"
+    JSON_GAME_FEED_URL_TEMPLATE = f"{BASE_URL}/v1/gamecenter/%s/play-by-play"
     # JSON_SHIFT_CHART_URL_TEMPLATE = "http://www.nhl.com/stats/rest/shiftcharts?cayenneExp=gameId=%s"
     JSON_SHIFT_CHART_URL_TEMPLATE = "https://api.nhle.com/stats/rest/en/shiftcharts?cayenneExp=gameId=%s"
     # url parameter for json scoreboard page
@@ -35,7 +37,7 @@ class SummaryDownloader(MultiFileDownloader):
 
     # defining valid game and report types
     REPORT_TYPES = ['GS', 'ES', 'FC', 'PL', 'TV', 'TH', 'RO', 'SS', 'SO']
-    GAME_TYPES = ['P', 'R']
+    GAME_TYPES = [2, 3]
 
     GAME_ID_PATTERN = R"\d{2}\d{4}"
 
@@ -92,8 +94,8 @@ class SummaryDownloader(MultiFileDownloader):
         fmt_date = "%d-%02d-%02d" % (self.current_date.year, self.current_date.month, self.current_date.day)
 
         # retrieving schedule for current date in json format
-        req = requests.get(self.SCHEDULE_URL_BASE, params={
-            'startDate': fmt_date, 'endDate': fmt_date, 'expand': self.LINESCORE_CONTENT_KEY})
+        schedule_url = "/".join((self.SCHEDULE_URL_BASE, fmt_date))
+        req = requests.get(schedule_url)
         json_scoreboard = json.loads(req.text)
         self.files_to_download = self.get_files_to_download_from_scoreboard(json_scoreboard)
 
@@ -102,36 +104,34 @@ class SummaryDownloader(MultiFileDownloader):
         Gets downloadable files from JSON scoreboard page.
         """
         files_to_download = list()
-        for date in json_scoreboard['dates']:
-            # retrieving basic game data from json contents
-            for game in date['games']:
-                season = game['season']
-                full_game_id = game['gamePk']
-                game_type = game['gameType']
-                game_id = str(full_game_id)[4:]
+        for game in json_scoreboard['gameWeek'][0]['games']:
+            season = game['season']
+            full_game_id = game['id']
+            game_type = game['gameType']
+            game_id = str(full_game_id)[4:]
 
-                # skipping game unless it's a regular season or playoff game
-                if game_type not in self.GAME_TYPES:
-                    continue
-                # constructing urls to individual game report pages
-                if 'html_reports' not in self.exclude:
-                    for rt in self.REPORT_TYPES:
-                        # only adding shootout report to files to be downloaded
-                        # if the current game ended in a shootout
-                        if rt == 'SO' and not game['linescore']['hasShootout']:
-                            continue
-                        htmlreport_url = "".join((self.HTML_REPORT_PREFIX, season, "/", rt, str(game_id), ".HTM"))
-                        files_to_download.append((htmlreport_url, None))
-                # setting upd json game feed url and adding it to list of
-                # files to be downloaded
-                if 'game_feed' not in self.exclude:
-                    feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(full_game_id)
-                    files_to_download.append((feed_json_url, ".".join((game_id, "json"))))
-                # setting upd json shift chart url and adding it to list of
-                # files to be downloaded
-                if 'shift_chart' not in self.exclude:
-                    chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(full_game_id)
-                    files_to_download.append((chart_json_url, "".join((game_id, "_sc.json"))))
+            # skipping game unless it's a regular season or playoff game
+            if game_type not in self.GAME_TYPES:
+                continue
+            # constructing urls to individual game report pages
+            if 'html_reports' not in self.exclude:
+                for rt in self.REPORT_TYPES:
+                    # only adding shootout report to files to be downloaded
+                    # if the current game ended in a shootout
+                    # if rt == 'SO' and not game['linescore']['hasShootout']:
+                    #     continue
+                    htmlreport_url = "".join((self.HTML_REPORT_PREFIX, str(season), "/", rt, str(game_id), ".HTM"))
+                    files_to_download.append((htmlreport_url, None))
+            # setting upd json game feed url and adding it to list of
+            # files to be downloaded
+            if 'game_feed' not in self.exclude:
+                feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(full_game_id)
+                files_to_download.append((feed_json_url, ".".join((game_id, "json"))))
+            # setting upd json shift chart url and adding it to list of
+            # files to be downloaded
+            if 'shift_chart' not in self.exclude:
+                chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(full_game_id)
+                files_to_download.append((chart_json_url, "".join((game_id, "_sc.json"))))
 
         return files_to_download
 
@@ -226,46 +226,37 @@ class SummaryDownloader(MultiFileDownloader):
         """
         Downloads JSON game feed data from specified url.
         """
-        # retrieving timestamp of last modification in case data has been
-        # downloaded before
-        mod_time_stamp = self.get_last_modification_timestamp(url, tgt_path)
-        # converting modification time stamp into actual datetime
-        if mod_time_stamp:
-            mod_time_stamp = parse(mod_time_stamp)
+        # retrieving MD5 hash of data from last download
+        prev_data_hash = self.get_last_modification_timestamp(url, tgt_path)
 
         req = requests.get(url)
 
         if req.status_code == 200:
             json_data = req.json()
-            # retrieving time stamp for downloaded data
-            act_time_stamp = parse(json_data['metaData']['timeStamp'].replace("_", " "))
+            data_hash = hashlib.md5(json.dumps(json_data).encode('utf-8')).hexdigest()
             # checking whether json data that is due to update an existing data
             # set contains any play information at all and bailing out if that
             # is not the case - by doing so we avoid overwriting existing
             # *good* with *bad* data
-            play_data = json_data['liveData']['plays']['allPlays']
-            # print(tgt_path)
-            if mod_time_stamp and not play_data:
-                # print("No playdata found %s" % url)
-                # TODO: proper logging
+            play_data = json_data['plays']
+            if not play_data:
+                # logging.warning("No playdata found %s" % url)
                 sys.stdout.write("x")
                 sys.stdout.flush()
                 return
             # comparing time stamp of last modification of json data with
             # previously saved timestamp
-            if act_time_stamp == mod_time_stamp:
-                # TODO: proper logging
+            if data_hash == prev_data_hash:
                 sys.stdout.write(".")
                 sys.stdout.flush()
                 return
             else:
-                # TODO: proper logging
                 sys.stdout.write("+")
                 sys.stdout.flush()
-                # updating modification timestamp in corresponding dictionary
-                self.mod_timestamps[url] = str(act_time_stamp)
-                # returning json data as prettily formatted string
-                return json.dumps(json_data, indent=2)
+                # updating data hash in corresponding dictionary
+                self.mod_timestamps[url] = data_hash
+            # returning json data as prettily formatted string
+            return json.dumps(json_data, indent=2)
 
     def download_json_shift_chart(self, url, tgt_path):
         """
