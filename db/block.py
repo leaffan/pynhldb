@@ -36,7 +36,15 @@ class Block(Base, SpecificEvent):
         blocked_team = Team.find_by_id(self.blocked_team_id)
         blocking_team = Team.find_by_id(self.team_id)
         event = Event.find_by_id(self.event_id)
-        return "Blocked Shot: %s (%s) on %s (%s) %s - %s" % (
-            blocking_plr.name, blocking_team.abbr,
-            blocked_plr.name, blocked_team.abbr,
-            self.shot_type, event)
+        if blocking_plr is None:
+            return_str = (
+                f"Blocked Shot: Teammmate ({blocking_team.abbr}) on {blocked_plr.name} ({blocked_team.abbr}) " +
+                f"{self.shot_type} - {event}"
+            )
+        else:
+            return_str = (
+                f"Blocked Shot: {blocking_plr.name} ({blocking_team.abbr}) on {blocked_plr.name} " +
+                f"({blocked_team.abbr}) {self.shot_type} - {event}"
+            )
+
+        return return_str
