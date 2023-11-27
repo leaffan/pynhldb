@@ -12,8 +12,7 @@ from db.player import Player
 
 logger = logging.getLogger(__name__)
 
-JSON_SUMMARY_URL_TEMPLATE = (
-    "http://statsapi.web.nhl.com/api/v1/game/%s/feed/live")
+JSON_SUMMARY_URL_TEMPLATE = "https://api-web.nhle.com/v1/gamecenter/%s/play-by-play"
 
 
 def add_nhl_ids_to_content(url, content):
@@ -31,7 +30,7 @@ def add_nhl_ids_to_content(url, content):
     summary = retrieve_summary(full_game_id)
 
     # if json boxscore is valid, use it to retrieve nhl player ids from it
-    if summary and 'liveData' in summary.keys():
+    if summary and 'rosterSpots' in summary.keys():
         road_players, home_players = retrieve_player_ids_from_summary(summary)
     # sometimes json summaries are missing
     # alternative is to retrieve nhl player ids from the database itself
@@ -144,46 +143,14 @@ def retrieve_player_ids_from_summary(summary):
     # setting up dictionary object to contain separate dictionaries with
     # jersey numbers as keys and player ids as values from
     player_nos_by_team = dict()
+    player_nos_by_team['home'] = dict()
+    player_nos_by_team['away'] = dict()
 
-    for home_away_type in ['home', 'away']:
-        players_for_team = summary[
-            'liveData']['boxscore']['teams'][home_away_type]
-        # retrieving all player ids (skaters and goalies) first
-        all_player_ids = set(
-            players_for_team['skaters'] + players_for_team['goalies'])
-        # retrieving ids of scratched players
-        scratches_ids = set(players_for_team['scratches'])
-        # deriving ids of all players dressed for current game by removing
-        # scratched players from all players
-        dressed_ids = list(all_player_ids.difference(scratches_ids))
-
-        team_player_no_dict = dict()
-
-        # iterating over all collected player ids
-        for nhl_id in dressed_ids:
-            try:
-                # retrieving jersey number of current player in current game
-                no = int(
-                    summary[
-                        'liveData']['boxscore']['teams'][home_away_type][
-                            'players']["ID%d" % nhl_id]["jerseyNumber"])
-                # checking whether jersey number has already been used
-                # (this shouldn't happen)
-                if no in team_player_no_dict:
-                    plr_already_inserted = Player.find_by_id(
-                        team_player_no_dict[no])
-                    plr_to_be_inserted = Player.find_by_id(nhl_id)
-                    logger.warn(
-                        "Jersey number %d used multiple times? " +
-                        "(%s vs. %s)" % (
-                            no, plr_already_inserted, plr_to_be_inserted))
-                team_player_no_dict[no] = nhl_id
-            except KeyError:
-                logger.warn(
-                    "JSON key 'jerseyNumber' not found for player with " +
-                    "nhl_id %d." % nhl_id)
-        else:
-            player_nos_by_team[home_away_type] = team_player_no_dict
+    for plr in summary['rosterSpots']:
+        if plr['teamId'] == summary['homeTeam']['id']:
+            player_nos_by_team['home'][plr['sweaterNumber']] = plr['playerId']
+        elif plr['teamId'] == summary['awayTeam']['id']:
+            player_nos_by_team['away'][plr['sweaterNumber']] = plr['playerId']
 
     return player_nos_by_team['away'], player_nos_by_team['home']
 
@@ -195,13 +162,10 @@ def retrieve_summary(full_game_id):
     try:
         url = JSON_SUMMARY_URL_TEMPLATE % full_game_id
         req = requests.get(url, params={'site': 'en_nhl'})
-        logger.info(
-            "Retrieving player nhl ids for game %s from %s" % (
-                full_game_id, req.url))
+        logger.info(f"Retrieving player nhl ids for game {full_game_id} from {req.url}")
         summary = json.loads(req.text)
     except:
-        logger.warn(
-            "Couldn't retrieve player nhl ids for game %s" % full_game_id)
+        logger.warn(f"Couldn't retrieve player nhl ids for game {full_game_id}")
         summary = None
 
     return summary
