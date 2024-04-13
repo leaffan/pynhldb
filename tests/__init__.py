@@ -2,5 +2,6 @@
 # -*- coding: utf-8 -*-
 
 VALID_SHOT_TYPES = [
-    'Backhand', 'Bat', 'Between Legs', 'Deflected', 'Poke', 'Slap', 'Snap', 'Tip-In', 'Wrap-around', 'Wrist', 'Cradle']
+    'Backhand', 'Bat', 'Between Legs', 'Deflected', 'Poke', 'Slap', 'Snap', 'Tip-In', 'Wrap-around', 'Wrist', 'Cradle',
+    'Defensive Deflection']
 VALID_ZONES = ['Off', 'Def', 'Neu']
