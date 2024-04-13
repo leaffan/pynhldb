@@ -26,7 +26,7 @@ class PlayerContractRetriever():
     CAPFRIENDLY_TEAM_PREFIX = "http://www.capfriendly.com/teams/"
     CAPFRIENDLY_CLAUSE_REGEX = re.compile(R"^\:\s")
     CAPFRIENDLY_AMOUNT_REGEX = re.compile(R"\$|\-|,|\u2013")
-    CT_LENGTH_REGEX = re.compile(R"Length\:\s(\d+)\syears?")
+    CT_LENGTH_REGEX = re.compile(R"(?:Length|LENGTH)\:\s(\d+)\s(?:year|YEAR)[Ss]?")
     EXPIRY_STATUS_REGEX = re.compile(R"(UFA \(N(?:O|o) QO\))|(UFA \(Group 6\))|(RFA \(Arb\))|(RFA)|(UFA)|(10.2\(c\))")
 
     def __init__(self):
