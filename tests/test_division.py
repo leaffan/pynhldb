@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import os
+from datetime import date
+from operator import itemgetter, attrgetter
 from collections import defaultdict
+
 
 import requests
 
@@ -34,7 +37,9 @@ def test_division_import():
 
 
 def test_division_1974():
-
+    """
+    Tests divisions stored in database for 1974/75 season.
+    """
     divisions = Division.get_divisions_and_teams(1974)
 
     assert sorted(divisions.keys()) == ['Adams', 'Norris', 'Patrick', 'Smythe']
@@ -63,29 +68,31 @@ def test_division_1974():
 
 
 def test_division_now():
-
+    """
+    Tests whether current divisions in database correspond to the ones used by the NHL web api.
+    """
     # retrieving current divisions and teams from database
     divisions_from_db = Division.get_divisions_and_teams()
 
-    # urls with current division and team data
-    divisions_url = "https://statsapi.web.nhl.com/api/v1/divisions/"
-    teams_url = "https://statsapi.web.nhl.com/api/v1/teams/"
+    # urls for current standings to get current divisions and teams
+    standings_url = f"https://api-web.nhle.com/v1/standings/{date.today()}"
+    response = requests.get(standings_url)
+    standings = response.json()['standings']
 
-    response = requests.get(divisions_url)
-    divisions_from_url = [d['name'] for d in response.json()['divisions']]
+    # getting all available divisions from standings
+    divisions_from_url = sorted(list(set(map(itemgetter('divisionName'), standings))))
 
-    response = requests.get(teams_url)
     teams_by_division_from_url = defaultdict(list)
-    for team_json in response.json()['teams']:
-        team_name = team_json['name']
-        team_division = team_json['division']['name']
-        teams_by_division_from_url[team_division].append(team_name)
+
+    for division in divisions_from_url:
+        # getting teams in current division from standings
+        teams_in_division = list(filter(lambda t, division=division: t['divisionName'] == division, standings))
+        teams_in_division = list(map(itemgetter('teamName'), teams_in_division))
+        teams_in_division = sorted(list(map(itemgetter('default'), teams_in_division)))
+        teams_by_division_from_url[division] = teams_in_division
 
     assert sorted(divisions_from_db.keys()) == sorted(divisions_from_url)
 
     for division in divisions_from_db:
-        assert sorted(
-            [t.name for t in divisions_from_db[division]]
-        ) == sorted(
-            teams_by_division_from_url[division]
-        )
+        teams_from_db = map(attrgetter('name'), divisions_from_db[division])
+        assert sorted(teams_from_db) == sorted(teams_by_division_from_url[division])
