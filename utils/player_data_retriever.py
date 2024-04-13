@@ -95,7 +95,8 @@ class PlayerDataRetriever():
 
             plr_seasons.append(plr_season)
 
-            self.create_or_update_database_item(plr_season, plr_season_db)
+            if season == 2023:
+                self.create_or_update_database_item(plr_season, plr_season_db)
 
         logger.info(
             "+ %d season statistics items retrieved for %s" % (
@@ -152,58 +153,42 @@ class PlayerDataRetriever():
         """
         Retrieves raw season statistics for specified player id from nhl.com.
         """
-        url = "".join((self.NHL_SITE_PREFIX, str(player_id)))
+        PLR_URL_TPL = "https://api-web.nhle.com/v1/player/%s/landing"
+
+        url = PLR_URL_TPL % str(player_id)
         logger.debug(
             "+ Retrieving raw season statistics for player_id " +
             "%d from %s" % (player_id, url))
-        r = requests.get(url, params={
-            'expand': 'person.stats',
-            'stats': 'yearByYear,yearByYearPlayoffs'})
+        r = requests.get(url)
         plr_json = r.json()
 
         plr_season_dict = dict()
 
-        if 'people' not in plr_json:
-            logger.warn(
-                "+ Unable to retrieve raw season data for %s"
-                % Player.find_by_id(player_id))
-            return plr_season_dict
+        plr_season_dict['position'] = plr_json['position']
 
-        for person in plr_json['people']:
-            if 'primaryPosition' not in person:
-                print("Player with id %d not found" % player_id)
+        for plr_season in plr_json['seasonTotals']:
+            if plr_season['leagueAbbrev'] != 'NHL':
                 continue
-            # retrieving players' primary position
-            plr_season_dict['position'] = person['primaryPosition']['code']
-            for stats_type in person['stats']:
-                for split in stats_type['splits']:
 
-                    # skipping any stat line that does not refer to the NHL
-                    if split['league']['name'] != "National Hockey League":
-                        continue
+            if plr_season['gameTypeId'] == 2:
+                season_type = 'RS'
+            elif plr_season['gameTypeId'] == 3:
+                season_type = 'PO'
+            else:
+                raise
 
-                    # retrieving season type for current stat line, i.e.
-                    # regular season or playoffs
-                    if stats_type['type']['displayName'] == "yearByYear":
-                        season_type = 'RS'
-                    elif (
-                        stats_type['type'][
-                            'displayName'] == "yearByYearPlayoffs"
-                    ):
-                        season_type = 'PO'
+            # retrieving season and team of current statline
+            season = int(str(plr_season['season'])[:4])
+            team = Team.find_by_name(plr_season['teamName']['default'])
+            # retrieving sequence number of current statline,
+            # important in case of a player playing for multiple teams
+            # in one season
+            season_team_sequence = plr_season['sequence']
 
-                    # retrieving season and team of current statline
-                    season = int(split['season'][:4])
-                    team = Team.find_by_id(split['team']['id'])
-                    # retrieving sequence number of current statline,
-                    # important in case of a player playing for multiple teams
-                    # in one season
-                    season_team_sequence = split['sequenceNumber']
-
-                    # adding current stat line to dictionary container
-                    plr_season_dict[
-                        (season, season_type, season_team_sequence, team)
-                    ] = split['stat']
+            # adding current stat line to dictionary container
+            plr_season_dict[
+                (season, season_type, season_team_sequence, team)
+            ] = plr_season
 
         return plr_season_dict
 
