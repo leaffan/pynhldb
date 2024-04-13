@@ -232,8 +232,7 @@ def retrieve_latest_signings(max_existing_contracts_found=5):
                     "+ Contracted player (%s) not found in database" % signee)
                 pfr = PlayerFinder()
                 first_name, last_name = signee.split(maxsplit=1)
-                suggested_players = pfr.get_suggested_players(
-                    last_name, first_name)
+                suggested_players = pfr.get_suggested_players_2(last_name, first_name)
                 if len(suggested_players) == 1:
                     (
                         nhl_id, pos, sugg_last_name, sugg_first_name, _
