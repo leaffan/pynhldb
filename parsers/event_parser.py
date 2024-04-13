@@ -67,7 +67,7 @@ class EventParser():
     SERVED_BY_REGEX = re.compile(R"Served By:\s#(\d+)\s(.+)")
     # ... teams and numbers of players involved in hit/blocked shot
     # HIT_BLOCK_REGEX = re.compile(R"(.{3})\s#(\d{1,2})\s.+(?:HIT|BLOCKED BY)\s+(.{3})\s#(\d{1,2})\s.+")
-    HIT_BLOCK_REGEX = re.compile(R"(.{3})\s#(\d{1,2})\s.+(?:HIT|BLOCKED BY)\s+(?:(TEAMMATE)|(.{3})\s#(\d{1,2})\s).+")
+    HIT_BLOCK_REGEX = re.compile(R"(.{3})\s#(\d{1,2})\s.+(?:HIT|BLOCKED BY)\s+(?:(TEAMMATE|OTHER)|(.{3})\s#(\d{1,2})\s).+")
     # ... teams involved in hit, number of player taking the hit
     ONLY_HIT_TAKEN_REGEX = re.compile(R"HIT\s+(.{3})\s#(\d{1,2})\s.+")
     # ... teams involved in hit, number of player hitting
@@ -1149,7 +1149,10 @@ class EventParser():
             if 'details' not in play:
                 continue
             # retrieving period and time of the play
-            play_period = play['period']
+            try:
+                play_period = play['period']
+            except KeyError:
+                play_period = play['periodDescriptor']['number']
             play_time = str_to_timedelta(play['timeInPeriod'])
             play_type = play['typeDescKey']
             # converting json play type to play-by-play summary event type
