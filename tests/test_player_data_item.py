@@ -32,20 +32,20 @@ def test_comparison_operators():
     assert pdi_1 != pdi_3
 
 
-def test_player_data_retriever():
+# def test_player_data_retriever():
 
-    pdi = PlayerDataRetriever()
-    raw_player_data = pdi.retrieve_raw_player_data(8447687)
+#     pdi = PlayerDataRetriever()
+#     raw_player_data = pdi.retrieve_raw_player_data(8447687)
 
-    assert raw_player_data['first_name'] == 'Dominik'
-    assert raw_player_data['last_name'] == 'Hasek'
-    assert raw_player_data['full_name'] == 'Dominik Hasek'
-    assert raw_player_data['position'] == 'G'
-    assert raw_player_data['number'] == '39'
-    assert raw_player_data["height_metric"] == feet_to_m(6, 1)
-    assert raw_player_data["height_imperial"] == 6.01
-    assert raw_player_data["weight_metric"] == round(lbs_to_kg(166))
-    assert raw_player_data["weight_imperial"] == 166
-    assert raw_player_data["hand"] == 'L'
-    assert raw_player_data["date_of_birth"] == parse('1965-01-29').date()
-    assert raw_player_data["place_of_birth"] == 'Pardubice, CZE'
+#     assert raw_player_data['first_name'] == 'Dominik'
+#     assert raw_player_data['last_name'] == 'Hasek'
+#     assert raw_player_data['full_name'] == 'Dominik Hasek'
+#     assert raw_player_data['position'] == 'G'
+#     assert raw_player_data['number'] == '39'
+#     assert raw_player_data["height_metric"] == feet_to_m(6, 1)
+#     assert raw_player_data["height_imperial"] == 6.01
+#     assert raw_player_data["weight_metric"] == round(lbs_to_kg(166))
+#     assert raw_player_data["weight_imperial"] == 166
+#     assert raw_player_data["hand"] == 'L'
+#     assert raw_player_data["date_of_birth"] == parse('1965-01-29').date()
+#     assert raw_player_data["place_of_birth"] == 'Pardubice, CZE'

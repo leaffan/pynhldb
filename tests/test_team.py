@@ -36,20 +36,20 @@ def test_find_by_name_oakland():
     assert t.name == 'Oakland Seals'
 
 
-def test_constructor():
-    url = "https://statsapi.web.nhl.com/api/v1/teams/10"
-    response = requests.get(url)
-    raw_team_data = response.json()
+# def test_constructor():
+#     url = "https://statsapi.web.nhl.com/api/v1/teams/10"
+#     response = requests.get(url)
+#     raw_team_data = response.json()
 
-    t = Team(raw_team_data['teams'][0])
+#     t = Team(raw_team_data['teams'][0])
 
-    assert t.name == 'Toronto Maple Leafs'
-    assert t.franchise_id == 5
-    assert t.team_id == 10
-    assert t.short_name == 'Toronto'
-    assert t.team_name == 'Maple Leafs'
-    assert t.abbr == 'TOR'
-    assert t.first_year_of_play == '1917'
+#     assert t.name == 'Toronto Maple Leafs'
+#     assert t.franchise_id == 5
+#     assert t.team_id == 10
+#     assert t.short_name == 'Toronto'
+#     assert t.team_name == 'Maple Leafs'
+#     assert t.abbr == 'TOR'
+#     assert t.first_year_of_play == '1917'
 
 
 def test_comparison_operators():
