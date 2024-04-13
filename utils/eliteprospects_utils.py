@@ -66,7 +66,7 @@ def get_player_with_dob(url):
 
     # retrieving first and last name
     title = doc.xpath("//title/text()").pop()
-    full_name = title.replace("- Elite Prospects", "").strip()
+    full_name = title.replace("- Elite Prospects", "").replace(" - Stats, Contract, Salary & More", "").strip()
     first_name, last_name = full_name.split(maxsplit=1)
 
     # retrieving alternate last name (if applicable)
