@@ -68,40 +68,28 @@ class PlayerFinder():
         players = list()
 
         if season is None:
-            season = str(retrieve_season())
+            season = retrieve_season()
+
+        season = f"{season}{season + 1}"
+
+        TEAM_ROSTER_URL_TPL = "https://api-web.nhle.com/v1/roster"
 
         # creating stats api url with optional season parameter
-        url = "".join((self.API_TEAM_SITE_PREFIX, str(team.team_id)))
-        url_params = {
-            'expand': 'team.roster',
-            'season': "%s%d" % (season, int(season) + 1)
-        }
-        # retrieving data
-        r = requests.get(url, params=url_params)
+        url = "/".join((TEAM_ROSTER_URL_TPL, str(team.abbr), str(season)))
+        r = requests.get(url)
+        if r.status_code == 404:
+            url = "/".join((TEAM_ROSTER_URL_TPL, str(team.orig_abbr), str(season)))
+            r = requests.get(url)
+
         team_data = r.json()
 
-        if 'teams' not in team_data:
-            logging.warn(
-                "+ %s not part of the league in %s/%d" % (
-                    team, season, int(season) + 1))
-            return players
-
-        team_data = team_data['teams'][0]
-
-        if 'roster' not in team_data:
-            logging.warn(
-                "+ No roster found for %s/%d %s" % (
-                    season, int(season) + 1, team))
-            return players
-
-        roster = team_data['roster']['roster']
-
-        for plr_src in roster:
+        for plrs in team_data.values():
             # retrieving player if of current player in roster
-            plr_id = plr_src['person']['id']
-            # searching and optionally creating player with found player id
-            plr = self.search_player_by_id(plr_id)
-            players.append(plr)
+            for plr in plrs:
+                plr_id = plr['id']
+                # searching and optionally creating player with found player id
+                plr = self.search_player_by_id(plr_id)
+                players.append(plr)
 
         return players
 
@@ -312,6 +300,31 @@ class PlayerFinder():
 
         return players
 
+    def get_suggested_players_2(self, last_name, first_name=''):
+        """
+        Retrieves all players suggested nhl.com after being provided with a
+        last name and an optional first name.
+        """
+        if first_name:
+            name = " ".join((first_name, last_name))
+        else:
+            name = last_name
+
+        search_url = f"https://search.d3.nhle.com/api/v1/search/player?culture=en-us&q={name}"
+        req = requests.get(search_url)
+        suggestions_json = req.json()
+
+        suggested_players = list()
+
+        for suggestion in suggestions_json:
+            if name != suggestion['name']:
+                continue
+            suggestion_first_name, suggestion_last_name = suggestion['name'].split(maxsplit=1)
+            suggested_players.append(
+                (suggestion['playerId'], suggestion['positionCode'], suggestion_last_name, suggestion_first_name, None))
+
+        return suggested_players
+
     def get_suggested_players(self, last_name, first_name=''):
         """
         Retrieves all players suggested nhl.com after being provided with a
@@ -348,32 +361,13 @@ class PlayerFinder():
         plr = Player.find_by_id(plr_id)
 
         if plr is None:
-            url = "".join((self.PEOPLE_SITE_PREFIX, str(plr_id)))
-            req = requests.get(url, params={
-                'expand': 'person.stats',
-                'stats': 'yearByYear,yearByYearPlayoffs'})
+            url = f"https://api-web.nhle.com/v1/player/{plr_id}/landing"
+            req = requests.get(url)
             plr_json = req.json()
 
-            if 'people' in plr_json and len(plr_json['people']):
-                person = plr_json['people'][0]
-
-                if all(k in person for k in (
-                    'lastName', 'firstName', 'primaryPosition'
-                )):
-                    last_name = person['lastName']
-                    first_name = person['firstName']
-                    position = person['primaryPosition']['code']
-
-                    if position == 'N/A':
-                        position = None
-
-                    plr = self.create_player(
-                        plr_id, last_name, first_name, position)
-                    logging.warn("+ %s created" % plr)
-                else:
-                    logging.warn("+ Insufficient information to create player")
-            else:
-                logging.warn("+ No player with id %d" % plr_id)
+            plr = self.create_player(
+                plr_id, plr_json['lastName']['default'], plr_json['firstName']['default'], plr_json['position'])
+            logging.warning("+ %s created" % plr)
 
         return plr
 
