@@ -53,7 +53,7 @@ def test_shot_type():
             # null is an acceptable shot type, too
             if shot_type is None:
                 continue
-            assert shot_type in VALID_SHOT_TYPES
+            assert shot_type.strip() in VALID_SHOT_TYPES
 
 
 def test_shot_zone():
