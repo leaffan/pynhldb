@@ -9,7 +9,6 @@ from lxml import html
 from db.common import session_scope
 from db.event import Event
 
-from utils.summary_downloader import SummaryDownloader
 from utils.data_handler import DataHandler
 from parsers.team_parser import TeamParser
 from parsers.game_parser import GameParser
@@ -17,14 +16,11 @@ from parsers.roster_parser import RosterParser
 from parsers.event_parser import EventParser
 
 
-def test_event(tmpdir):
+def test_event(download_summaries):
 
-    date = "Oct 12, 2016"
     game_id = "020001"
 
-    sdl = SummaryDownloader(tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
-    sdl.run()
-    dld_dir = sdl.get_tgt_dir()
+    dld_dir = download_summaries.get_tgt_dir()
 
     ep = get_event_parser(dld_dir, game_id)
     event = ep.get_event(ep.event_data[1])

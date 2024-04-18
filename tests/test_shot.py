@@ -6,24 +6,17 @@ from sqlalchemy import distinct
 from db.shot import Shot
 from db.common import session_scope
 
-from utils.summary_downloader import SummaryDownloader
 from .test_event import get_event_parser
 
 from tests import VALID_SHOT_TYPES
 from tests import VALID_ZONES
 
 
-def test_shot(tmpdir):
-    """
-    Downloads a play-by-play summary and checks whether shot data can be parsed.
-    """
-    date = "Oct 12, 2016"
+def test_shot(download_summaries):
     game_id = "020001"
     event_idx = 7
 
-    sdl = SummaryDownloader(tmpdir.mkdir('shot').strpath, date, zip_summaries=False)
-    sdl.run()
-    dld_dir = sdl.get_tgt_dir()
+    dld_dir = download_summaries.get_tgt_dir()
 
     ep = get_event_parser(dld_dir, game_id)
     event = ep.get_event(ep.event_data[event_idx])
@@ -38,8 +31,6 @@ def test_shot(tmpdir):
     assert shot.goalie_id == 8467950
     assert shot.goalie_team_id == 9
     assert not shot.scored
-
-    tmpdir.remove()
 
 
 def test_shot_type():
