@@ -98,3 +98,7 @@ tests/data/*
 
 sandbox/
 results/
+analysis/*.json
+*.csv
+*.bat
+*.txt
