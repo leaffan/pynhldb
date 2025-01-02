@@ -10,6 +10,7 @@ from dateutil import parser
 from db import create_or_update_db_item, delete_db_item
 from db.game import Game
 from db.team import Team
+from db.event import Event
 from db.team_game import TeamGame
 from utils import remove_null_strings, retrieve_season, str_to_timedelta, ordinal
 
@@ -69,12 +70,13 @@ class GameParser():
         db_game = Game.find_by_id(game_data['game_id'])
         # creating new game
         game = Game(game_data['game_id'], game_data)
-        
+        game_events = Event.find_for_game(game_data['game_id'])
+
         # deleting existing game in database (if already present)
-        # currently necessary to avoid confusion with re-created events 
-        if db_game and delete_existing:
+        # currently necessary to avoid confusion with re-created events
+        if db_game and game_events and delete_existing:
             delete_db_item(db_game)
-        
+
         # updating existing or creating new game item in database
         create_or_update_db_item(db_game, game)
 
