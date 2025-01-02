@@ -18,8 +18,7 @@ logger = logging.getLogger(__name__)
 class PlayerDraftRetriever():
 
     NHL_PLAYER_DRAFT_PREFIX = "https://www.nhl.com/player"
-    DRAFT_INFO_REGEX = re.compile(
-        "(\d{4})\s(.+),\s(\d+).+\srd,.+\((\d+).+\soverall\)")
+    DRAFT_INFO_REGEX = re.compile(R"(\d{4})\s(.+),\s(\d+).+\srd,.+\((\d+).+\soverall\)")
 
     def __init__(self):
         pass
