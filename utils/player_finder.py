@@ -38,6 +38,7 @@ class PlayerFinder():
     SUGGEST_SITE_SUFFIX = "/99999"
 
     def __init__(self):
+        # nothing to do here
         pass
 
     def find_players_for_team(self, team, src='roster', season=None):
@@ -93,59 +94,6 @@ class PlayerFinder():
 
         return players
 
-    # previous function to retrieve roster players
-    # TODO: deprecate, remove
-    def get_roster_players(self, team, season=None):
-        """
-        Retrieves basic player information from team roster page. Checks
-        whether corresponding player already exists in database and creates it
-        otherwise.
-        """
-        # setting up empty list of players
-        players = list()
-
-        # getting html document with team's roster
-        doc = self.get_html_document(team, 'roster', season)
-
-        # retrieving player page urls, and players' first and last names
-        # from roster page
-        urls = doc.xpath("//td[@class='name-col']/a[@href]/@href")
-        first_names = doc.xpath(
-            "//td[@class='name-col']/a/div/span[@class='name-col__item " +
-            "name-col__firstName']/text()")
-        # using filter to get rid of empty strings after stripping string
-        # elements
-        # using replace to get rid of asterisk indicating players on injury
-        # reserve
-        last_names = filter(
-            None, [
-                x.replace("*", "").strip() if x else None for x in doc.xpath(
-                    "//td[@class='name-col']/a/div/span[@class='name-" +
-                    "col__item name-col__lastName']/text()")])
-        # retrieving players' positions
-        positions = [x[:1] for x in doc.xpath(
-            "//td[@class='position-col fixed-width-font']/text()")]
-
-        for (
-            first_name, last_name, url, position
-        ) in zip(
-            first_names, last_names, urls, positions
-        ):
-            # retrieving nhl id from player page url
-            plr_id = int(url.split("-")[-1])
-
-            # trying to find player in database
-            plr = Player.find_by_id(plr_id)
-            # creating player if not already in database
-            if plr is None:
-                plr = self.create_player(
-                    plr_id, last_name, first_name, position)
-                logging.info("+ %s created" % plr)
-
-            players.append(plr)
-
-        return players
-
     def get_system_players(self, team):
         """
         Retrieves player data from team's in the system, i.e. prospects, page.
@@ -195,10 +143,8 @@ class PlayerFinder():
 
         # collecting player names and links to capfriendly pages for different
         # player groups
-        cf_links = doc.xpath(
-            "//table[@id='team']/tr[@class='column_head c']/td/parent::tr/following-sibling::tr/td[1]/a/@href")
-        cf_names = doc.xpath(
-            "//table[@id='team']/tr[@class='column_head c']/td/parent::tr/following-sibling::tr/td[1]/a/text()")
+        cf_links = doc.xpath("//div[@class='cf_teamProfileRosterSection__table_wrapper']/table/tbody/tr/td/a/@href")
+        cf_names = doc.xpath("//div[@class='cf_teamProfileRosterSection__table_wrapper']/table/tbody/tr/td/a/text()")
 
         for lnk, name in zip(cf_links, cf_names):
             # retrieving capfriendly id from player page link
@@ -208,21 +154,13 @@ class PlayerFinder():
             # trying to find player using suggestions
             if plr is None:
                 last_name, first_name = name.split(", ")
-                suggested_players = self.get_suggested_players(
-                    last_name, first_name)
+                suggested_players = self.get_suggested_players(last_name, first_name)
                 for suggested_player in suggested_players:
-                    (
-                        sugg_plr_id, sugg_pos,
-                        sugg_last_name, sugg_first_name, _
-                    ) = (
-                        suggested_player
-                    )
-                    if (last_name, first_name) == (
-                            sugg_last_name, sugg_first_name):
+                    sugg_plr_id, sugg_pos, sugg_last_name, sugg_first_name, _ = suggested_player
+                    if (last_name, first_name) == (sugg_last_name, sugg_first_name):
                         plr = Player.find_by_id(sugg_plr_id)
                         if plr is None:
-                            plr = self.create_player(
-                                sugg_plr_id, last_name, first_name, sugg_pos)
+                            plr = self.create_player(sugg_plr_id, last_name, first_name, sugg_pos)
 
             if plr is None:
                 print("Unable to find player with name %s" % name)
@@ -367,7 +305,7 @@ class PlayerFinder():
 
             plr = self.create_player(
                 plr_id, plr_json['lastName']['default'], plr_json['firstName']['default'], plr_json['position'])
-            logging.warning("+ %s created" % plr)
+            logging.info("+ %s created" % plr)
 
         return plr
 
