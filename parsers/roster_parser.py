@@ -5,8 +5,9 @@ import logging
 
 from collections import defaultdict
 
-from utils import str_to_timedelta
+from utils import str_to_timedelta, player_finder
 from db import create_or_update_db_item
+from db.player import Player
 from db.player_game import PlayerGame
 
 logger = logging.getLogger(__name__)
@@ -60,9 +61,12 @@ class RosterParser():
                 if summary_item['no'] in self.roster_data[key]['starting']:
                     summary_item['starting'] = True
 
-                # TODO: check whether player exists in database
-                # TODO: otherwise create one
                 # setting up new player game item
+                plr = Player.find_by_id(plr_id)
+                if not plr:
+                    plr = player_finder.PlayerFinder().search_player_by_id(plr_id)
+                    logging.info(f"{plr} created")
+
                 new_pgame = PlayerGame(
                     game.game_id, curr_team.team_id, plr_id, summary_item)
 
