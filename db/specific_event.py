@@ -8,12 +8,12 @@ from db.common import session_scope
 class SpecificEvent():
 
     @classmethod
-    def find_by_event_id(self, event_id):
+    def find_by_event_id(cls, event_id):
         # retrieving table name for specific event
-        table_name = self.__tablename__
+        table_name = cls.__tablename__
 
         # finding class associated with table name
-        for c in Base._decl_class_registry.values():
+        for c in Base.registry._class_registry.values():
             if hasattr(c, '__tablename__') and c.__tablename__ == table_name:
                 break
 
@@ -23,7 +23,7 @@ class SpecificEvent():
                 specific_event = session.query(c).filter(
                     c.event_id == event_id
                 ).one()
-            except Exception as e:
+            except Exception:
                 specific_event = None
             return specific_event
 
@@ -44,4 +44,4 @@ class SpecificEvent():
         )
 
     def __ne__(self, other):
-        return not self == other
+        return self != other
