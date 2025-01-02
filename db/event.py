@@ -27,6 +27,17 @@ class Event(Base):
                 setattr(self, attr, None)
 
     @classmethod
+    def find_for_game(cls, game_id):
+        with session_scope() as session:
+            try:
+                events = session.query(Event).filter(
+                    Event.game_id == game_id
+                ).all()
+            except Exception:
+                events = list()
+            return events
+
+    @classmethod
     def find(self, game_id, in_game_event_cnt):
         with session_scope() as session:
             try:
