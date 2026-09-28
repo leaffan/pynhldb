@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import logging
 import re
@@ -12,7 +11,7 @@ logger = logging.getLogger(__name__)
 # TODO: use logger
 
 
-class TeamParser():
+class TeamParser:
 
     # regular expression to retrieve overall and home/road game counts
     GAME_COUNT_REGEX = re.compile(".+?(\d+).+?(\d+)")
@@ -20,8 +19,8 @@ class TeamParser():
     def __init__(self, raw_data):
         self.raw_data = raw_data
         # preparing dictionary containers for parsed team data
-        self.team_data = dict()
-        self.teams = dict()
+        self.team_data = {}
+        self.teams = {}
 
     def create_teams(self):
         """
@@ -55,8 +54,7 @@ class TeamParser():
             self.teams[key] = team
             # using team abbreviation as key comes in handy later on
             self.teams[team.orig_abbr] = team
-        else:
-            return self.teams
+        return self.teams
 
     def create_teams_from_json(self):
         # TODO: create teams from JSON structure
@@ -67,25 +65,22 @@ class TeamParser():
         Loads raw data from html and pre-processes it.
         """
         # index variable for pre-2007 team and team score retrieval
-        idx = 0
-
         # defining and itearting over combinations of table id used in html and
         # internal dictionary key
-        for (html_id, dict_key) in [("Visitor", "road"), ("Home", "home")]:
+        for idx, (html_id, dict_key) in enumerate([("Visitor", "road"), ("Home", "home")]):
             # team information retrieval from 2007 to present
-            data_str = self.raw_data.xpath(
-                "//table[@id='%s']/tr/td/text()" % html_id)
+            data_str = self.raw_data.xpath(f"//table[@id='{html_id}']/tr/td/text()")
             # previously to 2007 this kind of information can only be retrieved
             # via a center tag inside a table data cell with a given width
             # as there are two teams per game sheet we need to track the
             # count via an index variable *idx*
             if not data_str:
                 data_str = [s.strip() for s in self.raw_data.xpath(
-                    "//td[@width=125][%d]/center" % (idx + 1) +
+                    f"//td[@width=125][{idx + 1}]/center" +
                     "/descendant-or-self::*/text()")]
             # team score retrieval from 2007 to present
             score_str = self.raw_data.xpath(
-                "//table[@id='%s']/tr/td/table/tr/td/text()" % html_id)
+                f"//table[@id='{html_id}']/tr/td/table/tr/td/text()")
             # previously to 2007 score information can only be retrieved
             # via the specified table width and font size values
             # as there are two scores per game sheet we need to track the
@@ -94,4 +89,3 @@ class TeamParser():
                 score_str = [self.raw_data.xpath(
                     "//td[@width=25]/font[@size=7]/text()")[idx].strip()]
             self.team_data[dict_key] = data_str + score_str
-            idx += 1

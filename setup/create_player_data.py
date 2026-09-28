@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-import logging
 import concurrent.futures
+import logging
 from datetime import date
 
 from sqlalchemy import and_
@@ -10,14 +9,15 @@ from sqlalchemy import and_
 from db.common import session_scope
 from db.player import Player
 from db.team import Team
-from utils.player_finder import PlayerFinder
-from utils.player_data_retriever import PlayerDataRetriever
+from utils.capfriendly_utils import (
+    retrieve_capfriendly_id,
+    retrieve_capfriendly_ids,
+    retrieve_latest_signings,
+)
 from utils.player_contract_retriever import PlayerContractRetriever
+from utils.player_data_retriever import PlayerDataRetriever
 from utils.player_draft_retriever import PlayerDraftRetriever
-from utils.capfriendly_utils import retrieve_capfriendly_ids
-from utils.capfriendly_utils import retrieve_capfriendly_id
-from utils.capfriendly_utils import retrieve_latest_signings
-
+from utils.player_finder import PlayerFinder
 
 logger = logging.getLogger(__name__)
 

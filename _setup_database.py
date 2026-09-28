@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import argparse
 
-from setup import create_teams as ct
 from setup import create_divisions as cd
-from setup import create_players as cp
 from setup import create_player_data as cpd
-
+from setup import create_players as cp
+from setup import create_teams as ct
 from utils import prepare_logging
+
 prepare_logging(log_types=['file', 'screen'])
 
 
