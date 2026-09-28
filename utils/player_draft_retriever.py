@@ -1,21 +1,19 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import logging
 import re
 
 import requests
-from lxml import html
 
 from db import commit_db_item
-from db.team import Team
 from db.player import Player
 from db.player_draft import PlayerDraft
+from db.team import Team
 
 logger = logging.getLogger(__name__)
 
 
-class PlayerDraftRetriever():
+class PlayerDraftRetriever:
 
     NHL_PLAYER_DRAFT_PREFIX = "https://www.nhl.com/player"
     DRAFT_INFO_REGEX = re.compile(R"(\d{4})\s(.+),\s(\d+).+\srd,.+\((\d+).+\soverall\)")
@@ -28,57 +26,48 @@ class PlayerDraftRetriever():
         Retrieves draft information for player with specified id.
         """
         plr = Player.find_by_id(player_id)
-        logger.info("+ Retrieving draft information for %s" % plr.name)
+        logger.info(f"+ Retrieving draft information for {plr.name}")
 
         raw_draft_info = self.retrieve_raw_draft_data(player_id)
 
         if raw_draft_info is None:
-            logger.info("+ No draft information retrievable for %s" % plr.name)
+            logger.info(f"+ No draft information retrievable for {plr.name}")
             return
 
         logger.debug(
-            "+ Raw draft information for %s: %s" % (plr.name, raw_draft_info))
+            f"+ Raw draft information for {plr.name}: {raw_draft_info}")
 
-        match = re.search(self.DRAFT_INFO_REGEX, raw_draft_info)
-        if match:
-            dft_year = int(match.group(1))
-            dft_team = Team.find_by_abbr(match.group(2))
-            dft_round = int(match.group(3))
-            dft_overall = int(match.group(4))
+        dft_year = int(raw_draft_info.get("year"))
+        dft_team = Team.find_by_abbr(raw_draft_info.get("teamAbbrev"))
+        dft_round = int(raw_draft_info.get("round"))
+        dft_overall = int(raw_draft_info.get("overallPick"))
 
-            draft_info_db = PlayerDraft.find(
-                player_id, dft_team.team_id, dft_year)
+        draft_info_db = PlayerDraft.find(
+            player_id, dft_team.team_id, dft_year)
 
-            if draft_info_db:
-                logger.info(
-                    "+ Draft information for %s already in database" % (
-                        plr.name))
-                return
-
-            draft_info = PlayerDraft(
-                player_id, dft_team.team_id, dft_year, dft_round, dft_overall)
-
-            commit_db_item(draft_info)
-
-        else:
+        if draft_info_db:
             logger.info(
-                "+ No draft information for %s decodable from %s" % (
-                    plr.name, raw_draft_info))
+                f"+ Draft information for {plr.name} already in database")
+            return
+
+        draft_info = PlayerDraft(
+            player_id, dft_team.team_id, dft_year, dft_round, dft_overall)
+
+        commit_db_item(draft_info)
+
 
     def retrieve_raw_draft_data(self, player_id):
         """
         Retrieves raw draft information from profile page of
         player with specified id.
         """
-        url = "/".join((self.NHL_PLAYER_DRAFT_PREFIX, str(player_id)))
+        url = f"https://api-web.nhle.com/v2/player/{player_id}/bio"
         r = requests.get(url)
-        doc = html.fromstring(r.text)
+        bio = r.json()
 
-        raw_draft_info = doc.xpath(
-            "//li[@class='player-bio__item']/span[text() = " +
-            "'Draft:']/parent::li/text()")
+        raw_draft_info = bio.get("draftDetails")
 
         if not raw_draft_info:
             return
         else:
-            return raw_draft_info.pop()
+            return raw_draft_info
