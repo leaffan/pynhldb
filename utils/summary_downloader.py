@@ -1,21 +1,22 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
+import hashlib
+import json
 import os
 import re
 import sys
-import json
 import time
-import hashlib
 from urllib.parse import urlsplit
 
 import requests
 from dateutil.parser import parse
-from dateutil.rrule import rrule, DAILY
+from dateutil.rrule import DAILY, rrule
+
+from utils import adjust_html_response
 
 from .multi_downloader import MultiFileDownloader
+from .pending_parse import PendingParseTracker
 from .summary_data_injector import add_nhl_ids_to_content
-from utils import adjust_html_response
 
 BASE_URL = 'https://api-web.nhle.com'
 
@@ -34,13 +35,13 @@ class SummaryDownloader(MultiFileDownloader):
     # defining necessary url prefixes
     NHL_PREFIX = r"http://www.nhl.com"
     # url prefix for html game reports
-    HTML_REPORT_PREFIX = "".join((NHL_PREFIX, r"/scores/htmlreports/"))
+    HTML_REPORT_PREFIX = f"{NHL_PREFIX}/scores/htmlreports/"
 
     # defining valid game and report types
     REPORT_TYPES = ['GS', 'ES', 'FC', 'PL', 'TV', 'TH', 'RO', 'SS', 'SO']
     GAME_TYPES = [2, 3]
 
-    GAME_ID_PATTERN = R"\d{2}\d{4}"
+    GAME_ID_PATTERN = r"\d{2}\d{4}"
 
     def __init__(self, tgt_dir, date, to_date='', zip_summaries=True, workers=0, cleanup=True, exclude=None):
         # constructing base class instance
@@ -55,7 +56,7 @@ class SummaryDownloader(MultiFileDownloader):
         # preparing list of dates to download summary data for
         self.game_dates = list(rrule(DAILY, dtstart=self.date, until=self.to_date))
         # storing datasets to be excluded from downloading
-        self.exclude = list()
+        self.exclude = []
         if exclude is not None:
             self.exclude = exclude
 
@@ -63,9 +64,14 @@ class SummaryDownloader(MultiFileDownloader):
         self.mod_timestamp_src = os.path.join(tgt_dir, '_mod_timestamps.json')
         # loading dictionary of previously downloaded summaries (if available)
         if os.path.isfile(self.mod_timestamp_src):
-            self.mod_timestamps = json.loads(open(self.mod_timestamp_src).read())
+            with open(self.mod_timestamp_src) as f:
+                self.mod_timestamps = json.loads(f.read())
         else:
-            self.mod_timestamps = dict()
+            self.mod_timestamps = {}
+
+        # tracks, per date, which games received changed raw data during a
+        # download run so that a later parse run can pick up only those
+        self.pending_tracker = PendingParseTracker(tgt_dir)
 
     def get_tgt_dir(self):
         """
@@ -77,25 +83,25 @@ class SummaryDownloader(MultiFileDownloader):
         """
         Returns file name of zipped downloads for current date.
         """
-        return "%04d-%02d-%02d" % (self.current_date.year, self.current_date.month, self.current_date.day)
+        return f"{self.current_date.year:04d}-{self.current_date.month:02d}-{self.current_date.day:02d}"
 
     def get_zip_path(self):
         """
         Returns path to file of zipped downloaded files for current date.
         """
-        return os.path.join(self.get_tgt_dir(), ".".join((self.get_zip_name(), 'zip')))
+        return os.path.join(self.get_tgt_dir(), f"{self.get_zip_name()}.zip")
 
     def find_files_to_download(self):
         """
         Identifies files to be downloaded.
         """
         # making sure that the list of files to download is empty
-        self.files_to_download = list()
+        self.files_to_download = []
         # preparing formatted date string as necessary for scoreboard retrieval
-        fmt_date = "%d-%02d-%02d" % (self.current_date.year, self.current_date.month, self.current_date.day)
+        fmt_date = f"{self.current_date.year:04d}-{self.current_date.month:02d}-{self.current_date.day:02d}"
 
         # retrieving schedule for current date in json format
-        schedule_url = "/".join((self.SCHEDULE_URL_BASE, fmt_date))
+        schedule_url = f"{self.SCHEDULE_URL_BASE}/{fmt_date}"
         time.sleep(1)
         req = requests.get(schedule_url)
         try:
@@ -109,7 +115,7 @@ class SummaryDownloader(MultiFileDownloader):
         """
         Gets downloadable files from JSON scoreboard page.
         """
-        files_to_download = list()
+        files_to_download = []
         for game in json_scoreboard['gameWeek'][0]['games']:
             season = game['season']
             full_game_id = game['id']
@@ -132,12 +138,12 @@ class SummaryDownloader(MultiFileDownloader):
             # files to be downloaded
             if 'game_feed' not in self.exclude:
                 feed_json_url = self.JSON_GAME_FEED_URL_TEMPLATE % str(full_game_id)
-                files_to_download.append((feed_json_url, ".".join((game_id, "json"))))
+                files_to_download.append((feed_json_url, f"{game_id}.json"))
             # setting upd json shift chart url and adding it to list of
             # files to be downloaded
             if 'shift_chart' not in self.exclude:
                 chart_json_url = self.JSON_SHIFT_CHART_URL_TEMPLATE % str(full_game_id)
-                files_to_download.append((chart_json_url, "".join((game_id, "_sc.json"))))
+                files_to_download.append((chart_json_url, f"{game_id}_sc.json"))
 
         return files_to_download
 
@@ -178,7 +184,8 @@ class SummaryDownloader(MultiFileDownloader):
 
         if content:
             # writing downloaded content to target path
-            open(tgt_path, write_type).write(content)
+            with open(tgt_path, write_type) as f:
+                f.write(content)
             return tgt_path
 
     def download_html_content(self, url, tgt_path):
@@ -193,7 +200,7 @@ class SummaryDownloader(MultiFileDownloader):
         # sys.exit()
 
         # setting up http headers using modification time stamp
-        headers = dict()
+        headers = {}
         # modifing headers in case we're looking for an update of already
         # downloaded data
         if mod_time_stamp:
@@ -279,7 +286,7 @@ class SummaryDownloader(MultiFileDownloader):
             # calculating MD5 hash for downloaded data
             json_data_hash = hashlib.md5(json.dumps(json_data).encode('utf-8')).hexdigest()
             # comparing hashes of downloaded and already exising data
-            if not existing_data_hash == json_data_hash:
+            if existing_data_hash != json_data_hash:
                 sys.stdout.write("+")
                 sys.stdout.flush()
                 self.mod_timestamps[url] = json_data_hash
@@ -292,9 +299,9 @@ class SummaryDownloader(MultiFileDownloader):
         """
         Gets game ids of games that have been downloaded.
         """
-        game_ids = set([
+        game_ids = {
             m.group(0) for f in list(map(os.path.basename, self.downloaded_files)) for
-            m in [re.search(self.GAME_ID_PATTERN, f)] if m])
+            m in [re.search(self.GAME_ID_PATTERN, f)] if m}
 
         return game_ids
 
@@ -304,7 +311,7 @@ class SummaryDownloader(MultiFileDownloader):
         """
         for date in self.game_dates:
             self.current_date = date
-            print("+ Downloading summaries for %s" % self.current_date.strftime("%A, %B %d, %Y"))
+            print(f"+ Downloading summaries for {self.current_date.strftime('%A, %B %d, %Y')}")
             self.find_files_to_download()
             self.zip_path = self.get_zip_path()
             self.download_files(self.get_tgt_dir())
@@ -313,9 +320,13 @@ class SummaryDownloader(MultiFileDownloader):
             downloaded_game_ids = self.get_downloaded_game_ids()
             if downloaded_game_ids:
                 print("Downloaded data for the following game IDs:")
-                print(" ".join(sorted(list(downloaded_game_ids))))
+                print(" ".join(sorted(downloaded_game_ids)))
+                self.pending_tracker.mark_changed(
+                    self.current_date.strftime("%Y-%m-%d"), downloaded_game_ids)
 
             if self.zip_downloaded_files:
                 self.zip_files(self.get_zip_name(), self.get_tgt_dir())
 
-        json.dump(self.mod_timestamps, open(self.mod_timestamp_src, 'w'), indent=2, sort_keys=True)
+        with open(self.mod_timestamp_src, 'w') as f:
+            json.dump(self.mod_timestamps, f, indent=2, sort_keys=True)
+        self.pending_tracker.save()

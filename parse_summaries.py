@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
+import argparse
 import os
 import re
 import sys
-import argparse
-
 from datetime import timedelta
 
 from dateutil.parser import parse
-from dateutil.relativedelta import relativedelta
 
 from parsers.main_parser import MainParser
+from utils import prepare_logging
+from utils.pending_parse import PendingParseTracker
+
+prepare_logging(log_types=['file', 'screen'])
 
 FILENAME_REGEX = re.compile(R'^\d{4}\-\d{2}\-\d{2}$')
 
@@ -45,6 +46,10 @@ if __name__ == '__main__':
         '--exclude', dest='exclude', required=False, nargs='+',
         choices=['shifts', 'events'],
         help="Exclude the specified aspects from parsing")
+    parser.add_argument(
+        '--force', dest='force', required=False, action='store_true',
+        help="Parse all games in the specified date range, ignoring " +
+        "whether their raw data has changed since it was last parsed")
 
     args = parser.parse_args()
 
@@ -94,12 +99,52 @@ if __name__ == '__main__':
                     print(os.path.join(root, file))
                     src_files.append(os.path.join(root, file))
 
+    # tracks which games received changed raw data since they were last
+    # parsed successfully, so that unchanged games can be skipped
+    # _pending_parse.json lives next to _mod_timestamps.json in the download
+    # target directory used for a given date's zip file, i.e. two directory
+    # levels above it (base_tgt_dir/YYYY-MM/YYYY-MM-DD.zip) - this is not
+    # necessarily src_dir itself, e.g. when src_dir covers multiple seasons
+    # each with their own download target directory
+    pending_trackers = dict()
+
+    def get_pending_tracker(zip_file_path):
+        base_tgt_dir = os.path.dirname(os.path.dirname(zip_file_path))
+        if base_tgt_dir not in pending_trackers:
+            pending_trackers[base_tgt_dir] = PendingParseTracker(base_tgt_dir)
+        return pending_trackers[base_tgt_dir]
+
     for file in src_files[:]:
+        fname, ext = os.path.splitext(os.path.basename(file))
+        date_str = fname
+        pending_tracker = get_pending_tracker(file)
+
+        if args.force:
+            # parsing everything found for this date, ignoring change status
+            file_tgt_game_ids = tgt_game_ids
+        else:
+            pending_game_ids = pending_tracker.get_pending(date_str)
+            if tgt_game_ids:
+                # explicitly requested games are always parsed, in addition
+                # to whatever else changed for this date
+                file_tgt_game_ids = sorted(pending_game_ids.union(tgt_game_ids))
+            else:
+                file_tgt_game_ids = sorted(pending_game_ids)
+
+            if not file_tgt_game_ids:
+                print("+ No changed games to parse for %s, skipping" % date_str)
+                continue
+
         print("+ Using data source '%s'" % file)
 
-        mp = MainParser(file, tgt_game_ids)
+        mp = MainParser(file, file_tgt_game_ids)
         if sequential_parsing:
             mp.parse_games_sequentially(args.exclude)
         else:
             mp.parse_games_simultaneously(args.exclude)
+
+        pending_tracker.mark_parsed(date_str, mp.succeeded_game_ids)
         mp.dispose()
+
+    for pending_tracker in pending_trackers.values():
+        pending_tracker.save()

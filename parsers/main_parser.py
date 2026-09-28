@@ -1,25 +1,23 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import json
 import logging
-
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from lxml import html
 
-from utils.data_handler import DataHandler
-from parsers.team_parser import TeamParser
-from parsers.game_parser import GameParser
-from parsers.roster_parser import RosterParser
-from parsers.goalie_parser import GoalieParser
-from parsers.shift_parser import ShiftParser
 from parsers.event_parser import EventParser
+from parsers.game_parser import GameParser
+from parsers.goalie_parser import GoalieParser
+from parsers.roster_parser import RosterParser
+from parsers.shift_parser import ShiftParser
+from parsers.team_parser import TeamParser
+from utils.data_handler import DataHandler
 
 logger = logging.getLogger(__name__)
 
 
-class MainParser():
+class MainParser:
     # data prefixes for official html datasets:
     #   ES ... event summary
     #   FC ... faceoff comparison
@@ -40,6 +38,8 @@ class MainParser():
         self.raw_data = dict()
         # parsed data in dictionary using game ids as keys
         self.parsed_data = dict()
+        # game ids that were parsed successfully, i.e. without raising
+        self.succeeded_game_ids = set()
 
         # setting up data handler for specified data source
         self.dh = DataHandler(self.data_src)
@@ -55,10 +55,17 @@ class MainParser():
     def parse_games_sequentially(self, exclude=None):
         """
         Parses multiple games in a sequential manner, excludes the specified
-        aspects (e.g. player shifts and/or game events) from processing.
+        aspects (e.g. player shifts and/or game events) from processing. A
+        game that fails to parse does not prevent the remaining games from
+        being parsed.
         """
         for game_id in self.tgt_game_ids:
-            self.parse_single_game(game_id, exclude)
+            try:
+                self.parse_single_game(game_id, exclude)
+            except Exception as e:
+                logger.error("Failed to parse game %s: %s" % (game_id, e))
+            else:
+                self.succeeded_game_ids.add(game_id)
 
     def parse_games_simultaneously(self, exclude=None, max_workers=8):
         """
@@ -72,12 +79,15 @@ class MainParser():
                     self.parse_single_game, game_id,
                     exclude): game_id for game_id in self.tgt_game_ids}
             for future in as_completed(future_tasks):
+                game_id = future_tasks[future]
                 try:
                     # TODO: think of something to do with the result here
                     data = future.result()
                     print(data)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.error("Failed to parse game %s: %s" % (game_id, e))
+                else:
+                    self.succeeded_game_ids.add(game_id)
 
     def parse_single_game(self, game_id, exclude):
         """
