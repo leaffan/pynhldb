@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-from .common import Base, session_scope
 
 from sqlalchemy import and_, or_
 from sqlalchemy.sql.expression import func
+
+from .common import Base, session_scope
 
 
 class Team(Base):
@@ -42,6 +41,9 @@ class Team(Base):
 
         if name.lower() == "anaheim mighty ducks":
                 name = "Anaheim Ducks"
+
+        if name.lower() == "utah mammoth":
+                name = "Utah Hockey Club"
 
         with session_scope() as session:
             try:
