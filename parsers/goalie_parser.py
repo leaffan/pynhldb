@@ -20,7 +20,7 @@ class GoalieParser():
         'win', 'loss', 'tie', 'regulation_tie',
         'overtime_game', 'shootout_game',
         'shutout', 'en_goals', 'otl']
-    WIN_LOSS_REGEX = re.compile("\((W|L|T|OT)\)")
+    WIN_LOSS_REGEX = re.compile(r"\((W|L|T|OT)\)")
 
     def __init__(self, raw_data, raw_so_data=None):
         self.raw_data = raw_data
@@ -81,7 +81,7 @@ class GoalieParser():
 
                 # retrieving shootout information
                 goalie_game_data_dict = self.retrieve_shootout_information(
-                    goalie_game_data_dict, plr_game)
+                    goalie_game_data_dict, plr_game, game.shootout_game)
 
                 # setting up new goalie game item
                 goalie_game = GoalieGame(
@@ -124,11 +124,16 @@ class GoalieParser():
             data_dict['gaa'] = None
         return data_dict
 
-    def retrieve_shootout_information(self, data_dict, plr_game):
+    def retrieve_shootout_information(self, data_dict, plr_game, shootout_game):
         """
         Retrieves shootout information for current goalie in game.
         """
-        if self.raw_so_data is None:
+        # the SO report is downloaded for every game regardless of whether
+        # it actually went to a shootout, so it being present
+        # (self.raw_so_data is not None) doesn't mean there's anything to
+        # parse - shootout_game (derived from the GS report's own scoring
+        # summary) is the reliable signal for that
+        if not shootout_game or self.raw_so_data is None:
             return data_dict
         # retrieving all goalies participating in the shootout
         so_goalies = set(

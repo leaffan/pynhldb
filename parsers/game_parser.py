@@ -76,11 +76,15 @@ class GameParser():
         # currently necessary to avoid confusion with re-created events
         if db_game and game_events and delete_existing:
             delete_db_item(db_game)
+            db_game = None
 
-        # updating existing or creating new game item in database
-        create_or_update_db_item(db_game, game)
-
-        return Game.find_by_id(game.game_id)
+        # updating existing or creating new game item in database, and
+        # returning the persisted item directly rather than re-querying it
+        # (a separate query here could intermittently and silently come
+        # back empty under concurrent parsing, e.g. due to db connection
+        # pool contention, since Game.find_by_id() swallows any exception
+        # from the query and turns it into None)
+        return create_or_update_db_item(db_game, game)
 
     def retrieve_standard_game_data(self, game_data):
         """
@@ -362,8 +366,13 @@ class GameParser():
             # retrieving empty net goals for and against
             team_game_data = self.retrieve_empty_net_goals(
                 key, team_game_data, en_goals_raw_data)
-            # retrieving shootout information (if applicable)
-            if so_data is not None:
+            # retrieving shootout information (if applicable) - the SO
+            # report is downloaded for every game regardless of whether it
+            # actually went to a shootout, so it being present (so_data is
+            # not None) doesn't mean there's anything to parse; game.shoot
+            # out_game (derived from the GS report's own scoring summary)
+            # is the reliable signal for that
+            if game.shootout_game and so_data is not None:
                 team_game_data = self.retrieve_shootout_attempts(
                     team_game_data, so_data
                 )
