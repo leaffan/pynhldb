@@ -35,9 +35,9 @@ class MainParser:
         self.data_src = data_src
 
         # raw data is organized in a dictionary using game ids as keys
-        self.raw_data = dict()
+        self.raw_data = {}
         # parsed data in dictionary using game ids as keys
-        self.parsed_data = dict()
+        self.parsed_data = {}
         # game ids that were parsed successfully, i.e. without raising
         self.succeeded_game_ids = set()
 
@@ -63,7 +63,7 @@ class MainParser:
             try:
                 self.parse_single_game(game_id, exclude)
             except Exception as e:
-                logger.error("Failed to parse game %s: %s" % (game_id, e))
+                logger.exception(f"Failed to parse game {game_id}: {e}")
             else:
                 self.succeeded_game_ids.add(game_id)
 
@@ -85,7 +85,7 @@ class MainParser:
                     data = future.result()
                     print(data)
                 except Exception as e:
-                    logger.error("Failed to parse game %s: %s" % (game_id, e))
+                    logger.exception(f"Failed to parse game {game_id}: {e}")
                 else:
                     self.succeeded_game_ids.add(game_id)
 
@@ -97,11 +97,11 @@ class MainParser:
         """
         # creating empty list of aspects to exclude if necessary
         if exclude is None:
-            exclude = list()
+            exclude = []
 
         # setting up dictionary for structured raw data
-        self.raw_data[game_id] = dict()
-        self.parsed_data[game_id] = dict()
+        self.raw_data[game_id] = {}
+        self.parsed_data[game_id] = {}
         # parsing current basic game information and participating teams
         (
             self.parsed_data[game_id]['game'],
@@ -141,8 +141,7 @@ class MainParser:
         # removing raw structured data from memory
         del self.raw_data[game_id]
 
-        return "+++ Finished parsing %s" % (
-            self.parsed_data[game_id]['game'].short())
+        return f"+++ Finished parsing {self.parsed_data[game_id]['game'].short()}"
 
     def create_events(self, game_id):
         """
@@ -266,9 +265,8 @@ class MainParser:
         """
         # returning raw data registered in corresponding dictionary if it
         # already has been read previously
-        if game_id in self.raw_data:
-            if prefix in self.raw_data[game_id]:
-                return self.raw_data[game_id][prefix]
+        if game_id in self.raw_data and prefix in self.raw_data[game_id]:
+            return self.raw_data[game_id][prefix]
 
         # retrieving original html data from data source
         orig_data = self.dh.get_game_data(game_id, prefix)
@@ -277,8 +275,8 @@ class MainParser:
             return
 
         # creating raw structured tree from original html data
-        self.raw_data[game_id][prefix] = html.document_fromstring(open(
-            orig_data[prefix]).read())
+        with open(orig_data[prefix]) as f:
+            self.raw_data[game_id][prefix] = html.document_fromstring(f.read())
 
         return self.raw_data[game_id][prefix]
 
