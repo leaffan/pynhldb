@@ -1,19 +1,19 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import logging
-import threading
 import re
+import threading
+import time
 
 import requests
 from dateutil import parser
 
 from db.common import session_scope
-from db.team import Team
-from db.player import Player
-from db.player_season import PlayerSeason
 from db.goalie_season import GoalieSeason
+from db.player import Player
 from db.player_data_item import PlayerDataItem
+from db.player_season import PlayerSeason
+from db.team import Team
 from utils import feet_to_m, lbs_to_kg
 
 logger = logging.getLogger(__name__)
@@ -95,12 +95,13 @@ class PlayerDataRetriever():
 
             plr_seasons.append(plr_season)
 
-            if season == 2023:
-                self.create_or_update_database_item(plr_season, plr_season_db)
+            self.create_or_update_database_item(plr_season, plr_season_db)
 
         logger.info(
             "+ %d season statistics items retrieved for %s" % (
                 len(plr_seasons), plr.name))
+
+        time.sleep(0.1)  # small delay to avoid overwhelming the server
 
         return plr_seasons
 
@@ -160,6 +161,7 @@ class PlayerDataRetriever():
             "+ Retrieving raw season statistics for player_id " +
             "%d from %s" % (player_id, url))
         r = requests.get(url)
+        time.sleep(0.5)  # to avoid hitting nhl.com too hard
         plr_json = r.json()
 
         plr_season_dict = dict()
