@@ -105,7 +105,8 @@ class MainParser:
         # parsing current basic game information and participating teams
         (
             self.parsed_data[game_id]['game'],
-            self.parsed_data[game_id]['teams']
+            self.parsed_data[game_id]['teams'],
+            gp,
         ) = self.create_game_and_teams(game_id)
         print(self.parsed_data[game_id]['game'])
         # print(self.parsed_data[game_id]['teams'].keys())
@@ -118,9 +119,7 @@ class MainParser:
         # this needs to be conducted at this position because roster
         # information is necessary to accomplish this task
         # raw game summary data has to be provided here, too
-        # providing raw data within the scope of the game parser lead to
-        # threading problems (for reason so far not understood)
-        self.gp.retrieve_three_stars(
+        gp.retrieve_three_stars(
             self.parsed_data[game_id]['game'],
             self.parsed_data[game_id]['teams'],
             self.parsed_data[game_id]['rosters'],
@@ -174,15 +173,19 @@ class MainParser:
         # GS data prefix, i.e. game summary data is necessary as the parser
         # collects all periods a goal was scored in
         # this information is only retrievable from GS type summaries
-        self.gp = GameParser(game_id, self.raw_data[game_id]['GS'])
+        # kept as a local variable (not on self) since parse_single_game
+        # runs concurrently for multiple games sharing this MainParser
+        # instance - storing it on self let one game's GameParser get
+        # clobbered by another's mid-flight, causing intermittent failures
+        gp = GameParser(game_id, self.raw_data[game_id]['GS'])
         # retrieving essential game information, i.e. venue, attendance, score
         # using previously parsed team information
-        game = self.gp.create_game(teams)
+        game = gp.create_game(teams)
         # creating team/game item using raw game summary data and (if
         # available) raw shootout summary data
-        self.gp.create_team_games(game, self.raw_data[game_id]['GS'], self.read_on_demand(game_id, 'SO'))
+        gp.create_team_games(game, self.raw_data[game_id]['GS'], self.read_on_demand(game_id, 'SO'))
 
-        return game, teams
+        return game, teams, gp
 
     def create_rosters(self, game_id):
         """
