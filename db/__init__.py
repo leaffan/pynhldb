@@ -25,22 +25,28 @@ def commit_db_item(db_item, add=False):
 
 def create_or_update_db_item(db_item, new_item):
     """
-    Updates an existing or creates a new database item.
+    Updates an existing or creates a new database item, returning the
+    persisted item (the unchanged existing item, the updated/merged item,
+    or the newly created item). Callers that don't need the persisted item
+    can keep ignoring the return value, as they did before it existed.
     """
     with session_scope() as session:
         # if database item exists
         if db_item is not None:
             # returning if database item is unchanged
             if db_item == new_item:
-                return
+                return db_item
             # updating database item otherwise
             else:
                 db_item.update(new_item)
-                session.merge(db_item)
+                db_item = session.merge(db_item)
         # creating database item otherwise
         else:
             session.add(new_item)
+            db_item = new_item
         session.commit()
+
+    return db_item
 
 
 def create_or_update_db_item_alternate(db_item, new_item):
