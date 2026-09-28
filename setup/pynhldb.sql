@@ -769,6 +769,34 @@ CREATE TABLE "nhl"."games" (
 	CONSTRAINT "game_key" PRIMARY KEY("game_id")
 );
 
+-- auto-fills the four game-count columns (per team, season and game type)
+-- on insert whenever they're not already given explicitly
+CREATE OR REPLACE FUNCTION "nhl"."count_games" ()
+RETURNS trigger AS
+$BODY$
+begin
+if (new.road_game_count is null) then
+	select coalesce(max(road_game_count), 0) + 1 into new.road_game_count from nhl.games where season = new.season and type = new.type and road_team_id = new.road_team_id;
+end if;
+if (new.home_game_count is null) then
+	select coalesce(max(home_game_count), 0) + 1 into new.home_game_count from nhl.games where season = new.season and type = new.type and home_team_id = new.home_team_id;
+end if;
+if (new.home_overall_game_count is null) then
+	select coalesce(max(home_overall_game_count), 0) + 1 into new.home_overall_game_count from nhl.games where season = new.season and type = new.type and (home_team_id = new.home_team_id or road_team_id = new.home_team_id);
+end if;
+if (new.road_overall_game_count is null) then
+	select coalesce(max(road_overall_game_count), 0) + 1 into new.road_overall_game_count from nhl.games where season = new.season and type = new.type and (road_team_id = new.road_team_id or home_team_id = new.road_team_id);
+end if;
+return new;
+end;
+$BODY$
+	LANGUAGE PLpgSQL
+	SECURITY DEFINER;
+
+CREATE TRIGGER "game_count" BEFORE INSERT
+	ON "nhl"."games" FOR EACH ROW
+	EXECUTE PROCEDURE "nhl"."count_games"();
+
 CREATE TRIGGER "games_audit" AFTER INSERT OR UPDATE OR DELETE
 	ON "nhl"."games" FOR EACH ROW
 	EXECUTE PROCEDURE "nhl"."tr_log_actions"();
@@ -871,6 +899,10 @@ CREATE TABLE "nhl"."player_games" (
 	CONSTRAINT "player_game_key" PRIMARY KEY("player_game_id"),
 	CONSTRAINT "position_check" CHECK(position in ('G', 'D', 'L', 'C', 'R', 'F', 'W', ''))
 );
+
+CREATE INDEX "pg_game_id_idx" ON "nhl"."player_games" USING BTREE ("game_id");
+CREATE INDEX "pg_player_id_idx" ON "nhl"."player_games" USING BTREE ("player_id");
+CREATE INDEX "pg_team_id_idx" ON "nhl"."player_games" USING BTREE ("team_id");
 
 CREATE TRIGGER "player_games_audit" AFTER INSERT OR UPDATE OR DELETE
 	ON "nhl"."player_games" FOR EACH ROW
@@ -1054,10 +1086,12 @@ CREATE TABLE "nhl"."shifts" (
 );
 
 CREATE INDEX "shift_game_id_player_id_in_game_shift_cnt_idx" ON "nhl"."shifts" USING BTREE (
-	"game_id", 
-	"player_id", 
+	"game_id",
+	"player_id",
 	"in_game_shift_cnt"
 );
+
+CREATE INDEX "shift_duration_idx" ON "nhl"."shifts" USING BTREE ("duration" DESC NULLS LAST);
 
 
 CREATE TRIGGER "shifts_audit" AFTER INSERT OR UPDATE OR DELETE
@@ -1632,7 +1666,7 @@ CREATE TABLE "nhl"."team_games" (
 	"shots_against_ot" int2 DEFAULT NULL,
 	"so_attempts" int2 DEFAULT NULL,
 	"so_goals" int2 DEFAULT NULL,
-	"penalties" int2 NOT NULL,
+	"penalties" int2 NOT NULL DEFAULT 0,
 	"pim" int4 NOT NULL DEFAULT 0,
 	"points" int2 NOT NULL DEFAULT 0,
 	CONSTRAINT "team_game_key" PRIMARY KEY("team_game_id")
@@ -1812,32 +1846,45 @@ COMMENT ON COLUMN "nhl"."shootout_attempts"."scored" IS 'Flag indicating whether
 
 DROP TABLE IF EXISTS "nhl"."shot_attempts" CASCADE;
 
+-- one row per shot-attempt event (not per on-ice player - see
+-- for_player_ids/against_player_ids), collapsing what used to be ~11
+-- rows/event (one per on-ice skater/goalie) into a single row with two
+-- player-id arrays. Cut this table from ~10.9M rows/~10GB down to
+-- ~978k rows once migrated.
 CREATE TABLE "nhl"."shot_attempts" (
 	"shot_attempt_id" uuid NOT NULL,
 	"game_id" int4,
-	"team_id" int4,
-	"event_id" int8,
-	"player_id" int4,
+	"event_id" int8 NOT NULL,
 	"shot_attempt_type" char(1) NOT NULL,
-	"plus_minus" int2,
 	"num_situation" char(2),
 	"plr_situation" varchar(5),
-	"actual" bool,
 	"score_diff" int2,
+	"for_team_id" int4,
+	"against_team_id" int4,
+	"shooter_id" int4,
+	"for_player_ids" int4[],
+	"against_player_ids" int4[],
 	CONSTRAINT "type_check" CHECK(shot_attempt_type in ('S', 'M', 'B')),
 	CONSTRAINT "shot_attempt_key" PRIMARY KEY("shot_attempt_id")
 );
 
-CREATE INDEX "shot_attempt_game_id_event_id_player_id_idx" ON "nhl"."shot_attempts" USING BTREE (
-	"game_id", 
-	"event_id", 
-	"player_id"
+CREATE UNIQUE INDEX "shot_attempt_event_id_idx" ON "nhl"."shot_attempts" USING BTREE (
+	"event_id"
 );
 
 
-CREATE INDEX "shot_attempt_event_id_player_id_idx" ON "nhl"."shot_attempts" USING BTREE (
-	"event_id", 
-	"player_id"
+CREATE INDEX "shot_attempt_game_id_idx" ON "nhl"."shot_attempts" USING BTREE (
+	"game_id"
+);
+
+
+CREATE INDEX "shot_attempt_for_player_ids_gin_idx" ON "nhl"."shot_attempts" USING GIN (
+	"for_player_ids"
+);
+
+
+CREATE INDEX "shot_attempt_against_player_ids_gin_idx" ON "nhl"."shot_attempts" USING GIN (
+	"against_player_ids"
 );
 
 
@@ -1850,23 +1897,32 @@ ALTER TABLE "nhl"."shot_attempts" OWNER TO "nhl_user";
 
 COMMENT ON COLUMN "nhl"."shot_attempts"."game_id" IS 'Related game ID';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."team_id" IS 'Related team ID';
-
-COMMENT ON COLUMN "nhl"."shot_attempts"."event_id" IS 'Related event ID';
-
-COMMENT ON COLUMN "nhl"."shot_attempts"."player_id" IS 'Related player ID';
+COMMENT ON COLUMN "nhl"."shot_attempts"."event_id" IS 'Related event ID (one row per shot-attempt event)';
 
 COMMENT ON COLUMN "nhl"."shot_attempts"."shot_attempt_type" IS 'Type of the shot attempt, e.g. (M)iss, (B)lock or (S)hot on Goal';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."plus_minus" IS 'Indicator whether the current one is a for or against event';
+COMMENT ON COLUMN "nhl"."shot_attempts"."num_situation" IS 'Official numerical situation at the time of the shot attempt event, from the shooting team''s perspective, e.g. EV, PP or SH';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."num_situation" IS 'Official numerical situation at the time of the shot attempt event, e.g. EV, PP or SH';
+COMMENT ON COLUMN "nhl"."shot_attempts"."plr_situation" IS 'Actual numerical situation at the time of the shot attempt event, from the shooting team''s perspective, e.g. 5v5, 5v4, 6v5 etc.';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."plr_situation" IS 'Actual numerical situation at the time of the shot attempt event, e.g. 5v5, 5v4, 6v5 etc.';
+COMMENT ON COLUMN "nhl"."shot_attempts"."score_diff" IS 'Score differential at the time of the shot attempt event as registered by the shooting team';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."actual" IS 'Indicator whether the current entry shows the player actual contributing the shot attempt';
+COMMENT ON COLUMN "nhl"."shot_attempts"."for_team_id" IS 'Team that attempted the shot';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."score_diff" IS 'Score differential at the time of the shot attempt event as registered by the current team';
+COMMENT ON COLUMN "nhl"."shot_attempts"."against_team_id" IS 'Opposing team';
+
+COMMENT ON COLUMN "nhl"."shot_attempts"."shooter_id" IS 'Player who actually took the shot attempt (or, for a blocked shot, whose shot got blocked)';
+
+COMMENT ON COLUMN "nhl"."shot_attempts"."for_player_ids" IS 'Skaters/goalie of the shooting team on the ice for this shot attempt, sorted';
+
+COMMENT ON COLUMN "nhl"."shot_attempts"."against_player_ids" IS 'Skaters/goalie of the opposing team on the ice for this shot attempt, sorted';
+
+ALTER TABLE "nhl"."shot_attempts" ADD CONSTRAINT "shot_attempts_to_events" FOREIGN KEY ("event_id")
+	REFERENCES "nhl"."events"("event_id")
+	MATCH SIMPLE
+	ON DELETE CASCADE
+	ON UPDATE CASCADE
+	NOT DEFERRABLE;
 
 
 ALTER TABLE "nhl"."player_seasons" ADD CONSTRAINT "player_seasons_to_players" FOREIGN KEY ("player_id")
@@ -2431,20 +2487,6 @@ ALTER TABLE "nhl"."shootout_attempts" ADD CONSTRAINT "shootout_attempts_at_to_te
 
 ALTER TABLE "nhl"."shootout_attempts" ADD CONSTRAINT "shootout_attempt_goalies_to_players" FOREIGN KEY ("goalie_id")
 	REFERENCES "nhl"."players"("player_id")
-	MATCH SIMPLE
-	ON DELETE CASCADE
-	ON UPDATE CASCADE
-	NOT DEFERRABLE;
-
-ALTER TABLE "nhl"."shot_attempts" ADD CONSTRAINT "shot_attempts_to_games" FOREIGN KEY ("game_id")
-	REFERENCES "nhl"."games"("game_id")
-	MATCH SIMPLE
-	ON DELETE CASCADE
-	ON UPDATE CASCADE
-	NOT DEFERRABLE;
-
-ALTER TABLE "nhl"."shot_attempts" ADD CONSTRAINT "shot_attempts_to_teams" FOREIGN KEY ("team_id")
-	REFERENCES "nhl"."teams"("team_id")
 	MATCH SIMPLE
 	ON DELETE CASCADE
 	ON UPDATE CASCADE
