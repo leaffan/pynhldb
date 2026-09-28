@@ -13,7 +13,7 @@ from utils.player_finder import PlayerFinder
 from utils.player_data_retriever import PlayerDataRetriever
 from utils.eliteprospects_utils import retrieve_drafted_players_with_dobs
 
-MAX_WORKERS = 8
+MAX_WORKERS = 2
 
 
 def migrate_players(plr_src_file=None):
