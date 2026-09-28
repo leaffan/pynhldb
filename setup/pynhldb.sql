@@ -1812,32 +1812,45 @@ COMMENT ON COLUMN "nhl"."shootout_attempts"."scored" IS 'Flag indicating whether
 
 DROP TABLE IF EXISTS "nhl"."shot_attempts" CASCADE;
 
+-- one row per shot-attempt event (not per on-ice player - see
+-- for_player_ids/against_player_ids), collapsing what used to be ~11
+-- rows/event (one per on-ice skater/goalie) into a single row with two
+-- player-id arrays. Cut this table from ~10.9M rows/~10GB down to
+-- ~978k rows once migrated.
 CREATE TABLE "nhl"."shot_attempts" (
 	"shot_attempt_id" uuid NOT NULL,
 	"game_id" int4,
-	"team_id" int4,
-	"event_id" int8,
-	"player_id" int4,
+	"event_id" int8 NOT NULL,
 	"shot_attempt_type" char(1) NOT NULL,
-	"plus_minus" int2,
 	"num_situation" char(2),
 	"plr_situation" varchar(5),
-	"actual" bool,
 	"score_diff" int2,
+	"for_team_id" int4,
+	"against_team_id" int4,
+	"shooter_id" int4,
+	"for_player_ids" int4[],
+	"against_player_ids" int4[],
 	CONSTRAINT "type_check" CHECK(shot_attempt_type in ('S', 'M', 'B')),
 	CONSTRAINT "shot_attempt_key" PRIMARY KEY("shot_attempt_id")
 );
 
-CREATE INDEX "shot_attempt_game_id_event_id_player_id_idx" ON "nhl"."shot_attempts" USING BTREE (
-	"game_id", 
-	"event_id", 
-	"player_id"
+CREATE UNIQUE INDEX "shot_attempt_event_id_idx" ON "nhl"."shot_attempts" USING BTREE (
+	"event_id"
 );
 
 
-CREATE INDEX "shot_attempt_event_id_player_id_idx" ON "nhl"."shot_attempts" USING BTREE (
-	"event_id", 
-	"player_id"
+CREATE INDEX "shot_attempt_game_id_idx" ON "nhl"."shot_attempts" USING BTREE (
+	"game_id"
+);
+
+
+CREATE INDEX "shot_attempt_for_player_ids_gin_idx" ON "nhl"."shot_attempts" USING GIN (
+	"for_player_ids"
+);
+
+
+CREATE INDEX "shot_attempt_against_player_ids_gin_idx" ON "nhl"."shot_attempts" USING GIN (
+	"against_player_ids"
 );
 
 
@@ -1850,23 +1863,25 @@ ALTER TABLE "nhl"."shot_attempts" OWNER TO "nhl_user";
 
 COMMENT ON COLUMN "nhl"."shot_attempts"."game_id" IS 'Related game ID';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."team_id" IS 'Related team ID';
-
-COMMENT ON COLUMN "nhl"."shot_attempts"."event_id" IS 'Related event ID';
-
-COMMENT ON COLUMN "nhl"."shot_attempts"."player_id" IS 'Related player ID';
+COMMENT ON COLUMN "nhl"."shot_attempts"."event_id" IS 'Related event ID (one row per shot-attempt event)';
 
 COMMENT ON COLUMN "nhl"."shot_attempts"."shot_attempt_type" IS 'Type of the shot attempt, e.g. (M)iss, (B)lock or (S)hot on Goal';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."plus_minus" IS 'Indicator whether the current one is a for or against event';
+COMMENT ON COLUMN "nhl"."shot_attempts"."num_situation" IS 'Official numerical situation at the time of the shot attempt event, from the shooting team''s perspective, e.g. EV, PP or SH';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."num_situation" IS 'Official numerical situation at the time of the shot attempt event, e.g. EV, PP or SH';
+COMMENT ON COLUMN "nhl"."shot_attempts"."plr_situation" IS 'Actual numerical situation at the time of the shot attempt event, from the shooting team''s perspective, e.g. 5v5, 5v4, 6v5 etc.';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."plr_situation" IS 'Actual numerical situation at the time of the shot attempt event, e.g. 5v5, 5v4, 6v5 etc.';
+COMMENT ON COLUMN "nhl"."shot_attempts"."score_diff" IS 'Score differential at the time of the shot attempt event as registered by the shooting team';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."actual" IS 'Indicator whether the current entry shows the player actual contributing the shot attempt';
+COMMENT ON COLUMN "nhl"."shot_attempts"."for_team_id" IS 'Team that attempted the shot';
 
-COMMENT ON COLUMN "nhl"."shot_attempts"."score_diff" IS 'Score differential at the time of the shot attempt event as registered by the current team';
+COMMENT ON COLUMN "nhl"."shot_attempts"."against_team_id" IS 'Opposing team';
+
+COMMENT ON COLUMN "nhl"."shot_attempts"."shooter_id" IS 'Player who actually took the shot attempt (or, for a blocked shot, whose shot got blocked)';
+
+COMMENT ON COLUMN "nhl"."shot_attempts"."for_player_ids" IS 'Skaters/goalie of the shooting team on the ice for this shot attempt, sorted';
+
+COMMENT ON COLUMN "nhl"."shot_attempts"."against_player_ids" IS 'Skaters/goalie of the opposing team on the ice for this shot attempt, sorted';
 
 
 ALTER TABLE "nhl"."player_seasons" ADD CONSTRAINT "player_seasons_to_players" FOREIGN KEY ("player_id")

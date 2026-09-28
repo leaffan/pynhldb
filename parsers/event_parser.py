@@ -353,12 +353,13 @@ class EventParser():
 
     def get_shot_attempt_event(self, event, specific_event):
         """
-        Retrieves or creates a shot attempt event.
+        Retrieves or creates a shot attempt event, i.e. a single row
+        recording both teams' on-ice players for this shot attempt (rather
+        than one row per on-ice player).
         """
         shot_attempt_dict = dict()
 
         shot_attempt_dict['shot_attempt_type'] = event.type[0]
-        shot_attempt_dict['plus_minus'] = 1
 
         if not event.home_on_ice or not event.road_on_ice:
             logger.warn(
@@ -367,10 +368,12 @@ class EventParser():
             return
 
         # retrieving skaters for home and road teams, respectively
-        shot_attempt_dict['home_skaters'] = list(set(
-            event.home_on_ice).difference(set([event.home_goalie])))
-        shot_attempt_dict['road_skaters'] = list(set(
-            event.road_on_ice).difference(set([event.road_goalie])))
+        skaters = {
+            'home': list(set(
+                event.home_on_ice).difference(set([event.home_goalie]))),
+            'road': list(set(
+                event.road_on_ice).difference(set([event.road_goalie]))),
+        }
 
         # assuming the shooting team is the home team
         shot_attempt_for_key, shot_attempt_against_key = 'home', 'road'
@@ -398,55 +401,27 @@ class EventParser():
                 shot_attempt_against_key, shot_attempt_for_key)
             shot_attempt_dict['score_diff'] = self.score_diff / -1
 
-        shot_attempt_dict['shooting_team'] = getattr(
+        shot_attempt_dict['for_team_id'] = getattr(
             self.game, "%s_team_id" % shot_attempt_for_key)
-        shot_attempt_dict['other_team'] = getattr(
+        shot_attempt_dict['against_team_id'] = getattr(
             self.game, "%s_team_id" % shot_attempt_against_key)
         shot_attempt_dict['plr_situation'] = "%dv%d" % (
-            len(shot_attempt_dict["%s_skaters" % shot_attempt_for_key]),
-            len(shot_attempt_dict["%s_skaters" % shot_attempt_against_key]))
-        shot_attempt_dict['shot_attempt_for_player_ids'] = getattr(
-            event, "%s_on_ice" % shot_attempt_for_key)
-        shot_attempt_dict['shot_attempt_against_player_ids'] = getattr(
-            event, "%s_on_ice" % shot_attempt_against_key)
+            len(skaters[shot_attempt_for_key]),
+            len(skaters[shot_attempt_against_key]))
+        # sorting player ids so re-parsing the same event yields the same
+        # array regardless of any incidental upstream ordering, keeping
+        # equality checks (and thus change detection) stable
+        shot_attempt_dict['for_player_ids'] = sorted(getattr(
+            event, "%s_on_ice" % shot_attempt_for_key))
+        shot_attempt_dict['against_player_ids'] = sorted(getattr(
+            event, "%s_on_ice" % shot_attempt_against_key))
 
-        for player_id in shot_attempt_dict['shot_attempt_for_player_ids']:
-            if shot_attempt_dict['shooter_id'] == player_id:
-                shot_attempt_dict['actual'] = True
-            else:
-                shot_attempt_dict['actual'] = False
+        new_shot_attempt = ShotAttempt(
+            self.game.game_id, event.event_id, shot_attempt_dict)
 
-            new_shot_attempt = ShotAttempt(
-                self.game.game_id, shot_attempt_dict['shooting_team'],
-                event.event_id, player_id, shot_attempt_dict)
+        db_shot_attempt = ShotAttempt.find_by_event_id(event.event_id)
 
-            db_shot_attempt = ShotAttempt.find_by_event_player_id(
-                event.event_id, player_id
-            )
-
-            create_or_update_db_item(db_shot_attempt, new_shot_attempt)
-
-        # reversing numerical situation, score differential and player
-        # disposition between teams
-        shot_attempt_dict['num_situation'] = reverse_num_situation(
-            shot_attempt_dict['num_situation'])
-        shot_attempt_dict['score_diff'] = shot_attempt_dict['score_diff'] / -1
-        shot_attempt_dict['plr_situation'] = shot_attempt_dict[
-            'plr_situation'][::-1]
-        shot_attempt_dict['plus_minus'] = -1
-        # re-setting player actually taking the shot attempt
-        shot_attempt_dict['actual'] = False
-
-        for player_id in shot_attempt_dict['shot_attempt_against_player_ids']:
-            new_shot_attempt = ShotAttempt(
-                self.game.game_id, shot_attempt_dict['other_team'],
-                event.event_id, player_id, shot_attempt_dict)
-
-            db_shot_attempt = ShotAttempt.find_by_event_player_id(
-                event.event_id, player_id
-            )
-
-            create_or_update_db_item(db_shot_attempt, new_shot_attempt)
+        create_or_update_db_item(db_shot_attempt, new_shot_attempt)
 
     def get_missed_shot_event(self, event):
         """
