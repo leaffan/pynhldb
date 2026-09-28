@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import json
+import time
 import hashlib
 from urllib.parse import urlsplit
 
@@ -95,8 +96,13 @@ class SummaryDownloader(MultiFileDownloader):
 
         # retrieving schedule for current date in json format
         schedule_url = "/".join((self.SCHEDULE_URL_BASE, fmt_date))
+        time.sleep(1)
         req = requests.get(schedule_url)
-        json_scoreboard = json.loads(req.text)
+        try:
+            json_scoreboard = json.loads(req.text)
+        except json.JSONDecodeError:
+            print(req.text)
+            raise
         self.files_to_download = self.get_files_to_download_from_scoreboard(json_scoreboard)
 
     def get_files_to_download_from_scoreboard(self, json_scoreboard):
