@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import copy
 import hashlib
 import json
 import os
@@ -19,6 +20,53 @@ from .pending_parse import PendingParseTracker
 from .summary_data_injector import add_nhl_ids_to_content
 
 BASE_URL = 'https://api-web.nhle.com'
+
+# per-record fields that only carry a player's *display* name, not any
+# actual game data. The NHL API updates these display name preferences
+# (e.g. "Matthew" -> "Matt", or adding/dropping localized spellings) for
+# players independently of any game, and since these fields are
+# denormalized into every shift/roster record, such an update makes
+# every game that player ever appeared in look "changed" even though
+# nothing about the game itself did. They're stripped out before hashing
+# so they don't trigger a needless re-parse, while the full data
+# (including these fields) is still written to disk as usual.
+COSMETIC_NAME_FIELDS = ('firstName', 'lastName')
+# top-level keys holding lists of per-record data that may carry the
+# above cosmetic name fields (`rosterSpots` in the game feed JSON, `data`
+# in the shift chart JSON)
+NAME_BEARING_LIST_KEYS = ('rosterSpots', 'data')
+
+
+def decode_json_response(req):
+    """
+    Decodes a `requests.Response` as JSON, explicitly as UTF-8 rather than
+    relying on requests' heuristic encoding detection - the NHL API doesn't
+    declare a charset on its JSON responses, and that heuristic can
+    misguess the encoding of an otherwise mostly-ASCII response containing
+    just a few non-ASCII characters (e.g. an accented player name),
+    garbling them. JSON is UTF-8 by specification (RFC 8259), so decoding
+    it as anything else is never correct here.
+    """
+    return json.loads(req.content.decode('utf-8'))
+
+
+def hashable_json_string(json_data):
+    """
+    Returns a JSON string suitable for hashing, with cosmetic, purely
+    display-related player name fields stripped from known per-record
+    list structures so that routine NHL name-preference churn doesn't
+    register as a data change.
+    """
+    stripped = copy.deepcopy(json_data)
+    for list_key in NAME_BEARING_LIST_KEYS:
+        entries = stripped.get(list_key)
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if isinstance(entry, dict):
+                for name_field in COSMETIC_NAME_FIELDS:
+                    entry.pop(name_field, None)
+    return json.dumps(stripped)
 
 
 class SummaryDownloader(MultiFileDownloader):
@@ -105,7 +153,7 @@ class SummaryDownloader(MultiFileDownloader):
         time.sleep(1)
         req = requests.get(schedule_url)
         try:
-            json_scoreboard = json.loads(req.text)
+            json_scoreboard = decode_json_response(req)
         except json.JSONDecodeError:
             print(req.text)
             raise
@@ -245,8 +293,8 @@ class SummaryDownloader(MultiFileDownloader):
         req = requests.get(url)
 
         if req.status_code == 200:
-            json_data = req.json()
-            data_hash = hashlib.md5(json.dumps(json_data).encode('utf-8')).hexdigest()
+            json_data = decode_json_response(req)
+            data_hash = hashlib.md5(hashable_json_string(json_data).encode('utf-8')).hexdigest()
             # checking whether json data that is due to update an existing data
             # set contains any play information at all and bailing out if that
             # is not the case - by doing so we avoid overwriting existing
@@ -282,9 +330,9 @@ class SummaryDownloader(MultiFileDownloader):
         req = requests.get(url)
 
         if req.status_code == 200:
-            json_data = req.json()
+            json_data = decode_json_response(req)
             # calculating MD5 hash for downloaded data
-            json_data_hash = hashlib.md5(json.dumps(json_data).encode('utf-8')).hexdigest()
+            json_data_hash = hashlib.md5(hashable_json_string(json_data).encode('utf-8')).hexdigest()
             # comparing hashes of downloaded and already exising data
             if existing_data_hash != json_data_hash:
                 sys.stdout.write("+")
